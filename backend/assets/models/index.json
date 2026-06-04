@@ -1,0 +1,92 @@
+[
+  {
+    "id": "model_1780284040726",
+    "name": "欧美女-棕色波浪卷",
+    "params": {
+      "gender": "female",
+      "ethnicity": "caucasian",
+      "age": "25-30",
+      "bodyType": "standard",
+      "hairDesc": "棕色波浪卷",
+      "expression": "优雅",
+      "pose": "自然站立",
+      "clothing": "运动装",
+      "background": "white",
+      "composition": "full_body",
+      "style": "casual",
+      "customDesc": "模特颜值要突出，要具有高级感的风格",
+      "mode": "text"
+    },
+    "file": "model_1780284040726.jpeg",
+    "thumbnail": "model_1780284040726_thumb.jpeg",
+    "created_at": "2026-06-01T11:20:40"
+  },
+  {
+    "id": "model_1780284997652",
+    "name": "欧美女-发型以及发色和参考图一样",
+    "params": {
+      "gender": "female",
+      "ethnicity": "caucasian",
+      "age": "20-25",
+      "bodyType": "standard",
+      "hairDesc": "发型以及发色和参考图一样",
+      "expression": "自然",
+      "pose": "自然站立",
+      "clothing": "运动装",
+      "background": "white",
+      "composition": "half_body",
+      "style": "ecommerce",
+      "customDesc": "符合亚马逊女装风格，突出高级感",
+      "mode": "image"
+    },
+    "file": "model_1780284997652.jpeg",
+    "thumbnail": "model_1780284997652_thumb.jpeg",
+    "created_at": "2026-06-01T11:36:37"
+  },
+  {
+    "id": "model_1780298651854",
+    "name": "欧美女-高马尾",
+    "params": {
+      "gender": "female",
+      "ethnicity": "caucasian",
+      "age": "20-25",
+      "bodyType": "athletic",
+      "hairDesc": "高马尾",
+      "expression": "俏皮",
+      "pose": "自然站立",
+      "clothing": "白T恤+牛仔裤",
+      "background": "white",
+      "composition": "full_body",
+      "style": "ecommerce",
+      "customDesc": "皮肤白皙，颜值出色",
+      "count": "1",
+      "mode": "text"
+    },
+    "file": "model_1780298651854.jpeg",
+    "thumbnail": "model_1780298651854_thumb.jpeg",
+    "created_at": "2026-06-01T15:24:11"
+  },
+  {
+    "id": "model_1780303206167",
+    "name": "欧美女-棕色波浪卷",
+    "params": {
+      "gender": "female",
+      "ethnicity": "caucasian",
+      "age": "20-25",
+      "bodyType": "standard",
+      "hairDesc": "棕色波浪卷",
+      "expression": "自然",
+      "pose": "自然站立",
+      "clothing": "白T恤+牛仔裤",
+      "background": "white",
+      "composition": "half_body",
+      "style": "ecommerce",
+      "customDesc": "欧美女性模特，20-25岁，标准体型，棕色波浪卷发，表情自然，正面微侧站立，身穿白T恤与牛仔裤，纯白背景，半身构图，电商摄影风格。光影柔和统一，采用专业棚拍主光+辅光，明暗过渡自然，无硬阴影，面部光影均匀。发丝蓬松有层次感，边缘碎发自然，光影下呈现柔和光泽，无生硬切割感。皮肤保留自然纹理、毛孔与轻微雀斑，不过度磨皮，无塑料感。手部细节优化，手指比例自然，关节清晰，指甲形态正常，无畸形。白T恤呈现真实棉质纹理与自然垂坠褶皱，牛仔裤水洗质感自然，无塑料感。整体画面真实自然，无AI痕迹，呈现专业级商业棚拍效果，排除畸形肢体、模糊手部、生硬发丝边缘、过度磨皮、油光、塑料质感、光影断层、画面噪点、色差",
+      "count": "1",
+      "mode": "text"
+    },
+    "file": "model_1780303206167.jpeg",
+    "thumbnail": "model_1780303206167_thumb.jpeg",
+    "created_at": "2026-06-01T16:40:06"
+  }
+]

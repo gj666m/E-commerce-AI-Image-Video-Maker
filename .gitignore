@@ -1,0 +1,53 @@
+# 环境变量和敏感信息（绝对不能提交！）
+.env
+.env.local
+*.env
+config.ini
+secrets.json
+api_keys.txt
+
+# Claude Dev本地缓存
+.claude/
+.claude-dev/
+
+# 依赖包
+node_modules/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+Pipfile.lock
+poetry.lock
+
+# 构建产物和临时文件
+dist/
+build/
+*.log
+*.tmp
+*.cache
+*.pyc
+.DS_Store
+Thumbs.db
+
+# Vite 缓存
+.vite/
+
+# 本地生成的内容（AI生成的视频、图片、数据）
+data/*
+output/
+generated/
+temp/
+uploads/
+videos/
+images/
+
+# IDE和编辑器配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 保留data文件夹结构（但忽略里面的所有文件）
+!data/.gitkeep

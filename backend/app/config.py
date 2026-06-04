@@ -1,0 +1,82 @@
+# 配置管理 - Pydantic Settings 加载 .env
+from pydantic_settings import BaseSettings
+
+
+class Settings(BaseSettings):
+    # 应用配置
+    app_env: str = "development"
+    app_host: str = "0.0.0.0"
+    app_port: int = 8001
+    debug: bool = True
+
+    # 图片处理
+    max_upload_size_mb: int = 20
+    image_max_long_edge: int = 2048
+
+    # 视频临时文件
+    video_temp_dir: str = "temp_videos"
+    video_expire_seconds: int = 3600  # 1 小时过期
+
+    # AI 模型 API Keys（按需配置，不配则为空字符串）
+    openai_api_key: str = ""
+    fal_api_key: str = ""
+    kling_api_key: str = ""
+    photoroom_api_key: str = ""
+    volcengine_api_key: str = ""
+    volcengine_model_id: str = "doubao-seedream-4-5-251128"
+    volcengine_vision_model: str = "doubao-seed-2-0-lite-260428"
+    volcengine_seedance_endpoint: str = ""  # Seedance 2.0 视频 API endpoint ID
+
+    # DeepSeek V4（文本分析，视觉暂不可用）
+    deepseek_api_key: str = ""
+    deepseek_model: str = "deepseek-v4-flash"
+    deepseek_base_url: str = "https://api.deepseek.com"
+
+    # 模特库
+    model_store_dir: str = "assets/models"
+
+    # 模型默认配置
+    default_image_model: str = "gpt-image-2"
+
+    @property
+    def has_openai(self) -> bool:
+        return bool(self.openai_api_key)
+
+    @property
+    def has_fal(self) -> bool:
+        return bool(self.fal_api_key)
+
+    @property
+    def has_kling(self) -> bool:
+        return bool(self.kling_api_key)
+
+    @property
+    def has_photoroom(self) -> bool:
+        return bool(self.photoroom_api_key)
+
+    @property
+    def has_volcengine(self) -> bool:
+        return bool(self.volcengine_api_key)
+
+    @property
+    def has_seedance(self) -> bool:
+        return bool(self.volcengine_seedance_endpoint)
+
+    @property
+    def has_deepseek(self) -> bool:
+        return bool(self.deepseek_api_key)
+
+    @property
+    def has_product_analysis(self) -> bool:
+        """商品视觉分析是否可用（依赖火山引擎视觉模型）"""
+        return bool(self.volcengine_api_key)
+
+    @property
+    def has_any_provider(self) -> bool:
+        """是否有至少一个可用的 AI 模型"""
+        return any([self.has_openai, self.has_fal, self.has_kling, self.has_photoroom, self.has_volcengine, self.has_deepseek, self.has_seedance])
+
+    model_config = {"env_file": ".env", "extra": "ignore"}
+
+
+settings = Settings()
