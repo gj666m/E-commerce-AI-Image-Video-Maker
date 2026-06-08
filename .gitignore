@@ -41,6 +41,8 @@ temp/
 uploads/
 videos/
 images/
+backend/temp_videos/
+backend/assets/models/model_*
 
 # IDE和编辑器配置
 .vscode/
