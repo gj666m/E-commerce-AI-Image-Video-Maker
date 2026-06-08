@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.api import generate, models, model, video, analysis
 from app.config import settings
@@ -50,6 +51,34 @@ app.mount("/video-files", StaticFiles(directory=str(temp_dir)), name="video-file
 models_dir = Path(settings.model_store_dir)
 models_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/model-files", StaticFiles(directory=str(models_dir)), name="model-files")
+
+
+# ====== 生产环境：托管前端静态文件 ======
+FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+
+@app.get("/")
+async def serve_index():
+    """前端首页"""
+    if FRONTEND_DIST.exists():
+        return FileResponse(FRONTEND_DIST / "index.html")
+    return {"message": "AI-ZW API", "docs": "/docs"}
+
+
+# SPA fallback：所有非 /api、非静态文件的请求返回 index.html
+@app.get("/{path:path}")
+async def serve_spa(path: str):
+    """SPA 路由回退"""
+    # /api 开头的走后端路由，不处理
+    if path.startswith("api/") or path.startswith("video-files/") or path.startswith("model-files/"):
+        return None
+    file_path = FRONTEND_DIST / path
+    if file_path.exists() and file_path.is_file():
+        return FileResponse(file_path)
+    # SPA 回退到 index.html
+    if FRONTEND_DIST.exists():
+        return FileResponse(FRONTEND_DIST / "index.html")
+    return {"message": "AI-ZW API", "docs": "/docs"}
 
 
 @app.get("/api/health")
