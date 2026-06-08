@@ -264,6 +264,8 @@ export interface ResultCard {
   status: 'success' | 'loading' | 'failed'
   promptUsed: string
   error?: string
+  /** 内部使用：关联的方案索引（种草图/A+策划重试时记录） */
+  _planIdx?: number
 }
 
 // === A+ 策划模块 ===

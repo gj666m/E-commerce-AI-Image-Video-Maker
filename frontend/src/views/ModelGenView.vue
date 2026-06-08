@@ -1,11 +1,5 @@
 <template>
   <div class="model-gen">
-    <el-page-header @back="$router.push('/')">
-      <template #content>
-        <span>AI 生成预设模特</span>
-      </template>
-    </el-page-header>
-
     <el-row :gutter="20" class="main-content">
       <!-- 左侧：参数选择 -->
       <el-col :span="12">
@@ -500,8 +494,6 @@ function buildName(): string {
 <style scoped>
 .model-gen {
   max-width: 1200px;
-  margin: 20px auto;
-  padding: 0 20px;
 }
 
 .main-content {

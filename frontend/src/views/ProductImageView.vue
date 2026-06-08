@@ -1,11 +1,5 @@
 <template>
   <div class="product-image">
-    <el-page-header @back="$router.push('/')">
-      <template #content>
-        <span>商品主图 / A+ 图</span>
-      </template>
-    </el-page-header>
-
     <!-- ====== 顶部 Tab 切换 ====== -->
     <el-tabs v-model="activeTab" class="main-tabs">
       <!-- ====== Tab 1: 商品主图 ====== -->
@@ -456,7 +450,7 @@ function handleMainRetry(idx: number) {
   mainCards.value.splice(idx, 1)
 }
 
-function handleMainRetryWithPrompt({ idx, extraPrompt }: { idx: number; extraPrompt: string }) {
+function handleMainRetryWithPrompt(idx: number, extraPrompt: string) {
   mainCards.value.splice(idx, 1)
   // 带额外 prompt 重新生成
   mainCustomPrompt.value = extraPrompt
@@ -629,7 +623,7 @@ function handleAplusRetry(idx: number) {
   aplusCards.value.splice(idx, 1)
 }
 
-function handleAplusRetryWithPrompt({ idx, extraPrompt }: { idx: number; extraPrompt: string }) {
+function handleAplusRetryWithPrompt(idx: number, extraPrompt: string) {
   aplusCards.value.splice(idx, 1)
   aplusForm.value.scene = extraPrompt
   handleAplusManualGenerate()
@@ -674,7 +668,7 @@ function handleAplusPlanRetry(idx: number) {
   })
 }
 
-function handleAplusPlanRetryWithPrompt({ idx, extraPrompt }: { idx: number; extraPrompt: string }) {
+function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
   const task = aplusGenTasks.value[idx]
   if (!task) return
   const plan = planList.value[task.planIdx]
@@ -712,9 +706,7 @@ function handleAplusPlanRetryWithPrompt({ idx, extraPrompt }: { idx: number; ext
 
 <style scoped>
 .product-image {
-  padding: 20px;
   max-width: 1400px;
-  margin: 0 auto;
 }
 
 .main-tabs {

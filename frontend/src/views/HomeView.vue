@@ -1,116 +1,156 @@
 <template>
   <div class="home">
-    <el-card>
-      <template #header>
-        <h2>AI 电商图像视频生成工具</h2>
-      </template>
+    <div class="home-header">
+      <h2>欢迎使用 AI-ZW</h2>
+      <p>选择一个功能模块开始</p>
+    </div>
 
-      <el-descriptions title="系统状态" :column="1" border>
-        <el-descriptions-item label="状态">
-          <el-tag :type="status === 'ok' ? 'success' : 'danger'">
-            {{ status === 'ok' ? '正常运行' : '异常' }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="模式">
-          <el-tag :type="mockMode ? 'warning' : 'primary'">
-            {{ mockMode ? 'Mock 模式（未配置 API Key）' : '生产模式' }}
-          </el-tag>
-        </el-descriptions-item>
-      </el-descriptions>
-
-      <el-divider />
-
-      <h3>功能入口</h3>
-      <div class="nav-grid">
-        <el-card shadow="hover" class="nav-card" @click="$router.push('/outfit')">
-          <el-icon :size="32"><ShoppingBag /></el-icon>
-          <h4>一键穿搭展示</h4>
-          <p>上传商品图 → 模特穿搭展示图</p>
-        </el-card>
-        <el-card shadow="hover" class="nav-card" @click="$router.push('/analysis')">
-          <el-icon :size="32"><View /></el-icon>
-          <h4>AI 商品分析</h4>
-          <p>上传商品图 → AI 智能分析卖点与关键词</p>
-        </el-card>
-        <el-card shadow="hover" class="nav-card" @click="$router.push('/model-gen')">
-          <el-icon :size="32"><Avatar /></el-icon>
-          <h4>AI 生成模特</h4>
-          <p>指定参数 → AI 生成模特图 → 保存到模特库</p>
-        </el-card>
-        <el-card shadow="hover" class="nav-card" @click="$router.push('/video')">
-          <el-icon :size="32"><VideoCameraFilled /></el-icon>
-          <h4>视频生成</h4>
-          <p>上传参考图 + 视频描述 → 生成商品视频</p>
-        </el-card>
-        <el-card shadow="hover" class="nav-card" @click="$router.push('/seed-grass')">
-          <el-icon :size="32"><Picture /></el-icon>
-          <h4>种草图生成</h4>
-          <p>博主人设 + 场景 → AI 生成博主生活照</p>
-        </el-card>
-        <el-card shadow="hover" class="nav-card" @click="$router.push('/product-image')">
-          <el-icon :size="32"><Present /></el-icon>
-          <h4>商品主图 / A+ 图</h4>
-          <p>白底主图 + A+ 内容图，支持 AI 策划</p>
-        </el-card>
+    <div class="nav-grid">
+      <div
+        v-for="item in navItems"
+        :key="item.path"
+        class="nav-card"
+        @click="$router.push(item.path)"
+      >
+        <div class="nav-card-icon" :style="{ background: item.color }">
+          <el-icon :size="28" color="#fff"><component :is="item.icon" /></el-icon>
+        </div>
+        <div class="nav-card-body">
+          <h4>{{ item.title }}</h4>
+          <p>{{ item.desc }}</p>
+        </div>
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
 import { VideoCameraFilled, Avatar, ShoppingBag, View, Picture, Present } from '@element-plus/icons-vue'
-import { healthCheck } from '../api'
+import { markRaw } from 'vue'
 
-const status = ref('loading')
-const mockMode = ref(false)
-
-onMounted(async () => {
-  try {
-    const data = await healthCheck()
-    status.value = data.status
-    mockMode.value = data.mock_mode
-  } catch {
-    status.value = 'error'
-  }
-})
+const navItems = [
+  {
+    path: '/outfit',
+    icon: markRaw(ShoppingBag),
+    title: '一键穿搭展示',
+    desc: '上传商品图，AI 生成模特穿搭展示',
+    color: 'linear-gradient(135deg, #409eff, #79bbff)',
+  },
+  {
+    path: '/analysis',
+    icon: markRaw(View),
+    title: 'AI 商品分析',
+    desc: '上传商品图，AI 智能分析卖点与关键词',
+    color: 'linear-gradient(135deg, #67c23a, #95d475)',
+  },
+  {
+    path: '/model-gen',
+    icon: markRaw(Avatar),
+    title: 'AI 生成模特',
+    desc: '指定参数生成模特图，保存到模特库',
+    color: 'linear-gradient(135deg, #e6a23c, #eebe77)',
+  },
+  {
+    path: '/video',
+    icon: markRaw(VideoCameraFilled),
+    title: '视频生成',
+    desc: '上传参考图，生成商品展示视频',
+    color: 'linear-gradient(135deg, #f56c6c, #fab6b6)',
+  },
+  {
+    path: '/seed-grass',
+    icon: markRaw(Picture),
+    title: '种草图生成',
+    desc: '博主人设 + 场景，生成博主生活照',
+    color: 'linear-gradient(135deg, #b37feb, #d3adf7)',
+  },
+  {
+    path: '/product-image',
+    icon: markRaw(Present),
+    title: '商品主图 / A+ 图',
+    desc: '白底主图 + A+ 内容图，支持 AI 策划',
+    color: 'linear-gradient(135deg, #36cfc9, #87e8de)',
+  },
+]
 </script>
 
 <style scoped>
 .home {
-  max-width: 800px;
-  margin: 40px auto;
-  padding: 0 20px;
+  max-width: 900px;
+}
+
+.home-header {
+  margin-bottom: 28px;
+}
+
+.home-header h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+}
+
+.home-header p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
 }
 
 .nav-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
 
 .nav-card {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.25s ease;
 }
 
 .nav-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: #409eff;
 }
 
-.nav-card.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+html.dark .nav-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-.nav-card h4 {
-  margin: 8px 0 4px;
+.nav-card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.nav-card p {
-  font-size: 13px;
-  color: #909399;
+.nav-card-body h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nav-card-body p {
   margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .nav-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -1,11 +1,5 @@
 <template>
   <div class="seed-grass">
-    <el-page-header @back="$router.push('/')">
-      <template #content>
-        <span>种草图生成</span>
-      </template>
-    </el-page-header>
-
     <!-- ====== 正常态：表单视图（手动模式 + AI策划入口） ====== -->
     <div v-if="planPhase === ''" class="main-content">
       <el-row :gutter="20">
@@ -813,8 +807,6 @@ function handleRemove(index: number) {
 <style scoped>
 .seed-grass {
   max-width: 1200px;
-  margin: 20px auto;
-  padding: 0 20px;
 }
 
 .main-content {

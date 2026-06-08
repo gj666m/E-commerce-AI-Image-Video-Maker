@@ -1,11 +1,5 @@
 <template>
   <div class="product-analysis">
-    <el-page-header @back="$router.push('/')">
-      <template #content>
-        <span>AI 商品分析</span>
-      </template>
-    </el-page-header>
-
     <el-row :gutter="20" class="main-content">
       <!-- 左侧：上传 -->
       <el-col :span="10">
@@ -219,8 +213,6 @@ function goToGenerate() {
 <style scoped>
 .product-analysis {
   max-width: 1200px;
-  margin: 20px auto;
-  padding: 0 20px;
 }
 
 .main-content {

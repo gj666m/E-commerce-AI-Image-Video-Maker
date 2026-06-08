@@ -1,0 +1,59 @@
+/* ========================================
+   AI-ZW 主题变量
+   支持浅色/暗色两套配色
+   ======================================== */
+
+:root {
+  /* 侧边栏 */
+  --sidebar-bg: #304156;
+  --sidebar-text: #bfcbd9;
+  --sidebar-active-bg: #263445;
+  --sidebar-active-text: #409eff;
+  --sidebar-hover-bg: #263445;
+  --sidebar-width: 200px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-transition: 0.3s;
+
+  /* 顶栏 */
+  --header-height: 56px;
+  --header-bg: #ffffff;
+  --header-border: #e6e6e6;
+
+  /* 内容区 */
+  --content-bg: #f5f7fa;
+  --card-bg: #ffffff;
+  --text-primary: #303133;
+  --text-regular: #606266;
+  --text-secondary: #909399;
+  --border-color: #e4e7ed;
+
+  /* Element Plus 覆盖 */
+  --el-color-primary: #409eff;
+  --el-border-radius-base: 6px;
+}
+
+/* 暗色模式 */
+html.dark {
+  --sidebar-bg: #1a1a2e;
+  --sidebar-text: #a0aec0;
+  --sidebar-active-bg: #16213e;
+  --sidebar-active-text: #409eff;
+  --sidebar-hover-bg: #16213e;
+
+  --header-bg: #1e1e2d;
+  --header-border: #2d2d3f;
+
+  --content-bg: #1a1a2e;
+  --card-bg: #252540;
+  --text-primary: #e0e0e0;
+  --text-regular: #a0aec0;
+  --text-secondary: #718096;
+  --border-color: #2d2d3f;
+
+  --el-bg-color: #1a1a2e;
+  --el-bg-color-overlay: #252540;
+  --el-text-color-primary: #e0e0e0;
+  --el-text-color-regular: #a0aec0;
+  --el-border-color: #2d2d3f;
+  --el-fill-color-blank: #252540;
+}

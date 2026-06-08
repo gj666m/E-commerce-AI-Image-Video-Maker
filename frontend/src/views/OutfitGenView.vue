@@ -1,11 +1,5 @@
 <template>
   <div class="outfit-gen">
-    <el-page-header @back="$router.push('/')">
-      <template #content>
-        <span>一键穿搭展示</span>
-      </template>
-    </el-page-header>
-
     <el-row :gutter="20" class="main-content">
       <!-- 左侧：参数选择 -->
       <el-col :span="12">
@@ -480,8 +474,6 @@ function handleRemove(index: number) {
 <style scoped>
 .outfit-gen {
   max-width: 1200px;
-  margin: 20px auto;
-  padding: 0 20px;
 }
 
 .main-content {

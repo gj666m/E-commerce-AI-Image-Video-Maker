@@ -1,11 +1,5 @@
 <template>
   <div class="video-gen">
-    <el-page-header @back="$router.push('/')">
-      <template #content>
-        <span>视频生成</span>
-      </template>
-    </el-page-header>
-
     <el-row :gutter="20" class="main-content">
       <!-- 左侧：输入区 -->
       <el-col :span="12">
@@ -493,8 +487,6 @@ function startPolling() {
 <style scoped>
 .video-gen {
   max-width: 1200px;
-  margin: 20px auto;
-  padding: 0 20px;
 }
 
 .main-content {
