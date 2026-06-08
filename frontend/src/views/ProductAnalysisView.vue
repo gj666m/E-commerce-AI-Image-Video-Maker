@@ -221,20 +221,29 @@ function goToGenerate() {
 
 /* 上传区 */
 .upload-area :deep(.el-upload-dragger) {
-  padding: 30px 20px;
+  padding: 36px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  border-radius: 12px;
+  border: 2px dashed var(--border-color);
+  transition: all 0.25s;
+}
+
+.upload-area :deep(.el-upload-dragger:hover) {
+  border-color: #409eff;
+  background: rgba(64, 158, 255, 0.04);
 }
 
 .upload-text {
-  color: #606266;
+  color: var(--text-regular);
   font-size: 14px;
+  font-weight: 500;
 }
 
 .upload-hint {
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -243,9 +252,9 @@ function goToGenerate() {
   position: relative;
   width: 100%;
   max-height: 400px;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #ebeef5;
+  border: 2px solid var(--border-color);
 }
 
 .preview-area img {
@@ -265,7 +274,7 @@ function goToGenerate() {
 .loading-state {
   text-align: center;
   padding: 60px 20px;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .spin {
@@ -279,7 +288,7 @@ function goToGenerate() {
 
 /* 结果展示 */
 .result-card :deep(.el-card__header) {
-  padding: 12px 20px;
+  padding: 14px 20px;
 }
 
 .result-header {
@@ -287,16 +296,18 @@ function goToGenerate() {
   justify-content: space-between;
   align-items: center;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .section {
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 .section h4 {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 14px;
-  color: #303133;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .tag-list {
@@ -307,5 +318,6 @@ function goToGenerate() {
 
 .analysis-tag {
   font-size: 13px;
+  border-radius: 16px !important;
 }
 </style>

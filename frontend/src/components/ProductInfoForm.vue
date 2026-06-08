@@ -113,13 +113,13 @@ async function handleAnalyze() {
 <style scoped>
 .product-info-form {
   margin: 8px 0;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
   overflow: hidden;
 }
 
 .collapse-title {
   font-weight: 500;
-  color: #303133;
+  color: var(--text-primary);
 }
 </style>

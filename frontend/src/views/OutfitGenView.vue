@@ -75,21 +75,38 @@
             </template>
 
             <!-- 场景描述 -->
-            <el-form-item label="场景描述（可选）">
+            <el-form-item>
+              <template #label>
+                <span>场景描述（可选）</span>
+              </template>
               <div class="preset-tags">
                 <el-tag
                   v-for="tag in scenePresets" :key="tag"
                   size="small"
+                  effect="plain"
                   class="preset-tag"
                   @click="form.description = tag"
                 >{{ tag }}</el-tag>
               </div>
-              <el-input
-                v-model="form.description"
-                type="textarea"
-                :rows="2"
-                placeholder="描述想要的场景效果，如「海边日落」「城市街拍」"
-              />
+              <div class="description-row">
+                <el-input
+                  v-model="form.description"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="描述想要的场景效果，如「海边日落」「城市街拍」"
+                  style="flex: 1"
+                />
+                <el-button
+                  type="success"
+                  plain
+                  :loading="optimizing"
+                  :disabled="productImages.length === 0"
+                  @click="optimizeDescription"
+                  style="margin-left: 8px; align-self: flex-start;"
+                >
+                  AI 优化
+                </el-button>
+              </div>
             </el-form-item>
 
             <!-- 风格 + 比例 -->
@@ -188,7 +205,7 @@ import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ModelLibrary from '../components/ModelLibrary.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { generateImage, getModels } from '../api'
+import { generateImage, getModels, analyzeFree } from '../api'
 import type { ModelInfo, ModelItem, ResultCard } from '../types'
 
 const mode = ref<'single' | 'model'>('single')
@@ -241,6 +258,33 @@ const canGenerate = computed(() => {
   if (mode.value === 'model' && !selectedModelFile.value) return false
   return true
 })
+
+// AI 优化场景描述
+const optimizing = ref(false)
+
+async function optimizeDescription() {
+  const img = productImages.value[0]
+  if (!img) {
+    ElMessage.warning('请先上传商品图')
+    return
+  }
+  optimizing.value = true
+  try {
+    const existingDesc = form.value.description || ''
+    const prompt = existingDesc
+      ? `请根据这张商品图，优化以下穿搭场景描述，使其更生动具体（不超过100字）：\n${existingDesc}`
+      : '请根据这张商品图，生成一段穿搭场景描述（中文），包含场景、光线、氛围。简洁精准，不超过100字。直接输出描述文本，不要输出其他内容。'
+    const resp = await analyzeFree(img, prompt)
+    if (resp.text) {
+      form.value.description = resp.text
+    }
+    ElMessage.success('场景描述已优化')
+  } catch {
+    ElMessage.error('AI 优化失败，请手动填写')
+  } finally {
+    optimizing.value = false
+  }
+}
 
 // 上一次生成参数（用于重试）
 let lastGenParams: {
@@ -481,7 +525,7 @@ function handleRemove(index: number) {
 }
 
 .mode-tabs {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 /* 商品图多图上传 */
@@ -491,18 +535,23 @@ function handleRemove(index: number) {
 
 .product-thumbnails {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
   align-items: flex-start;
 }
 
 .product-thumb {
   position: relative;
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #ebeef5;
+  border: 2px solid var(--border-color);
+  transition: border-color 0.2s;
+}
+
+.product-thumb:hover {
+  border-color: #409eff;
 }
 
 .product-thumb img {
@@ -513,30 +562,37 @@ function handleRemove(index: number) {
 
 .thumb-remove {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  background: rgba(0, 0, 0, 0.5);
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.55);
   color: white;
   border-radius: 50%;
   padding: 2px;
   font-size: 12px;
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.product-thumb:hover .thumb-remove {
+  opacity: 1;
 }
 
 .product-add-btn :deep(.el-upload) {
-  width: 80px;
-  height: 80px;
-  border: 1px dashed #dcdfe6;
-  border-radius: 6px;
+  width: 84px;
+  height: 84px;
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: all 0.25s;
 }
 
 .product-add-btn :deep(.el-upload:hover) {
   border-color: #409eff;
+  background: rgba(64, 158, 255, 0.04);
 }
 
 .add-slot {
@@ -544,33 +600,47 @@ function handleRemove(index: number) {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .product-hint {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 /* 模特缩略图 */
 .selected-model-thumb img {
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
-  border-radius: 4px;
-  margin-top: 4px;
+  border-radius: 8px;
+  margin-top: 6px;
+  border: 2px solid var(--border-color);
 }
 
 .preset-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .preset-tag {
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-tag:hover {
+  color: #409eff;
+  border-color: #409eff;
+  transform: translateY(-1px);
+}
+
+.description-row {
+  display: flex;
+  width: 100%;
 }
 </style>

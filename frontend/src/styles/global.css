@@ -49,3 +49,122 @@ html.dark ::-webkit-scrollbar-thumb {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ========================================
+   全局组件美化
+   ======================================== */
+
+/* 卡片统一样式 */
+.el-card {
+  border-radius: 12px !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
+  transition: box-shadow 0.25s, border-color 0.25s;
+}
+
+.el-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.dark .el-card {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+html.dark .el-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Element Plus Tabs 美化 */
+.el-tabs__item {
+  font-weight: 500 !important;
+}
+
+.el-tabs__active-bar {
+  border-radius: 2px !important;
+}
+
+/* Element Plus Tag 美化 */
+.el-tag {
+  border-radius: 16px !important;
+  transition: all 0.2s !important;
+}
+
+/* Element Plus Select/Radio 美化 */
+.el-select .el-input__wrapper {
+  border-radius: 8px !important;
+}
+
+.el-radio-button__inner {
+  border-radius: 6px !important;
+}
+
+/* Element Plus Button 美化 */
+.el-button {
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+}
+
+.el-button--large {
+  height: 42px !important;
+  font-size: 15px !important;
+  border-radius: 10px !important;
+}
+
+/* Element Plus Input 美化 */
+.el-textarea__inner,
+.el-input__wrapper {
+  border-radius: 8px !important;
+  transition: box-shadow 0.2s;
+}
+
+/* Element Plus Switch 美化 */
+.el-switch {
+  --el-switch-on-color: #409eff;
+  --el-switch-off-color: #dcdfe6;
+}
+
+html.dark .el-switch {
+  --el-switch-off-color: #4a4a6a;
+}
+
+/* Element Plus Divider 美化 */
+.el-divider {
+  border-color: var(--border-color) !important;
+  margin: 16px 0 !important;
+}
+
+/* Element Plus Dialog 美化 */
+.el-dialog {
+  border-radius: 16px !important;
+}
+
+html.dark .el-dialog {
+  background-color: var(--card-bg) !important;
+}
+
+/* Element Plus Empty 美化 */
+.el-empty__description p {
+  color: var(--text-secondary) !important;
+}
+
+/* Element Plus Form Label 美化 */
+.el-form-item__label {
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+}
+
+/* Element Plus Collapse 美化 */
+.el-collapse {
+  border-color: var(--border-color) !important;
+}
+
+html.dark .el-collapse-item__header {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+html.dark .el-collapse-item__wrap {
+  background-color: transparent !important;
+  border-color: var(--border-color) !important;
+}

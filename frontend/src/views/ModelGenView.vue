@@ -179,13 +179,30 @@
             </el-row>
 
             <!-- 额外描述 -->
-            <el-form-item label="额外描述">
-              <el-input
-                v-model="form.customDesc"
-                type="textarea"
-                :rows="2"
-                placeholder="任何补充要求，如「戴墨镜」「手拿咖啡杯」「背景加逆光效果」"
-              />
+            <el-form-item>
+              <template #label>
+                <span>额外描述</span>
+              </template>
+              <div class="description-row">
+                <el-input
+                  v-model="form.customDesc"
+                  type="textarea"
+                  :rows="2"
+                  placeholder="任何补充要求，如「戴墨镜」「手拿咖啡杯」「背景加逆光效果」"
+                  style="flex: 1"
+                />
+                <el-button
+                  v-if="mode === 'image'"
+                  type="success"
+                  plain
+                  :loading="optimizing"
+                  :disabled="refImages.length === 0"
+                  @click="optimizeDescription"
+                  style="margin-left: 8px; align-self: flex-start;"
+                >
+                  AI 优化
+                </el-button>
+              </div>
             </el-form-item>
 
             <!-- 生成按钮 -->
@@ -247,7 +264,7 @@ import { Plus, Close } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { generateModel, saveModel } from '../api'
+import { generateModel, saveModel, analyzeFree } from '../api'
 import type { ResultCard } from '../types'
 
 const mode = ref<'text' | 'image'>('text')
@@ -293,6 +310,33 @@ let lastGenParams: {
   refImages: File[]
   mode: 'text' | 'image'
 } | null = null
+
+// AI 优化额外描述
+const optimizing = ref(false)
+
+async function optimizeDescription() {
+  const img = refImages.value[0]
+  if (!img) {
+    ElMessage.warning('请先上传参考图')
+    return
+  }
+  optimizing.value = true
+  try {
+    const existingDesc = form.value.customDesc || ''
+    const prompt = existingDesc
+      ? `请根据这张参考照片，优化以下模特描述，使其更精准（不超过80字）：\n${existingDesc}`
+      : '请根据这张参考照片，生成一段补充描述（中文），帮助AI更好地还原或调整这个模特形象。简洁精准，不超过80字。直接输出描述文本，不要输出其他内容。'
+    const resp = await analyzeFree(img, prompt)
+    if (resp.text) {
+      form.value.customDesc = resp.text
+    }
+    ElMessage.success('描述已优化')
+  } catch {
+    ElMessage.error('AI 优化失败，请手动填写')
+  } finally {
+    optimizing.value = false
+  }
+}
 
 // 参考图处理
 function handleRefImage(uploadFile: UploadFile) {
@@ -501,7 +545,7 @@ function buildName(): string {
 }
 
 .mode-tabs {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 /* 参考图多图上传 */
@@ -511,18 +555,23 @@ function buildName(): string {
 
 .ref-thumbnails {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
   align-items: flex-start;
 }
 
 .ref-thumb {
   position: relative;
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #ebeef5;
+  border: 2px solid var(--border-color);
+  transition: border-color 0.2s;
+}
+
+.ref-thumb:hover {
+  border-color: #409eff;
 }
 
 .ref-thumb img {
@@ -533,30 +582,37 @@ function buildName(): string {
 
 .thumb-remove {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  background: rgba(0, 0, 0, 0.5);
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.55);
   color: white;
   border-radius: 50%;
   padding: 2px;
   font-size: 12px;
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.ref-thumb:hover .thumb-remove {
+  opacity: 1;
 }
 
 .ref-add-btn :deep(.el-upload) {
-  width: 80px;
-  height: 80px;
-  border: 1px dashed #dcdfe6;
-  border-radius: 6px;
+  width: 84px;
+  height: 84px;
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: all 0.25s;
 }
 
 .ref-add-btn :deep(.el-upload:hover) {
   border-color: #409eff;
+  background: rgba(64, 158, 255, 0.04);
 }
 
 .add-slot {
@@ -564,31 +620,42 @@ function buildName(): string {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .ref-hint {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 /* 标签输入行 */
 .tag-input-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   width: 100%;
 }
 
 .preset-tag {
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-tag:hover {
+  transform: translateY(-1px);
 }
 
 .tag-input {
   width: 140px;
   flex-shrink: 0;
+}
+
+.description-row {
+  display: flex;
+  width: 100%;
 }
 </style>

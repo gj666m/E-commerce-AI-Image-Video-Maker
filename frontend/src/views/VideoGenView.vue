@@ -500,7 +500,7 @@ function startPolling() {
 
 .progress-area h4 {
   margin-bottom: 20px;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .progress-area .el-progress {
@@ -508,7 +508,7 @@ function startPolling() {
 }
 
 .status-text {
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -521,10 +521,10 @@ function startPolling() {
   white-space: pre-wrap;
   word-break: break-all;
   font-size: 13px;
-  color: #606266;
-  background: #f5f7fa;
+  color: var(--text-regular);
+  background: var(--content-bg);
   padding: 12px;
-  border-radius: 4px;
+  border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
 }
@@ -532,7 +532,7 @@ function startPolling() {
 .ref-images-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 8px;
 }
 
@@ -542,10 +542,10 @@ function startPolling() {
 }
 
 .ref-image-thumb {
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
-  border: 1px solid #ebeef5;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
+  border: 2px solid var(--border-color);
 }
 
 .ref-image-item .el-button {
@@ -557,14 +557,14 @@ function startPolling() {
 }
 
 .face-switch {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .preset-tags {
-  margin-top: 8px;
+  margin-top: 10px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .preset-tag {
@@ -575,6 +575,7 @@ function startPolling() {
 .preset-tag:hover {
   color: #409eff;
   border-color: #409eff;
+  transform: translateY(-1px);
 }
 
 .description-row {

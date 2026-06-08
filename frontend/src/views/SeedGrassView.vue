@@ -814,7 +814,7 @@ function handleRemove(index: number) {
 }
 
 .mode-tabs {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 /* 商品图多图上传 */
@@ -824,18 +824,23 @@ function handleRemove(index: number) {
 
 .product-thumbnails {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
   align-items: flex-start;
 }
 
 .product-thumb {
   position: relative;
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #ebeef5;
+  border: 2px solid var(--border-color);
+  transition: border-color 0.2s;
+}
+
+.product-thumb:hover {
+  border-color: #409eff;
 }
 
 .product-thumb img {
@@ -846,30 +851,37 @@ function handleRemove(index: number) {
 
 .thumb-remove {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  background: rgba(0, 0, 0, 0.5);
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.55);
   color: white;
   border-radius: 50%;
   padding: 2px;
   font-size: 12px;
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.product-thumb:hover .thumb-remove {
+  opacity: 1;
 }
 
 .product-add-btn :deep(.el-upload) {
-  width: 80px;
-  height: 80px;
-  border: 1px dashed #dcdfe6;
-  border-radius: 6px;
+  width: 84px;
+  height: 84px;
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: all 0.25s;
 }
 
 .product-add-btn :deep(.el-upload:hover) {
   border-color: #409eff;
+  background: rgba(64, 158, 255, 0.04);
 }
 
 .add-slot {
@@ -877,14 +889,15 @@ function handleRemove(index: number) {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .product-hint {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 
 /* 人设标签 */
@@ -905,6 +918,13 @@ function handleRemove(index: number) {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 10px;
+  border: 2px dashed var(--border-color);
+  transition: all 0.25s;
+}
+
+.persona-photo-upload :deep(.el-upload-dragger:hover) {
+  border-color: #409eff;
 }
 
 .persona-photo-slot {
@@ -912,21 +932,22 @@ function handleRemove(index: number) {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .upload-hint {
   font-size: 12px;
-  color: #c0c4cc;
+  color: var(--text-secondary);
 }
 
 .persona-photo-preview {
   position: relative;
   width: 160px;
   height: 160px;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
+  border: 2px solid var(--border-color);
 }
 
 .persona-photo-preview img {
@@ -975,14 +996,14 @@ function handleRemove(index: number) {
 .tag-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   margin-bottom: 6px;
 }
 
 .tag-label {
   font-size: 12px;
-  color: #909399;
+  color: var(--text-secondary);
   min-width: 36px;
 }
 
@@ -993,12 +1014,19 @@ function handleRemove(index: number) {
 .preset-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .preset-tag {
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-tag:hover {
+  color: #409eff;
+  border-color: #409eff;
+  transform: translateY(-1px);
 }
 
 /* ====== 策划加载态 ====== */
@@ -1016,7 +1044,7 @@ function handleRemove(index: number) {
 
 .plan-loading-text {
   font-size: 15px;
-  color: #606266;
+  color: var(--text-regular);
   margin: 0;
 }
 
@@ -1035,11 +1063,12 @@ function handleRemove(index: number) {
 .plan-result-title {
   font-size: 16px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .plan-section-label {
   font-size: 13px;
-  color: #909399;
+  color: var(--text-secondary);
   margin-bottom: 10px;
 }
 
@@ -1051,14 +1080,20 @@ function handleRemove(index: number) {
 .plan-scroll-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   max-height: 600px;
   overflow-y: auto;
   padding-right: 4px;
 }
 
 .plan-card {
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  transition: border-color 0.2s;
+}
+
+.plan-card:hover {
+  border-color: #409eff;
 }
 
 .plan-card-top {
@@ -1094,7 +1129,7 @@ function handleRemove(index: number) {
 
 .plan-details p {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-regular);
   margin: 2px 0;
 }
 

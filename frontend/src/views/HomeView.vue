@@ -80,14 +80,14 @@ const navItems = [
 }
 
 .home-header {
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
 
 .home-header h2 {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin: 0 0 6px;
+  margin: 0 0 8px;
 }
 
 .home-header p {
@@ -99,35 +99,35 @@ const navItems = [
 .nav-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 18px;
 }
 
 .nav-card {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px;
+  padding: 22px 20px;
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .nav-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
   border-color: #409eff;
 }
 
 html.dark .nav-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 .nav-card-icon {
   width: 52px;
   height: 52px;
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -145,7 +145,7 @@ html.dark .nav-card:hover {
   margin: 0;
   font-size: 13px;
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 @media (max-width: 768px) {

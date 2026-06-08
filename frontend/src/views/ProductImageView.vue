@@ -721,16 +721,21 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 .product-thumbnails {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .product-thumb {
   position: relative;
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #e4e7ed;
+  border: 2px solid var(--border-color);
+  transition: border-color 0.2s;
+}
+
+.product-thumb:hover {
+  border-color: #409eff;
 }
 
 .product-thumb img {
@@ -741,27 +746,34 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 
 .thumb-remove {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  background: rgba(0, 0, 0, 0.5);
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.55);
   color: white;
   border-radius: 50%;
   cursor: pointer;
   font-size: 12px;
   padding: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.product-thumb:hover .thumb-remove {
+  opacity: 1;
 }
 
 .product-add-btn :deep(.el-upload) {
-  width: 80px;
-  height: 80px;
-  border: 2px dashed #dcdfe6;
-  border-radius: 6px;
+  width: 84px;
+  height: 84px;
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: all 0.25s;
 }
 
 .product-add-btn :deep(.el-upload:hover) {
   border-color: #409eff;
+  background: rgba(64, 158, 255, 0.04);
 }
 
 .add-slot {
@@ -770,20 +782,21 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #909399;
+  color: var(--text-secondary);
   font-size: 12px;
   gap: 4px;
 }
 
 .product-hint {
   font-size: 12px;
-  color: #909399;
-  margin-top: 6px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  line-height: 1.5;
 }
 
 /* 模式切换 */
 .mode-tabs {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .ai-plan-section {
@@ -794,7 +807,7 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 .plan-loading {
   text-align: center;
   padding: 80px 0;
-  color: #909399;
+  color: var(--text-secondary);
 }
 
 .loading-icon {
@@ -821,6 +834,7 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 .plan-header h3 {
   flex: 1;
   margin: 0;
+  color: var(--text-primary);
 }
 
 /* 方案卡片 */
@@ -833,6 +847,7 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 
 .plan-card {
   transition: border-color 0.2s;
+  border-radius: 10px !important;
 }
 
 .plan-card-selected {
@@ -853,13 +868,13 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 
 .plan-count-label {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .plan-card-body {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -867,11 +882,11 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 
 .plan-detail-row {
   font-size: 13px;
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .plan-detail-row strong {
-  color: #303133;
+  color: var(--text-primary);
   margin-right: 8px;
 }
 </style>
