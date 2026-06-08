@@ -220,28 +220,26 @@ html.dark .el-collapse-item__wrap {
    页面级通用区块样式
    ======================================== */
 
-/* 区块标题（带图标 + 渐变下划线） */
+/* 区块标题（带图标） */
 .section-title {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid var(--border-color);
-  font-size: 16px;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .section-title .section-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   flex-shrink: 0;
+  font-size: 14px;
 }
 
 /* 预设标签行 */
@@ -312,7 +310,7 @@ html.dark .el-collapse-item__wrap {
 }
 
 /* 添加按钮上传区域 */
-.upload-add-btn :deep(.el-upload) {
+.upload-add-btn .el-upload {
   border: 2px dashed var(--border-color);
   border-radius: 10px;
   display: flex;
@@ -323,7 +321,7 @@ html.dark .el-collapse-item__wrap {
   background: rgba(64, 158, 255, 0.02);
 }
 
-.upload-add-btn :deep(.el-upload:hover) {
+.upload-add-btn .el-upload:hover {
   border-color: #409eff;
   background: rgba(64, 158, 255, 0.06);
   box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
