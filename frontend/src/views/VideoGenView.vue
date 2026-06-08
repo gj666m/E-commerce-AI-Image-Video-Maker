@@ -70,6 +70,7 @@
                   @click="optimizeDescription"
                   style="margin-left: 8px; align-self: flex-start;"
                 >
+                  <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
                   AI 优化
                 </el-button>
               </div>
@@ -167,6 +168,7 @@
                 @click="handleSubmit"
                 style="width: 100%"
               >
+                <el-icon v-if="!submitting" style="margin-right: 6px"><Promotion /></el-icon>
                 {{ submitting ? '提交中...' : '生成视频' }}
               </el-button>
             </el-form-item>
@@ -236,7 +238,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Loading, Close } from '@element-plus/icons-vue'
+import { Loading, Close, MagicStick, Promotion } from '@element-plus/icons-vue'
 import ImageUploader from '../components/ImageUploader.vue'
 import ModelSelector from '../components/ModelSelector.vue'
 import PromptEditor from '../components/PromptEditor.vue'

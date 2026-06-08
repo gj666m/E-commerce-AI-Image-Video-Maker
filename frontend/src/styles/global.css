@@ -56,37 +56,50 @@ html.dark ::-webkit-scrollbar-thumb {
 
 /* 卡片统一样式 */
 .el-card {
-  border-radius: 12px !important;
+  border-radius: 14px !important;
   border: 1px solid var(--border-color) !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
-  transition: box-shadow 0.25s, border-color 0.25s;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05) !important;
+  transition: box-shadow 0.3s, border-color 0.3s, transform 0.3s !important;
 }
 
 .el-card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1) !important;
 }
 
 html.dark .el-card {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25) !important;
 }
 
 html.dark .el-card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 卡片内边距 */
+.el-card__body {
+  padding: 24px !important;
 }
 
 /* Element Plus Tabs 美化 */
 .el-tabs__item {
-  font-weight: 500 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  padding: 0 20px !important;
 }
 
 .el-tabs__active-bar {
+  height: 3px !important;
   border-radius: 2px !important;
 }
 
-/* Element Plus Tag 美化 */
+/* Element Plus Tag 美化 - 胶囊化 */
 .el-tag {
-  border-radius: 16px !important;
-  transition: all 0.2s !important;
+  border-radius: 20px !important;
+  padding: 0 12px !important;
+  height: 28px !important;
+  line-height: 26px !important;
+  font-size: 13px !important;
+  transition: all 0.25s !important;
+  border-width: 1.5px !important;
 }
 
 /* Element Plus Select/Radio 美化 */
@@ -96,25 +109,50 @@ html.dark .el-card:hover {
 
 .el-radio-button__inner {
   border-radius: 6px !important;
+  font-weight: 500 !important;
 }
 
 /* Element Plus Button 美化 */
 .el-button {
   border-radius: 8px !important;
   font-weight: 500 !important;
+  transition: all 0.25s !important;
+}
+
+.el-button--primary {
+  background: linear-gradient(135deg, #409eff, #66b1ff) !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3) !important;
+}
+
+.el-button--primary:hover {
+  background: linear-gradient(135deg, #66b1ff, #409eff) !important;
+  box-shadow: 0 4px 14px rgba(64, 158, 255, 0.4) !important;
+  transform: translateY(-1px);
 }
 
 .el-button--large {
-  height: 42px !important;
+  height: 44px !important;
   font-size: 15px !important;
+  font-weight: 600 !important;
   border-radius: 10px !important;
+  letter-spacing: 1px;
+}
+
+.el-button--success {
+  box-shadow: 0 2px 8px rgba(103, 194, 58, 0.25) !important;
 }
 
 /* Element Plus Input 美化 */
 .el-textarea__inner,
 .el-input__wrapper {
   border-radius: 8px !important;
-  transition: box-shadow 0.2s;
+  transition: all 0.25s;
+}
+
+.el-textarea__inner:focus,
+.el-input__wrapper:focus-within {
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.15) !important;
 }
 
 /* Element Plus Switch 美化 */
@@ -130,12 +168,18 @@ html.dark .el-switch {
 /* Element Plus Divider 美化 */
 .el-divider {
   border-color: var(--border-color) !important;
-  margin: 16px 0 !important;
+  margin: 20px 0 !important;
+}
+
+.el-divider__text {
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
 }
 
 /* Element Plus Dialog 美化 */
 .el-dialog {
   border-radius: 16px !important;
+  overflow: hidden;
 }
 
 html.dark .el-dialog {
@@ -145,12 +189,15 @@ html.dark .el-dialog {
 /* Element Plus Empty 美化 */
 .el-empty__description p {
   color: var(--text-secondary) !important;
+  font-size: 14px !important;
 }
 
 /* Element Plus Form Label 美化 */
 .el-form-item__label {
-  font-weight: 500 !important;
+  font-weight: 600 !important;
+  font-size: 13.5px !important;
   color: var(--text-primary) !important;
+  padding-bottom: 6px !important;
 }
 
 /* Element Plus Collapse 美化 */
@@ -168,3 +215,131 @@ html.dark .el-collapse-item__wrap {
   background-color: transparent !important;
   border-color: var(--border-color) !important;
 }
+
+/* ========================================
+   页面级通用区块样式
+   ======================================== */
+
+/* 区块标题（带图标 + 渐变下划线） */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.section-title .section-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* 预设标签行 */
+.preset-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.preset-tag {
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.preset-tag:hover {
+  color: #409eff;
+  border-color: #409eff;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+/* 上传槽位 */
+.upload-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* 缩略图基础 */
+.thumb-item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  transition: all 0.25s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.thumb-item:hover {
+  border-color: #409eff;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+}
+
+.thumb-item .thumb-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.thumb-item:hover .thumb-remove {
+  opacity: 1;
+}
+
+/* 添加按钮上传区域 */
+.upload-add-btn :deep(.el-upload) {
+  border: 2px dashed var(--border-color);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: rgba(64, 158, 255, 0.02);
+}
+
+.upload-add-btn :deep(.el-upload:hover) {
+  border-color: #409eff;
+  background: rgba(64, 158, 255, 0.06);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
+}
+
+/* 描述行（textarea + AI 按钮） */
+.description-row {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+}
+
+/* 渐变色工具类 */
+.gradient-blue { background: linear-gradient(135deg, #409eff, #66b1ff); }
+.gradient-green { background: linear-gradient(135deg, #67c23a, #95d475); }
+.gradient-orange { background: linear-gradient(135deg, #e6a23c, #eebe77); }
+.gradient-red { background: linear-gradient(135deg, #f56c6c, #fab6b6); }
+.gradient-purple { background: linear-gradient(135deg, #b37feb, #d3adf7); }
+.gradient-teal { background: linear-gradient(135deg, #36cfc9, #87e8de); }

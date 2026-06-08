@@ -14,9 +14,9 @@
           <el-form-item v-if="mode === 'image'" label="参考图片">
             <div class="ref-images-area">
               <div class="ref-thumbnails">
-                <div v-for="(preview, idx) in refPreviews" :key="idx" class="ref-thumb">
+                <div v-for="(preview, idx) in refPreviews" :key="idx" class="ref-thumb thumb-item">
                   <img :src="preview" />
-                  <el-icon class="thumb-remove" @click="removeRefImage(idx)"><Close /></el-icon>
+                  <span class="thumb-remove" @click="removeRefImage(idx)"><el-icon :size="12"><Close /></el-icon></span>
                 </div>
                 <el-upload
                   v-if="refImages.length < 3"
@@ -24,10 +24,10 @@
                   :show-file-list="false"
                   :on-change="handleRefImage"
                   accept=".jpg,.jpeg,.png,.webp"
-                  class="ref-add-btn"
+                  class="ref-add-btn upload-add-btn"
                 >
                   <div class="add-slot">
-                    <el-icon :size="24"><Plus /></el-icon>
+                    <el-icon :size="24" color="#e6a23c"><Plus /></el-icon>
                     <span>{{ refImages.length === 0 ? '上传参考图' : '添加更多' }}</span>
                   </div>
                 </el-upload>
@@ -198,8 +198,9 @@
                   :loading="optimizing"
                   :disabled="refImages.length === 0"
                   @click="optimizeDescription"
-                  style="margin-left: 8px; align-self: flex-start;"
+                  style="align-self: flex-start;"
                 >
+                  <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
                   AI 优化
                 </el-button>
               </div>
@@ -225,6 +226,7 @@
                     @click="handleGenerate"
                     style="width: 100%"
                   >
+                    <el-icon v-if="!loading" style="margin-right: 6px"><Promotion /></el-icon>
                     {{ loading ? '生成中...' : (mode === 'image' ? '生成变体' : '生成模特') }}
                   </el-button>
                 </el-col>
@@ -260,7 +262,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Close } from '@element-plus/icons-vue'
+import { Plus, Close, MagicStick, Promotion } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
@@ -610,11 +612,6 @@ function buildName(): string {
   transition: all 0.25s;
 }
 
-.ref-add-btn :deep(.el-upload:hover) {
-  border-color: #409eff;
-  background: rgba(64, 158, 255, 0.04);
-}
-
 .add-slot {
   display: flex;
   flex-direction: column;
@@ -625,10 +622,14 @@ function buildName(): string {
 }
 
 .ref-hint {
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.5;
+  padding: 8px 12px;
+  background: rgba(230, 162, 60, 0.06);
+  border-radius: 6px;
+  border-left: 3px solid #e6a23c;
 }
 
 /* 标签输入行 */

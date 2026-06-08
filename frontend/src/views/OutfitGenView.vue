@@ -1,23 +1,33 @@
 <template>
   <div class="outfit-gen">
-    <el-row :gutter="20" class="main-content">
+    <el-row :gutter="24" class="main-content">
       <!-- 左侧：参数选择 -->
       <el-col :span="12">
         <el-card>
           <!-- 模式切换 -->
           <el-tabs v-model="mode" class="mode-tabs">
-            <el-tab-pane label="商品图直出" name="single" />
-            <el-tab-pane label="模特+商品" name="model" />
+            <el-tab-pane name="single">
+              <template #label><span>商品图直出</span></template>
+            </el-tab-pane>
+            <el-tab-pane name="model">
+              <template #label><span>模特+商品</span></template>
+            </el-tab-pane>
           </el-tabs>
 
           <el-form label-position="top">
             <!-- 商品图上传（多图） -->
-            <el-form-item label="商品/服装图" required>
+            <el-form-item required>
+              <template #label>
+                <div class="section-title">
+                  <span class="section-icon gradient-blue"><el-icon><Upload /></el-icon></span>
+                  商品/服装图
+                </div>
+              </template>
               <div class="product-images-area">
                 <div class="product-thumbnails">
-                  <div v-for="(preview, idx) in productPreviews" :key="idx" class="product-thumb">
+                  <div v-for="(preview, idx) in productPreviews" :key="idx" class="product-thumb thumb-item">
                     <img :src="preview" />
-                    <el-icon class="thumb-remove" @click="removeProductImage(idx)"><Close /></el-icon>
+                    <span class="thumb-remove" @click="removeProductImage(idx)"><el-icon :size="12"><Close /></el-icon></span>
                   </div>
                   <el-upload
                     v-if="productImages.length < 6"
@@ -25,10 +35,10 @@
                     :show-file-list="false"
                     :on-change="handleProductImage"
                     accept=".jpg,.jpeg,.png,.webp"
-                    class="product-add-btn"
+                    class="product-add-btn upload-add-btn"
                   >
                     <div class="add-slot">
-                      <el-icon :size="24"><Plus /></el-icon>
+                      <el-icon :size="24" color="#409eff"><Plus /></el-icon>
                       <span>{{ productImages.length === 0 ? '上传服装图' : '添加更多' }}</span>
                     </div>
                   </el-upload>
@@ -77,7 +87,10 @@
             <!-- 场景描述 -->
             <el-form-item>
               <template #label>
-                <span>场景描述（可选）</span>
+                <div class="section-title">
+                  <span class="section-icon gradient-green"><el-icon><EditPen /></el-icon></span>
+                  场景描述（可选）
+                </div>
               </template>
               <div class="preset-tags">
                 <el-tag
@@ -102,8 +115,9 @@
                   :loading="optimizing"
                   :disabled="productImages.length === 0"
                   @click="optimizeDescription"
-                  style="margin-left: 8px; align-self: flex-start;"
+                  style="align-self: flex-start;"
                 >
+                  <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
                   AI 优化
                 </el-button>
               </div>
@@ -161,6 +175,7 @@
                     @click="handleGenerate"
                     style="width: 100%"
                   >
+                    <el-icon v-if="!loading" style="margin-right: 6px"><Promotion /></el-icon>
                     {{ loading ? '生成中...' : '生成穿搭展示图' }}
                   </el-button>
                 </el-col>
@@ -199,7 +214,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Close } from '@element-plus/icons-vue'
+import { Plus, Close, Upload, EditPen, MagicStick, Promotion } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
@@ -528,30 +543,21 @@ function handleRemove(index: number) {
   margin-bottom: 16px;
 }
 
-/* 商品图多图上传 */
+/* 商品图上传区 */
 .product-images-area {
   width: 100%;
 }
 
 .product-thumbnails {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   align-items: flex-start;
 }
 
 .product-thumb {
-  position: relative;
-  width: 84px;
-  height: 84px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 2px solid var(--border-color);
-  transition: border-color 0.2s;
-}
-
-.product-thumb:hover {
-  border-color: #409eff;
+  width: 90px;
+  height: 90px;
 }
 
 .product-thumb img {
@@ -560,39 +566,9 @@ function handleRemove(index: number) {
   object-fit: cover;
 }
 
-.thumb-remove {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background: rgba(0, 0, 0, 0.55);
-  color: white;
-  border-radius: 50%;
-  padding: 2px;
-  font-size: 12px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.product-thumb:hover .thumb-remove {
-  opacity: 1;
-}
-
 .product-add-btn :deep(.el-upload) {
-  width: 84px;
-  height: 84px;
-  border: 2px dashed var(--border-color);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.25s;
-}
-
-.product-add-btn :deep(.el-upload:hover) {
-  border-color: #409eff;
-  background: rgba(64, 158, 255, 0.04);
+  width: 90px;
+  height: 90px;
 }
 
 .add-slot {
@@ -605,10 +581,14 @@ function handleRemove(index: number) {
 }
 
 .product-hint {
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.5;
+  padding: 8px 12px;
+  background: rgba(64, 158, 255, 0.04);
+  border-radius: 6px;
+  border-left: 3px solid #409eff;
 }
 
 /* 模特缩略图 */
@@ -616,31 +596,9 @@ function handleRemove(index: number) {
   width: 64px;
   height: 64px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-top: 6px;
   border: 2px solid var(--border-color);
-}
-
-.preset-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.preset-tag {
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.preset-tag:hover {
-  color: #409eff;
-  border-color: #409eff;
-  transform: translateY(-1px);
-}
-
-.description-row {
-  display: flex;
-  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 </style>
