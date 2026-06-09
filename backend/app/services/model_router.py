@@ -5,6 +5,8 @@ from app.providers.mock_provider import MockProvider
 from app.providers.openai_provider import OpenAIProvider
 from app.providers.fal_provider import FalProvider
 from app.providers.volcengine_provider import VolcengineProvider
+from app.providers.nanobanana_provider import NanoBananaProvider
+from app.providers.gptimage_provider import GPTImageProvider
 
 
 def get_available_providers() -> dict[str, BaseProvider]:
@@ -18,6 +20,10 @@ def get_available_providers() -> dict[str, BaseProvider]:
         providers["fal"] = FalProvider()
     if settings.has_volcengine:
         providers["volcengine"] = VolcengineProvider()
+    if settings.has_nanobanana:
+        providers["nanobanana"] = NanoBananaProvider()
+    if settings.has_gptimage:
+        providers["gptimage"] = GPTImageProvider()
     return providers
 
 
@@ -41,9 +47,13 @@ def get_provider(
         return providers[model_name]
 
     # 自动路由：优先真实 Provider
-    # volcengine > OpenAI > fal > mock
+    # volcengine > gptimage > nanobanana > OpenAI > fal > mock
     if settings.has_volcengine:
         return providers["volcengine"]
+    if settings.has_gptimage:
+        return providers["gptimage"]
+    if settings.has_nanobanana:
+        return providers["nanobanana"]
     if settings.has_openai:
         return providers["openai"]
     if settings.has_fal:
@@ -77,6 +87,18 @@ _MODEL_META = {
         "description": "豆包 Seedream 图片生成模型，支持文生图和参考图生图",
         "capabilities": ["text_to_image", "image_to_image"],
         "api_key_hint": "VOLCENGINE_API_KEY",
+    },
+    "nanobanana": {
+        "display_name": "Nano Banana 2（Gemini）",
+        "description": "Google Gemini 图片生成模型，高质量文生图和图生图，通过 API易中转站调用",
+        "capabilities": ["text_to_image", "image_to_image"],
+        "api_key_hint": "NANOBANANA_API_KEY",
+    },
+    "gptimage": {
+        "display_name": "GPT-Image-2（OpenAI）",
+        "description": "OpenAI GPT 图片生成模型，$0.03/张，文字还原度高，中文提示词友好，支持多图融合",
+        "capabilities": ["text_to_image", "image_to_image"],
+        "api_key_hint": "GPTIMAGE_API_KEY",
     },
 }
 

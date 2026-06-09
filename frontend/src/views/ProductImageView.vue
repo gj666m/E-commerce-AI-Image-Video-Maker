@@ -37,6 +37,11 @@
                 <!-- 商品信息 -->
                 <ProductInfoForm v-model="mainProductInfo" :image="mainImages[0] || null" />
 
+                <!-- 模型选择 -->
+                <el-form-item label="生成模型">
+                  <ModelSelector v-model="selectedModel" :models="modelList" />
+                </el-form-item>
+
                 <!-- 比例固定 1:1 -->
                 <el-form-item label="图片比例">
                   <el-tag type="info" size="large">1:1 正方形（亚马逊主图标准）</el-tag>
@@ -124,6 +129,11 @@
 
                   <!-- 商品信息 -->
                   <ProductInfoForm v-model="aplusProductInfo" :image="aplusImages[0] || null" />
+
+                  <!-- 模型选择 -->
+                  <el-form-item label="生成模型">
+                    <ModelSelector v-model="selectedModel" :models="modelList" />
+                  </el-form-item>
 
                   <!-- AI 策划按钮 -->
                   <div v-if="aplusMode === 'ai-plan'" class="ai-plan-section">
@@ -314,9 +324,21 @@ import { generateImage, planAplus } from '../api'
 import type { ResultCard, AplusPlan } from '../types'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
+import ModelSelector from '../components/ModelSelector.vue'
+import { getModels } from '../api'
+import type { ModelInfo } from '../types'
 
 // ====== Tab 切换 ======
 const activeTab = ref<'main' | 'aplus'>('main')
+
+// ====== 模型选择 ======
+const modelList = ref<ModelInfo[]>([])
+const selectedModel = ref('')
+
+getModels().then(data => {
+  modelList.value = data.models
+  selectedModel.value = data.default || 'volcengine'
+}).catch(() => {})
 
 // ====== 商品主图状态 ======
 const mainImages = ref<File[]>([])
@@ -404,6 +426,7 @@ async function handleMainGenerate() {
   try {
     const result = await generateImage({
       task_type: 'product_main',
+      model_name: selectedModel.value,
       images: mainImages.value,
       description: mainProductInfo.value || '商品正面展示',
       aspect_ratio: '1:1',
@@ -488,6 +511,7 @@ async function handleAplusManualGenerate() {
   try {
     const result = await generateImage({
       task_type: 'aplus',
+      model_name: selectedModel.value,
       images: aplusImages.value,
       description: aplusForm.value.scene || aplusProductInfo.value || 'A+ content image',
       style: aplusForm.value.style || undefined,
@@ -584,6 +608,7 @@ async function handleAplusBatchGenerate() {
     try {
       const result = await generateImage({
         task_type: 'aplus',
+        model_name: selectedModel.value,
         images: aplusImages.value,
         description: plan.scene || aplusProductInfo.value || 'A+ content image',
         style: '现代简约电商风格',
@@ -641,6 +666,7 @@ function handleAplusPlanRetry(idx: number) {
 
   generateImage({
     task_type: 'aplus',
+    model_name: selectedModel.value,
     images: aplusImages.value,
     description: plan.scene || aplusProductInfo.value || '',
     style: '现代简约电商风格',
@@ -676,6 +702,7 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 
   generateImage({
     task_type: 'aplus',
+    model_name: selectedModel.value,
     images: aplusImages.value,
     description: plan.scene || aplusProductInfo.value || '',
     style: '现代简约电商风格',

@@ -7,8 +7,7 @@
           :loading="analyzing"
           :disabled="!image"
           size="small"
-          type="primary"
-          text
+          plain
           style="margin-left: 12px"
           @click.stop="handleAnalyze"
         >

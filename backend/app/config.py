@@ -32,6 +32,16 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-v4-flash"
     deepseek_base_url: str = "https://api.deepseek.com"
 
+    # Nano Banana 2（API易中转站，Gemini 图片生成）
+    nanobanana_api_key: str = ""
+    nanobanana_base_url: str = "https://api.apiyi.com"
+    nanobanana_model: str = "gemini-3.1-flash-image-preview"
+
+    # GPT-Image-2-All（API易中转站，OpenAI Images API 格式）
+    gptimage_api_key: str = ""
+    gptimage_base_url: str = "https://api.apiyi.com"
+    gptimage_model: str = "gpt-image-2-all"
+
     # 模特库
     model_store_dir: str = "assets/models"
 
@@ -72,9 +82,17 @@ class Settings(BaseSettings):
         return bool(self.volcengine_api_key)
 
     @property
+    def has_nanobanana(self) -> bool:
+        return bool(self.nanobanana_api_key)
+
+    @property
+    def has_gptimage(self) -> bool:
+        return bool(self.gptimage_api_key)
+
+    @property
     def has_any_provider(self) -> bool:
         """是否有至少一个可用的 AI 模型"""
-        return any([self.has_openai, self.has_fal, self.has_kling, self.has_photoroom, self.has_volcengine, self.has_deepseek, self.has_seedance])
+        return any([self.has_openai, self.has_fal, self.has_kling, self.has_photoroom, self.has_volcengine, self.has_deepseek, self.has_seedance, self.has_nanobanana, self.has_gptimage])
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
