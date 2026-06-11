@@ -139,15 +139,19 @@ async def generate(
 
     # 5. 并行调用生图（单张失败不影响其他）
     gen_kwargs = {"images": multi_image_bytes} if multi_image_bytes else {"image": image_bytes}
-    tasks = [provider.generate(prompt, **gen_kwargs, params={"size": size}) for _ in range(count)]
+    tasks = [provider.generate(prompt, **gen_kwargs, params={"size": size, "aspect_ratio": aspect_ratio}) for _ in range(count)]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     # 6. 收集结果（自动后处理，单张失败不影响其他）
     all_images_b64: list[str] = []
     total_cost = 0.0
+    currency = "¥"
+    first_error = None
     for i, r in enumerate(results):
         if isinstance(r, Exception):
             logger.error(f"第 {i+1} 张生成异常: {r}")
+            if not first_error:
+                first_error = str(r)
             continue
         if r.success and r.images:
             for img in r.images:
@@ -155,11 +159,14 @@ async def generate(
                 processed = apply_realistic_filter(img, intensity="light")
                 all_images_b64.append(image_to_base64(processed))
             total_cost += r.cost
+            currency = r.currency  # 同一批次用同一 provider，取最后一个即可
         else:
             logger.warning(f"第 {i+1} 张生成失败: {r.error}")
+            if not first_error:
+                first_error = r.error or "未知错误"
 
     if not all_images_b64:
-        raise HTTPException(500, "全部生成失败，请稍后重试")
+        raise HTTPException(500, first_error or "全部生成失败，请稍后重试")
 
     return {
         "success": True,
@@ -167,6 +174,7 @@ async def generate(
         "prompt_used": prompt,
         "model_used": provider.name,
         "cost": total_cost,
+        "currency": currency,
         "image_info": image_info,
     }
 

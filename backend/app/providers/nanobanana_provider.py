@@ -5,7 +5,7 @@ import logging
 import httpx
 
 from app.config import settings
-from app.providers.base import BaseProvider, GenerateResult
+from app.providers.base import BaseProvider, GenerateResult, http_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +117,7 @@ class NanoBananaProvider(BaseProvider):
                 success=True,
                 images=images_result,
                 cost=cost,
+                currency="$",
                 raw_response=data,
             )
         except httpx.HTTPStatusError as e:
@@ -124,7 +125,7 @@ class NanoBananaProvider(BaseProvider):
             logger.error(f"Nano Banana API 错误: {e.response.status_code} - {error_detail}")
             return GenerateResult(
                 success=False,
-                error=f"Nano Banana API 错误: {e.response.status_code} - {error_detail}",
+                error=http_error_message(e.response.status_code, error_detail, "Nano Banana"),
                 raw_response={"status_code": e.response.status_code},
             )
         except Exception as e:

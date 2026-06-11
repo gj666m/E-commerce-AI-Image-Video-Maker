@@ -5,7 +5,7 @@ import logging
 import httpx
 
 from app.config import settings
-from app.providers.base import BaseProvider, GenerateResult
+from app.providers.base import BaseProvider, GenerateResult, http_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +100,7 @@ class GPTImageProvider(BaseProvider):
                 success=True,
                 images=result_images,
                 cost=COST_PER_CALL,
+                currency="$",
                 raw_response=data,
             )
 
@@ -108,7 +109,7 @@ class GPTImageProvider(BaseProvider):
             logger.warning(f"GPT-Image API 错误: {e.response.status_code} - {error_text}")
             return GenerateResult(
                 success=False,
-                error=f"GPT-Image API 错误: {e.response.status_code} - {error_text}",
+                error=http_error_message(e.response.status_code, error_text, "GPT-Image"),
                 raw_response={"status_code": e.response.status_code},
             )
         except httpx.TimeoutException:

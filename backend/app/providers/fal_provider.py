@@ -5,7 +5,7 @@ import asyncio
 import httpx
 
 from app.config import settings
-from app.providers.base import BaseProvider, GenerateResult
+from app.providers.base import BaseProvider, GenerateResult, http_error_message
 
 # FLUX 模型定价（美元/张，估算）
 COST_TABLE = {
@@ -111,7 +111,7 @@ class FalProvider(BaseProvider):
         except httpx.HTTPStatusError as e:
             return GenerateResult(
                 success=False,
-                error=f"fal.ai API 错误: {e.response.status_code}",
+                error=http_error_message(e.response.status_code, str(e.response.text[:200]), "fal.ai"),
                 raw_response={"status_code": e.response.status_code},
             )
         except Exception as e:
@@ -151,5 +151,6 @@ class FalProvider(BaseProvider):
             success=True,
             images=images,
             cost=cost,
+            currency="$",
             raw_response=data,
         )

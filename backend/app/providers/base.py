@@ -2,6 +2,18 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
+# 429 限流/额度不足的统一提示
+RATE_LIMIT_MSG = "模型额度不足或已限流，请联系管理员续费或切换其他模型重试"
+
+
+def http_error_message(status_code: int, detail: str, provider_name: str) -> str:
+    """根据 HTTP 状态码返回用户友好的错误消息"""
+    if status_code == 429:
+        return RATE_LIMIT_MSG
+    if status_code == 403:
+        return f"内容审核未通过，请修改描述或参考图后重试"
+    return f"{provider_name} API 错误: {status_code} - {detail}"
+
 
 @dataclass
 class GenerateResult:
@@ -9,6 +21,7 @@ class GenerateResult:
     success: bool
     images: list[bytes] = field(default_factory=list)
     cost: float = 0.0
+    currency: str = "¥"  # 费用币种：¥ 人民币 / $ 美元
     raw_response: dict = field(default_factory=dict)
     error: str | None = None
 

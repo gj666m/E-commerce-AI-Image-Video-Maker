@@ -21,7 +21,7 @@
     </div>
     <div class="meta-info">
       <el-tag size="small">模型: {{ modelUsed }}</el-tag>
-      <el-tag size="small" type="info">费用: ${{ cost.toFixed(4) }}</el-tag>
+      <el-tag size="small" type="info">费用: {{ currency }}{{ cost.toFixed(4) }}</el-tag>
     </div>
   </div>
 </template>
@@ -33,6 +33,7 @@ defineProps<{
   images: string[]
   modelUsed: string
   cost: number
+  currency?: string
 }>()
 
 const router = useRouter()

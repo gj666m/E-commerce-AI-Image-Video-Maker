@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     gptimage_base_url: str = "https://api.apiyi.com"
     gptimage_model: str = "gpt-image-2-all"
 
+    # GPT-Image-2-VIP（API易中转站，支持 size + 4K）
+    gptimage_vip_api_key: str = ""
+    gptimage_vip_base_url: str = "https://api.apiyi.com"
+    gptimage_vip_model: str = "gpt-image-2-vip"
+
     # 模特库
     model_store_dir: str = "assets/models"
 
@@ -93,13 +98,17 @@ class Settings(BaseSettings):
         return bool(self.gptimage_api_key)
 
     @property
+    def has_gptimage_vip(self) -> bool:
+        return bool(self.gptimage_vip_api_key)
+
+    @property
     def has_seedream5(self) -> bool:
         return bool(self.seedream5_api_key)
 
     @property
     def has_any_provider(self) -> bool:
         """是否有至少一个可用的 AI 模型"""
-        return any([self.has_openai, self.has_fal, self.has_kling, self.has_photoroom, self.has_volcengine, self.has_deepseek, self.has_seedance, self.has_nanobanana, self.has_gptimage])
+        return any([self.has_openai, self.has_fal, self.has_kling, self.has_photoroom, self.has_volcengine, self.has_deepseek, self.has_seedance, self.has_nanobanana, self.has_gptimage, self.has_gptimage_vip])
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

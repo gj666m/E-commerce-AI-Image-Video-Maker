@@ -5,13 +5,13 @@ import logging
 import httpx
 
 from app.config import settings
-from app.providers.base import BaseProvider, GenerateResult
+from app.providers.base import BaseProvider, GenerateResult, http_error_message
 from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
-# Seedream 4.5 定价（元/张）
-COST_PER_IMAGE = 0.04
+# Seedream 4.5 定价（元/张，火山方舟国内版）
+COST_PER_IMAGE = 0.25
 
 
 class VolcengineProvider(BaseProvider):
@@ -116,7 +116,7 @@ class VolcengineProvider(BaseProvider):
             logger.error(f"Volcengine API 错误: {e.response.status_code} - {error_detail}")
             return GenerateResult(
                 success=False,
-                error=f"火山方舟 API 错误: {e.response.status_code} - {error_detail}",
+                error=http_error_message(e.response.status_code, error_detail, "火山方舟"),
                 raw_response={"status_code": e.response.status_code},
             )
         except Exception as e:

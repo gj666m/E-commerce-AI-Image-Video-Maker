@@ -12,6 +12,11 @@ api.interceptors.response.use(undefined, async (error) => {
   const config = error.config
   if (!config) return Promise.reject(error)
 
+  // 429 限流/额度不足不重试，直接抛出让业务层处理
+  if (error.response?.status === 429) {
+    return Promise.reject(error)
+  }
+
   // 只重试网络错误和 5xx，不重试 4xx 业务错误
   const isNetworkError = !error.response
   const isServerError = error.response?.status >= 500
@@ -68,6 +73,7 @@ export async function generateImage(params: GenerateParams): Promise<GenerateRes
 
   const { data } = await api.post('/api/generate', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,  // GPT-Image-2-VIP 4K 需要 90-150s，留 300s 余量
   })
   return data
 }

@@ -27,6 +27,7 @@ export interface GenerateResult {
   prompt_used: string
   model_used: string
   cost: number
+  currency: string       // 费用币种：¥ 或 $
   image_info?: {
     width: number
     height: number
@@ -97,6 +98,7 @@ export interface VideoTaskStatus {
   model_used: string
   prompt_used: string
   cost: number
+  currency: string   // 费用币种：¥ 或 $
   error?: string
 }
 
@@ -128,6 +130,7 @@ export interface ModelGenerateParams {
   custom_desc?: string
   count?: number
   aspect_ratio?: string
+  model_name?: string
 }
 
 // 模特生成结果
@@ -137,6 +140,7 @@ export interface ModelGenerateResult {
   prompt_used: string
   model_used: string
   cost: number
+  currency?: string
 }
 
 // 模特保存请求

@@ -6,12 +6,13 @@ import httpx
 
 from app.config import settings
 from app.providers.video_base import VideoProvider, VideoTask
+from app.providers.base import RATE_LIMIT_MSG
 from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
-# Seedance 2.0 定价（元/次，暂估，待官方定价后更新）
-COST_PER_VIDEO = 0.5
+# Seedance 2.0 定价：¥28/百万 token（按 usage.completion_tokens 计算）
+COST_PER_MILLION_TOKENS = 28.0
 
 
 class SeedanceVideoProvider(VideoProvider):
@@ -114,6 +115,8 @@ class SeedanceVideoProvider(VideoProvider):
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text[:500]
             logger.error(f"Seedance 提交 API 错误: {e.response.status_code} - {error_detail}")
+            if e.response.status_code == 429:
+                raise RuntimeError(RATE_LIMIT_MSG)
             raise RuntimeError(f"Seedance 提交失败: {e.response.status_code} - {error_detail}")
         except Exception as e:
             logger.error(f"Seedance 提交异常: {e}")
@@ -168,12 +171,23 @@ class SeedanceVideoProvider(VideoProvider):
             else:
                 error = str(error_msg) or "视频生成失败"
 
+        # 按实际 token 用量计费（¥28/百万 token）
+        cost = 0.0
+        if mapped_status == "completed":
+            usage = data.get("usage", {})
+            completion_tokens = usage.get("completion_tokens", 0)
+            if completion_tokens > 0:
+                cost = round(completion_tokens * COST_PER_MILLION_TOKENS / 1_000_000, 4)
+            else:
+                # 兜底：无 usage 信息时不计费
+                logger.warning(f"Seedance 任务 {external_task_id} 完成但无 usage 信息")
+
         return VideoTask(
             task_id=external_task_id,
             status=mapped_status,
             progress=progress,
             video_url=None,
-            cost=COST_PER_VIDEO if mapped_status == "completed" else 0,
+            cost=cost,
             error=error,
             model_used=self.MODEL,
             meta={"raw_response": data},

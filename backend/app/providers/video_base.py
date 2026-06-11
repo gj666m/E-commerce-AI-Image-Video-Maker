@@ -12,6 +12,7 @@ class VideoTask:
     progress: int = 0             # 0-100
     video_url: str | None = None  # 完成后的视频访问 URL
     cost: float = 0.0
+    currency: str = "¥"           # 费用币种
     error: str | None = None
     prompt_used: str = ""
     model_used: str = ""

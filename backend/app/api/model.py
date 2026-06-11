@@ -42,6 +42,7 @@ async def generate_model(
     custom_desc: str = Form(""),
     count: int = Form(1, description="生成数量（1-4 张）"),
     aspect_ratio: str = Form("1:1", description="宽高比: 1:1 / 3:4 / 4:3 / 4:5 / 9:16 / 16:9"),
+    model_name: str = Form("", description="指定生成模型（空则自动路由）"),
     image: UploadFile | None = File(None, description="参考图片（单张，图生图模式）"),
     images: list[UploadFile] = File(default=[], description="多张参考图片（图生图模式，最多3张）"),
 ):
@@ -85,8 +86,8 @@ async def generate_model(
     count = max(1, min(count, 4))
     logger.info(f"模特生成 prompt ({'图生图' if has_ref else '文生图'}), 参考图: {len(ref_images)} 张, 数量: {count}")
 
-    # 3. 并行调用 Seedream 生成多张
-    provider = get_provider("model_gen", model_name="volcengine")
+    # 3. 并行调用生成模型
+    provider = get_provider("model_gen", model_name=model_name or None)
     from app.services.prompt_engine import _aspect_to_resolution
     ratio_desc = _aspect_to_resolution(aspect_ratio)
     if ratio_desc and ratio_desc not in prompt:
@@ -118,6 +119,7 @@ async def generate_model(
         "prompt_used": prompt,
         "model_used": provider.name,
         "cost": total_cost,
+        "currency": "¥",
     }
 
 

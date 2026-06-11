@@ -4,7 +4,7 @@
       <span class="cards-title">生成结果（{{ cards.length }} 张）</span>
       <div class="meta-info">
         <el-tag size="small">{{ modelUsed }}</el-tag>
-        <el-tag size="small" type="info">¥{{ totalCost.toFixed(2) }}</el-tag>
+        <el-tag size="small" type="info">{{ currency }}{{ totalCost.toFixed(2) }}</el-tag>
         <el-button
           v-if="successCount > 1"
           size="small"
@@ -67,6 +67,11 @@
               <el-icon><VideoCamera /></el-icon>
             </el-button>
           </el-tooltip>
+          <el-tooltip content="换模型对比" placement="top" v-if="models.length > 0">
+            <el-button size="small" type="warning" plain :disabled="card.status !== 'success'" @click="openCompareDialog(index)">
+              <el-icon><Sort /></el-icon>
+            </el-button>
+          </el-tooltip>
           <el-tooltip v-if="showSaveModel" content="保存到模特库" placement="top">
             <el-button size="small" type="success" :disabled="card.status !== 'success'" @click="$emit('saveModel', index)">
               <el-icon><Star /></el-icon>
@@ -101,6 +106,24 @@
         <el-button type="primary" @click="submitEditPrompt">重新生成</el-button>
       </template>
     </el-dialog>
+
+    <!-- 换模型对比弹窗 -->
+    <el-dialog v-model="compareDialogVisible" title="换模型对比" width="480px">
+      <p style="color: #909399; margin-bottom: 12px;">选择一个不同的模型，用相同参数重新生成</p>
+      <el-select v-model="compareModelName" placeholder="选择模型" style="width: 100%">
+        <el-option
+          v-for="m in models"
+          :key="m.name"
+          :label="m.display_name"
+          :value="m.name"
+          :disabled="!m.available"
+        />
+      </el-select>
+      <template #footer>
+        <el-button @click="compareDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!compareModelName" @click="submitCompare">对比生成</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -109,18 +132,22 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Loading, CircleCloseFilled, Refresh, EditPen,
-  Download, VideoCamera, Star, Delete,
+  Download, VideoCamera, Star, Delete, Sort,
 } from '@element-plus/icons-vue'
-import type { ResultCard } from '../types'
+import type { ResultCard, ModelInfo } from '../types'
 
 const props = withDefaults(defineProps<{
   cards: ResultCard[]
   modelUsed: string
   totalCost: number
+  currency?: string
   showSaveModel?: boolean
   labels?: string[]
+  models?: ModelInfo[]
 }>(), {
   showSaveModel: false,
+  currency: '¥',
+  models: () => [],
 })
 
 const emit = defineEmits<{
@@ -128,6 +155,7 @@ const emit = defineEmits<{
   retryWithPrompt: [index: number, extraPrompt: string]
   remove: [index: number]
   saveModel: [index: number]
+  compareModel: [index: number, modelName: string]
 }>()
 
 const router = useRouter()
@@ -172,6 +200,23 @@ function openEditPrompt(index: number) {
 function submitEditPrompt() {
   emit('retryWithPrompt', editCardIndex.value, editExtra.value)
   editDialogVisible.value = false
+}
+
+// 换模型对比
+const compareDialogVisible = ref(false)
+const compareCardIndex = ref(0)
+const compareModelName = ref('')
+
+function openCompareDialog(index: number) {
+  compareCardIndex.value = index
+  compareModelName.value = ''
+  compareDialogVisible.value = true
+}
+
+function submitCompare() {
+  if (!compareModelName.value) return
+  emit('compareModel', compareCardIndex.value, compareModelName.value)
+  compareDialogVisible.value = false
 }
 
 // 下载

@@ -278,9 +278,12 @@
               :cards="cards"
               :model-used="modelUsed"
               :total-cost="totalCost"
+              :currency="currency"
+              :models="modelList"
               @retry="handleRetry"
               @retry-with-prompt="handleRetryWithPrompt"
               @remove="handleRemove"
+              @compare-model="handleCompareModel"
             />
           </el-card>
         </el-col>
@@ -353,9 +356,12 @@
           :cards="planCards"
           :model-used="planModelUsed"
           :total-cost="planTotalCost"
+          :currency="planCurrency"
+          :models="modelList"
           @retry="handlePlanRetry"
           @retry-with-prompt="handlePlanRetryWithPrompt"
           @remove="handlePlanRemove"
+          @compare-model="handlePlanCompareModel"
         />
       </div>
     </div>
@@ -389,11 +395,13 @@ const planList = ref<ShotPlan[]>([])
 const cards = ref<ResultCard[]>([])
 const modelUsed = ref('')
 const totalCost = ref(0)
+const currency = ref('¥')
 
 // 策划模式批量生成结果
 const planCards = ref<ResultCard[]>([])
 const planModelUsed = ref('')
 const planTotalCost = ref(0)
+const planCurrency = ref('¥')
 
 // 商品图
 const { files: productImages, previews: productPreviews, add: handleProductImage, remove: removeProductImage } = useImageList(6, '商品图')
@@ -590,6 +598,7 @@ async function handleBatchGenerate() {
           status: 'success' as const,
           promptUsed: data.prompt_used,
           cost: data.cost,
+          currency: data.currency,
           modelUsed: data.model_used,
         }
       } catch {
@@ -606,6 +615,7 @@ async function handleBatchGenerate() {
           promptUsed: r.promptUsed,
         }
         planTotalCost.value += r.cost
+        planCurrency.value = r.currency ?? planCurrency.value
         planModelUsed.value = r.modelUsed
       } else {
         planCards.value[r.index] = { ...planCards.value[r.index], status: 'failed', error: r.error }
@@ -637,6 +647,7 @@ async function handlePlanRetry(index: number) {
         _planIdx: planIdx,
       }
       planTotalCost.value += data.cost
+      planCurrency.value = data.currency ?? '¥'
       ElMessage.success(`图${planIdx + 1}: ${plan.title} 重新生成完成`)
     }
   } catch (e: unknown) {
@@ -663,6 +674,7 @@ async function handlePlanRetryWithPrompt(index: number, extraPrompt: string) {
         _planIdx: planIdx,
       }
       planTotalCost.value += data.cost
+      planCurrency.value = data.currency ?? '¥'
       ElMessage.success(`图${planIdx + 1}: ${plan.title} 重新生成完成`)
     }
   } catch (e: unknown) {
@@ -674,6 +686,44 @@ async function handlePlanRetryWithPrompt(index: number, extraPrompt: string) {
 
 function handlePlanRemove(index: number) {
   planCards.value.splice(index, 1)
+}
+
+// 换模型对比（策划模式）
+async function handlePlanCompareModel(cardIndex: number, newModel: string) {
+  const card = planCards.value[cardIndex]
+  const planIdx = card._planIdx ?? cardIndex
+  const plan = planList.value[planIdx]
+
+  const startIdx = planCards.value.length
+  planCards.value.push({
+    imageBase64: '',
+    status: 'loading',
+    promptUsed: card.promptUsed,
+    _planIdx: planIdx,
+  })
+
+  try {
+    const params = buildPlanGenParams(plan)
+    params.model_name = newModel
+    const data = await generateImage(params)
+
+    if (data.images.length > 0) {
+      planCards.value[startIdx] = {
+        imageBase64: data.images[0],
+        status: 'success',
+        promptUsed: data.prompt_used,
+        _planIdx: planIdx,
+      }
+      planTotalCost.value += data.cost
+      planCurrency.value = data.currency ?? '¥'
+    }
+  } catch (e: unknown) {
+    planCards.value[startIdx] = {
+      ...planCards.value[startIdx],
+      status: 'failed',
+      error: getErrorMessage(e),
+    }
+  }
 }
 
 // ====== 手动模式生成 ======
@@ -711,6 +761,7 @@ async function handleManualGenerate() {
     }))
     modelUsed.value = data.model_used
     totalCost.value = data.cost
+    currency.value = data.currency ?? '¥'
     ElMessage.success('生成完成')
   } catch (e: unknown) {
     const msg = getErrorMessage(e, '生成失败，请稍后重试')
@@ -745,6 +796,7 @@ async function handleRetry(index: number) {
         promptUsed: data.prompt_used,
       }
       totalCost.value += data.cost
+      currency.value = data.currency ?? '¥'
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
   } catch (e: unknown) {
@@ -779,12 +831,62 @@ async function handleRetryWithPrompt(index: number, extraPrompt: string) {
         promptUsed: data.prompt_used,
       }
       totalCost.value += data.cost
+      currency.value = data.currency ?? '¥'
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
   } catch (e: unknown) {
     const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
+  }
+}
+
+// 换模型对比（手动模式）
+async function handleCompareModel(cardIndex: number, newModel: string) {
+  const sourcePrompt = cards.value[cardIndex].promptUsed
+  const startIdx = cards.value.length
+  cards.value.push({
+    imageBase64: '',
+    status: 'loading',
+    promptUsed: sourcePrompt,
+  })
+
+  try {
+    const data = await generateImage({
+      task_type: 'seed_grass',
+      images: [...productImages.value],
+      description: form.value.scene || '自然生活场景',
+      style: form.value.style || undefined,
+      model_name: newModel,
+      aspect_ratio: form.value.aspectRatio,
+      count: 1,
+      persona: buildPersonaDesc(),
+      scene: form.value.scene || undefined,
+    })
+
+    for (let i = 0; i < data.images.length; i++) {
+      if (startIdx + i < cards.value.length) {
+        cards.value[startIdx + i] = {
+          imageBase64: data.images[i],
+          status: 'success',
+          promptUsed: data.prompt_used,
+        }
+      } else {
+        cards.value.push({
+          imageBase64: data.images[i],
+          status: 'success',
+          promptUsed: data.prompt_used,
+        })
+      }
+    }
+    totalCost.value += data.cost
+    currency.value = data.currency ?? '¥'
+  } catch (e: unknown) {
+    cards.value[startIdx] = {
+      ...cards.value[startIdx],
+      status: 'failed',
+      error: getErrorMessage(e),
+    }
   }
 }
 

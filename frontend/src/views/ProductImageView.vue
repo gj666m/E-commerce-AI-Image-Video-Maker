@@ -79,9 +79,12 @@
               :cards="mainCards"
               :model-used="mainModelUsed"
               :total-cost="mainTotalCost"
+              :currency="mainCurrency"
+              :models="modelList"
               @retry="handleMainRetry"
               @retry-with-prompt="handleMainRetryWithPrompt"
               @remove="handleMainRemove"
+              @compare-model="handleMainCompareModel"
             />
           </el-col>
         </el-row>
@@ -223,9 +226,12 @@
                 :cards="aplusCards"
                 :model-used="aplusModelUsed"
                 :total-cost="aplusTotalCost"
+                :currency="aplusCurrency"
+                :models="modelList"
                 @retry="handleAplusRetry"
                 @retry-with-prompt="handleAplusRetryWithPrompt"
                 @remove="handleAplusRemove"
+                @compare-model="handleAplusCompareModel"
               />
             </el-col>
           </el-row>
@@ -305,10 +311,13 @@
             :cards="aplusCards"
             :model-used="aplusModelUsed"
             :total-cost="aplusTotalCost"
+            :currency="aplusCurrency"
             :labels="aplusCardLabels"
+            :models="modelList"
             @retry="handleAplusPlanRetry"
             @retry-with-prompt="handleAplusPlanRetryWithPrompt"
             @remove="handleAplusRemove"
+            @compare-model="handleAplusPlanCompareModel"
           />
         </div>
       </el-tab-pane>
@@ -350,6 +359,7 @@ const mainLoading = ref(false)
 const mainCards = ref<ResultCard[]>([])
 const mainModelUsed = ref('')
 const mainTotalCost = ref(0)
+const mainCurrency = ref('¥')
 
 // ====== A+ 图状态 ======
 const aplusMode = ref<'manual' | 'ai-plan'>('manual')
@@ -370,6 +380,7 @@ const aplusLoading = ref(false)
 const aplusCards = ref<ResultCard[]>([])
 const aplusModelUsed = ref('')
 const aplusTotalCost = ref(0)
+const aplusCurrency = ref('¥')
 const aplusPlanLoading = ref(false)
 
 // AI 策划状态
@@ -460,6 +471,7 @@ async function handleMainGenerate() {
     }
     mainModelUsed.value = result.model_used
     mainTotalCost.value += result.cost
+    mainCurrency.value = result.currency ?? '¥'
     ElMessage.success(`生成 ${result.images.length} 张主图`)
   } catch (e: unknown) {
     for (let i = 0; i < mainCount.value; i++) {
@@ -490,6 +502,45 @@ function handleMainRetryWithPrompt(idx: number, extraPrompt: string) {
 
 function handleMainRemove(idx: number) {
   mainCards.value.splice(idx, 1)
+}
+
+// 商品主图：换模型对比
+async function handleMainCompareModel(cardIndex: number, newModel: string) {
+  const sourcePrompt = mainCards.value[cardIndex].promptUsed
+  const startIdx = mainCards.value.length
+  mainCards.value.push({
+    imageBase64: '',
+    status: 'loading',
+    promptUsed: sourcePrompt,
+  })
+
+  try {
+    const result = await generateImage({
+      task_type: 'product_main',
+      model_name: newModel,
+      images: mainImages.value,
+      description: mainProductInfo.value || '商品正面展示',
+      aspect_ratio: '1:1',
+      count: 1,
+      custom_prompt: mainCustomPrompt.value || undefined,
+    })
+
+    if (result.images[0]) {
+      mainCards.value[startIdx] = {
+        imageBase64: result.images[0],
+        status: 'success',
+        promptUsed: result.prompt_used,
+      }
+      mainTotalCost.value += result.cost
+      mainCurrency.value = result.currency ?? '¥'
+    }
+  } catch (e: unknown) {
+    mainCards.value[startIdx] = {
+      ...mainCards.value[startIdx],
+      status: 'failed',
+      error: getErrorMessage(e),
+    }
+  }
 }
 
 // ====== A+ 图：图片上传 ======
@@ -539,6 +590,7 @@ async function handleAplusManualGenerate() {
     }
     aplusModelUsed.value = result.model_used
     aplusTotalCost.value += result.cost
+    aplusCurrency.value = result.currency ?? '¥'
     ElMessage.success('A+ 图生成成功')
   } catch (e: unknown) {
     aplusCards.value[idx] = {
@@ -636,6 +688,7 @@ async function handleAplusBatchGenerate() {
         promptUsed: result.prompt_used,
       }
       aplusTotalCost.value += result.cost
+      aplusCurrency.value = result.currency ?? '¥'
       aplusModelUsed.value = result.model_used
     } catch (e: unknown) {
       aplusCards.value[startIdx + i] = {
@@ -667,6 +720,95 @@ function handleAplusRemove(idx: number) {
   aplusCards.value.splice(idx, 1)
 }
 
+// A+ 图：换模型对比（AI策划模式）
+async function handleAplusPlanCompareModel(cardIndex: number, newModel: string) {
+  const task = aplusGenTasks.value[cardIndex]
+  if (!task) return
+  const plan = planList.value[task.planIdx]
+
+  const startIdx = aplusCards.value.length
+  aplusCards.value.push({
+    imageBase64: '',
+    status: 'loading',
+    promptUsed: aplusCards.value[cardIndex].promptUsed,
+  })
+
+  try {
+    const result = await generateImage({
+      task_type: 'aplus',
+      model_name: newModel,
+      images: aplusImages.value,
+      description: plan.scene || aplusProductInfo.value || '',
+      style: '现代简约电商风格',
+      aspect_ratio: aplusForm.value.aspectRatio,
+      product_info: aplusProductInfo.value || undefined,
+      selling_point: plan.selling_point,
+      headline: plan.headline,
+      body_text: plan.body_text,
+      layout: plan.layout,
+      custom_prompt: plan.prompt_hint || undefined,
+    })
+    if (result.images[0]) {
+      aplusCards.value[startIdx] = {
+        imageBase64: result.images[0],
+        status: 'success',
+        promptUsed: result.prompt_used,
+      }
+      aplusTotalCost.value += result.cost
+      aplusCurrency.value = result.currency ?? '¥'
+    }
+  } catch (e: unknown) {
+    aplusCards.value[startIdx] = {
+      ...aplusCards.value[startIdx],
+      status: 'failed',
+      error: getErrorMessage(e),
+    }
+  }
+}
+
+// A+ 图：换模型对比（手动模式）
+async function handleAplusCompareModel(cardIndex: number, newModel: string) {
+  const sourcePrompt = aplusCards.value[cardIndex].promptUsed
+  const startIdx = aplusCards.value.length
+  aplusCards.value.push({
+    imageBase64: '',
+    status: 'loading',
+    promptUsed: sourcePrompt,
+  })
+
+  try {
+    const result = await generateImage({
+      task_type: 'aplus',
+      model_name: newModel,
+      images: aplusImages.value,
+      description: aplusForm.value.scene || aplusProductInfo.value || 'A+ content image',
+      style: aplusForm.value.style || undefined,
+      aspect_ratio: aplusForm.value.aspectRatio,
+      product_info: aplusProductInfo.value || undefined,
+      selling_point: aplusForm.value.sellingPoint || undefined,
+      headline: aplusForm.value.headline || undefined,
+      body_text: aplusForm.value.bodyText || undefined,
+      layout: aplusForm.value.layout || undefined,
+    })
+
+    if (result.images[0]) {
+      aplusCards.value[startIdx] = {
+        imageBase64: result.images[0],
+        status: 'success',
+        promptUsed: result.prompt_used,
+      }
+      aplusTotalCost.value += result.cost
+      aplusCurrency.value = result.currency ?? '¥'
+    }
+  } catch (e: unknown) {
+    aplusCards.value[startIdx] = {
+      ...aplusCards.value[startIdx],
+      status: 'failed',
+      error: getErrorMessage(e),
+    }
+  }
+}
+
 function handleAplusPlanRetry(idx: number) {
   const task = aplusGenTasks.value[idx]
   if (!task) return
@@ -693,6 +835,7 @@ function handleAplusPlanRetry(idx: number) {
       promptUsed: result.prompt_used,
     }
     aplusTotalCost.value += result.cost
+    aplusCurrency.value = result.currency ?? '¥'
   }).catch(() => {
     aplusCards.value[idx] = {
       imageBase64: '',
@@ -729,6 +872,7 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
       promptUsed: result.prompt_used,
     }
     aplusTotalCost.value += result.cost
+    aplusCurrency.value = result.currency ?? '¥'
   }).catch(() => {
     aplusCards.value[idx] = {
       imageBase64: '',

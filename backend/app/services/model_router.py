@@ -8,6 +8,7 @@ from app.providers.volcengine_provider import VolcengineProvider
 from app.providers.seedream5_provider import Seedream5Provider
 from app.providers.nanobanana_provider import NanoBananaProvider
 from app.providers.gptimage_provider import GPTImageProvider
+from app.providers.gptimage_vip_provider import GPTImageVipProvider
 
 
 def get_available_providers() -> dict[str, BaseProvider]:
@@ -27,6 +28,8 @@ def get_available_providers() -> dict[str, BaseProvider]:
         providers["nanobanana"] = NanoBananaProvider()
     if settings.has_gptimage:
         providers["gptimage"] = GPTImageProvider()
+    if settings.has_gptimage_vip:
+        providers["gptimage_vip"] = GPTImageVipProvider()
     return providers
 
 
@@ -50,9 +53,11 @@ def get_provider(
         return providers[model_name]
 
     # 自动路由：优先真实 Provider
-    # volcengine > gptimage > nanobanana > OpenAI > fal > mock
+    # volcengine > gptimage_vip > gptimage > nanobanana > OpenAI > fal > mock
     if settings.has_volcengine:
         return providers["volcengine"]
+    if settings.has_gptimage_vip:
+        return providers["gptimage_vip"]
     if settings.has_gptimage:
         return providers["gptimage"]
     if settings.has_nanobanana:
@@ -108,6 +113,12 @@ _MODEL_META = {
         "description": "OpenAI GPT 图片生成模型，$0.03/张，文字还原度高，中文提示词友好，支持多图融合",
         "capabilities": ["text_to_image", "image_to_image"],
         "api_key_hint": "GPTIMAGE_API_KEY",
+    },
+    "gptimage_vip": {
+        "display_name": "GPT-Image-2 4K（OpenAI）",
+        "description": "GPT 图片生成 4K 版，$0.03/张，支持 30 档尺寸含 4K，文字还原度高，出图约 90-150 秒",
+        "capabilities": ["text_to_image", "image_to_image"],
+        "api_key_hint": "GPTIMAGE_VIP_API_KEY",
     },
 }
 

@@ -247,11 +247,14 @@
             :cards="cards"
             :model-used="modelUsed"
             :total-cost="totalCost"
+            :currency="currency"
             :show-save-model="true"
+            :models="modelList"
             @retry="handleRetry"
             @retry-with-prompt="handleRetryWithPrompt"
             @remove="handleRemove"
             @save-model="handleSaveModel"
+            @compare-model="handleCompareModel"
           />
         </el-card>
       </el-col>
@@ -260,22 +263,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Close, MagicStick, Promotion } from '@element-plus/icons-vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { generateModel, saveModel, analyzeFree, getErrorMessage } from '../api'
-import type { ResultCard } from '../types'
+import { generateModel, saveModel, analyzeFree, getModels, getErrorMessage } from '../api'
+import type { ResultCard, ModelInfo } from '../types'
 import { useImageList } from '../composables/useImageList'
 
 const mode = ref<'text' | 'image'>('text')
 const loading = ref(false)
+const modelList = ref<ModelInfo[]>([])
+
+// 获取可用模型列表
+onMounted(async () => {
+  try {
+    const data = await getModels()
+    modelList.value = data.models
+  } catch {
+    // 静默失败，不影响主流程
+  }
+})
 
 // 结果卡片
 const cards = ref<ResultCard[]>([])
 const modelUsed = ref('')
 const totalCost = ref(0)
+const currency = ref('¥')
 
 // 参考图（多张）
 const { files: refImages, previews: refPreviews, add: handleRefImage, remove: removeRefImage } = useImageList(3, '参考图')
@@ -388,6 +403,7 @@ async function handleGenerate() {
     }))
     modelUsed.value = data.model_used
     totalCost.value = data.cost
+    currency.value = data.currency ?? '¥'
     ElMessage.success(`生成完成，共 ${data.images.length} 张`)
   } catch (e: unknown) {
     const msg = getErrorMessage(e, '生成失败，请稍后重试')
@@ -433,6 +449,7 @@ async function handleRetry(index: number) {
         promptUsed: data.prompt_used,
       }
       totalCost.value += data.cost
+      currency.value = data.currency ?? '¥'
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
   } catch (e: unknown) {
@@ -477,12 +494,74 @@ async function handleRetryWithPrompt(index: number, extraPrompt: string) {
         promptUsed: data.prompt_used,
       }
       totalCost.value += data.cost
+      currency.value = data.currency ?? '¥'
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
   } catch (e: unknown) {
     const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
+  }
+}
+
+// 换模型对比
+async function handleCompareModel(cardIndex: number, newModel: string) {
+  if (!lastGenParams) return
+
+  const sourcePrompt = cards.value[cardIndex].promptUsed
+  const startIdx = cards.value.length
+  cards.value.push({
+    imageBase64: '',
+    status: 'loading',
+    promptUsed: sourcePrompt,
+  })
+
+  try {
+    const p = lastGenParams
+    const data = await generateModel(
+      {
+        gender: p.formValues.gender,
+        ethnicity: p.formValues.ethnicity,
+        age: p.formValues.age,
+        body_type: p.formValues.bodyType,
+        hair_desc: p.formValues.hairDesc || undefined,
+        expression: p.formValues.expression || undefined,
+        pose: p.formValues.pose || undefined,
+        clothing: p.formValues.clothing || undefined,
+        background: p.formValues.background,
+        composition: p.formValues.composition,
+        style: p.formValues.style,
+        custom_desc: p.formValues.customDesc || undefined,
+        count: 1,
+        aspect_ratio: p.formValues.aspectRatio,
+        model_name: newModel,
+      },
+      p.mode === 'image' ? p.refImages : undefined,
+    )
+
+    for (let i = 0; i < data.images.length; i++) {
+      if (startIdx + i < cards.value.length) {
+        cards.value[startIdx + i] = {
+          imageBase64: data.images[i],
+          status: 'success',
+          promptUsed: data.prompt_used,
+        }
+      } else {
+        cards.value.push({
+          imageBase64: data.images[i],
+          status: 'success',
+          promptUsed: data.prompt_used,
+        })
+      }
+    }
+    totalCost.value += data.cost
+    currency.value = data.currency ?? '¥'
+  } catch (e: unknown) {
+    cards.value[startIdx] = {
+      ...cards.value[startIdx],
+      status: 'failed',
+      error: getErrorMessage(e),
+    }
   }
 }
 

@@ -224,6 +224,9 @@ async def generate_video(
             raise HTTPException(400, "参考图包含真实人脸，Seedance 不支持真人图片生成视频。请使用商品图或 AI 生成的模特图。")
         if "SensitiveContent" in error_msg:
             raise HTTPException(400, "参考图内容未通过安全审核，请更换图片后重试。")
+        # 429 限流等用户可理解的错误直接透传
+        if "额度不足" in error_msg:
+            raise HTTPException(429, error_msg)
         raise HTTPException(500, f"视频提交失败: {error_msg}")
 
     # ========== 5. 记录任务 ==========
@@ -264,6 +267,7 @@ async def video_status(task_id: str):
         "model_used": video_task.model_used or provider.name,
         "prompt_used": video_task.prompt_used or task_info["prompt"],
         "cost": video_task.cost,
+        "currency": video_task.currency,
     }
 
     # 完成时：获取视频 → 保存临时文件 → 返回 URL

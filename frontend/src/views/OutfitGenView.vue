@@ -196,9 +196,12 @@
             :cards="cards"
             :model-used="modelUsed"
             :total-cost="totalCost"
+            :currency="currency"
+            :models="modelList"
             @retry="handleRetry"
             @retry-with-prompt="handleRetryWithPrompt"
             @remove="handleRemove"
+            @compare-model="handleCompareModel"
           />
         </el-card>
       </el-col>
@@ -231,6 +234,7 @@ const modelList = ref<ModelInfo[]>([])
 const cards = ref<ResultCard[]>([])
 const modelUsed = ref('')
 const totalCost = ref(0)
+const currency = ref('¥')
 
 // 商品图（支持多张）
 const { files: productImages, previews: productPreviews, add: handleProductImage, remove: removeProductImage } = useImageList(6, '商品图')
@@ -419,6 +423,7 @@ async function handleGenerate() {
     }))
     modelUsed.value = data.model_used
     totalCost.value = data.cost
+    currency.value = data.currency ?? '¥'
     ElMessage.success('生成完成')
   } catch (e: unknown) {
     const msg = getErrorMessage(e, '生成失败，请稍后重试')
@@ -461,6 +466,7 @@ async function handleRetry(index: number) {
         promptUsed: data.prompt_used,
       }
       totalCost.value += data.cost
+      currency.value = data.currency ?? '¥'
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
   } catch (e: unknown) {
@@ -496,12 +502,62 @@ async function handleRetryWithPrompt(index: number, extraPrompt: string) {
         promptUsed: data.prompt_used,
       }
       totalCost.value += data.cost
+      currency.value = data.currency ?? '¥'
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
   } catch (e: unknown) {
     const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
+  }
+}
+
+// 换模型对比
+async function handleCompareModel(cardIndex: number, newModel: string) {
+  if (!lastGenParams) return
+
+  const sourcePrompt = cards.value[cardIndex].promptUsed
+  const startIdx = cards.value.length
+  cards.value.push({
+    imageBase64: '',
+    status: 'loading',
+    promptUsed: sourcePrompt,
+  })
+
+  try {
+    const data = await generateImage({
+      task_type: 'outfit',
+      images: lastGenParams.images,
+      description: lastGenParams.description,
+      style: lastGenParams.style || undefined,
+      model_name: newModel,
+      aspect_ratio: lastGenParams.aspectRatio,
+      count: 1,
+    })
+
+    for (let i = 0; i < data.images.length; i++) {
+      if (startIdx + i < cards.value.length) {
+        cards.value[startIdx + i] = {
+          imageBase64: data.images[i],
+          status: 'success',
+          promptUsed: data.prompt_used,
+        }
+      } else {
+        cards.value.push({
+          imageBase64: data.images[i],
+          status: 'success',
+          promptUsed: data.prompt_used,
+        })
+      }
+    }
+    totalCost.value += data.cost
+    currency.value = data.currency ?? '¥'
+  } catch (e: unknown) {
+    cards.value[startIdx] = {
+      ...cards.value[startIdx],
+      status: 'failed',
+      error: getErrorMessage(e),
+    }
   }
 }
 

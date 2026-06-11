@@ -3,7 +3,7 @@ import base64
 import httpx
 
 from app.config import settings
-from app.providers.base import BaseProvider, GenerateResult
+from app.providers.base import BaseProvider, GenerateResult, http_error_message
 
 # GPT-Image-2 定价（美元/张，按尺寸）
 COST_TABLE = {
@@ -69,12 +69,13 @@ class OpenAIProvider(BaseProvider):
                 success=True,
                 images=images,
                 cost=cost,
+                currency="$",
                 raw_response=data,
             )
         except httpx.HTTPStatusError as e:
             return GenerateResult(
                 success=False,
-                error=f"OpenAI API 错误: {e.response.status_code} - {e.response.text[:500]}",
+                error=http_error_message(e.response.status_code, e.response.text[:500], "OpenAI"),
                 raw_response={"status_code": e.response.status_code},
             )
         except Exception as e:

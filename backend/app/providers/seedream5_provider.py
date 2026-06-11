@@ -24,7 +24,7 @@ class Seedream5Provider(VolcengineProvider):
         import logging
         import httpx
         from app.services.http_client import get_http_client
-        from app.providers.base import GenerateResult
+        from app.providers.base import GenerateResult, http_error_message
 
         logger = logging.getLogger(__name__)
         params = params or {}
@@ -65,12 +65,14 @@ class Seedream5Provider(VolcengineProvider):
             data = resp.json()
 
             images_result = await self._extract_images(data)
-            cost = round(0.04 * len(images_result), 4)
+            # Seedream 5.0 定价：¥0.22/张（火山方舟国内版）
+            cost = round(0.22 * len(images_result), 4)
 
             return GenerateResult(
                 success=True,
                 images=images_result,
                 cost=cost,
+                currency="¥",
                 raw_response=data,
             )
         except httpx.HTTPStatusError as e:
@@ -78,7 +80,7 @@ class Seedream5Provider(VolcengineProvider):
             logger.error(f"Seedream 5.0 API 错误: {e.response.status_code} - {error_detail}")
             return GenerateResult(
                 success=False,
-                error=f"Seedream 5.0 API 错误: {e.response.status_code} - {error_detail}",
+                error=http_error_message(e.response.status_code, error_detail, "Seedream 5.0"),
                 raw_response={"status_code": e.response.status_code},
             )
         except Exception as e:

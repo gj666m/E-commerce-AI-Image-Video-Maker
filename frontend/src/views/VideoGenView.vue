@@ -214,6 +214,7 @@
             :video-url="videoUrl!"
             :model-used="modelUsed"
             :cost="cost"
+            :currency="currency"
           />
 
           <div style="text-align: center; margin-top: 12px;">
@@ -255,6 +256,7 @@ const videoUrl = ref<string | null>(null)
 const modelUsed = ref('')
 const promptUsed = ref('')
 const cost = ref(0)
+const currency = ref('¥')
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -463,6 +465,7 @@ function startPolling() {
       modelUsed.value = data.model_used
       promptUsed.value = data.prompt_used
       cost.value = data.cost
+      currency.value = data.currency ?? '¥'
 
       if (data.video_url) {
         videoUrl.value = data.video_url
