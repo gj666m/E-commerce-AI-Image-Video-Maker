@@ -44,7 +44,19 @@ async def generate(
     多张生成（count）：并行调用 Provider，生成多张供挑选
     种草图模式（seed_grass）：persona + scene 参数拼入专用模板
     """
+    # 参数校验
+    valid_task_types = {"outfit", "product_video", "seed_grass", "product_main", "aplus", "model_gen", "model_ref"}
+    if task_type not in valid_task_types:
+        raise HTTPException(400, f"无效的任务类型: {task_type}，支持: {', '.join(sorted(valid_task_types))}")
+
     count = max(1, min(count, 4))
+
+    valid_ratios = {"1:1", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "61:25"}
+    if aspect_ratio not in valid_ratios:
+        raise HTTPException(400, f"无效的比例: {aspect_ratio}，支持: {', '.join(sorted(valid_ratios))}")
+
+    if not description or not description.strip():
+        raise HTTPException(400, "描述不能为空")
 
     # 1. 图片处理
     image_bytes: bytes | None = None
@@ -59,14 +71,21 @@ async def generate(
         image_info = get_image_info(image_bytes)
         logger.info(f"图片已压缩: {image_info}")
 
-    # 多图处理
+    # 多图处理：并行压缩，避免阻塞事件循环
+    raw_images = []
     for img_file in images:
         raw = await img_file.read()
         if len(raw) > 20 * 1024 * 1024:
             raise HTTPException(400, f"图片 {img_file.filename} 大小不能超过 20MB")
-        compressed = compress_image(raw)
-        multi_image_bytes.append(compressed)
-        logger.info(f"多图上传: {img_file.filename}, 压缩后 {len(compressed)} bytes")
+        raw_images.append(raw)
+
+    if raw_images:
+        multi_image_bytes = await asyncio.gather(
+            *[asyncio.to_thread(compress_image, raw) for raw in raw_images]
+        )
+        multi_image_bytes = list(multi_image_bytes)
+        for img_file, compressed in zip(images, multi_image_bytes):
+            logger.info(f"多图上传: {img_file.filename}, 压缩后 {len(compressed)} bytes")
 
     if multi_image_bytes and not image_info:
         image_info = get_image_info(multi_image_bytes[0])
@@ -118,15 +137,18 @@ async def generate(
     # 4. 尺寸参数
     size = _aspect_to_size(aspect_ratio)
 
-    # 5. 并行调用生图
+    # 5. 并行调用生图（单张失败不影响其他）
     gen_kwargs = {"images": multi_image_bytes} if multi_image_bytes else {"image": image_bytes}
     tasks = [provider.generate(prompt, **gen_kwargs, params={"size": size}) for _ in range(count)]
-    results = await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # 6. 收集结果（自动后处理）
+    # 6. 收集结果（自动后处理，单张失败不影响其他）
     all_images_b64: list[str] = []
     total_cost = 0.0
-    for r in results:
+    for i, r in enumerate(results):
+        if isinstance(r, Exception):
+            logger.error(f"第 {i+1} 张生成异常: {r}")
+            continue
         if r.success and r.images:
             for img in r.images:
                 # 自动后处理：轻微颗粒+色调调整，提升真实感
@@ -134,7 +156,7 @@ async def generate(
                 all_images_b64.append(image_to_base64(processed))
             total_cost += r.cost
         else:
-            logger.warning(f"某张生成失败: {r.error}")
+            logger.warning(f"第 {i+1} 张生成失败: {r.error}")
 
     if not all_images_b64:
         raise HTTPException(500, "全部生成失败，请稍后重试")

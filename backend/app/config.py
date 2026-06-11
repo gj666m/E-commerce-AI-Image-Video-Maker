@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     volcengine_model_id: str = "doubao-seedream-4-5-251128"
     volcengine_vision_model: str = "doubao-seed-2-0-lite-260428"
     volcengine_seedance_endpoint: str = ""  # Seedance 2.0 视频 API endpoint ID
+    # Seedream 5.0 Lite（独立 API Key）
+    seedream5_api_key: str = ""
+    seedream5_model_id: str = "doubao-seedream-5-0-lite"
 
     # DeepSeek V4（文本分析，视觉暂不可用）
     deepseek_api_key: str = ""
@@ -88,6 +91,10 @@ class Settings(BaseSettings):
     @property
     def has_gptimage(self) -> bool:
         return bool(self.gptimage_api_key)
+
+    @property
+    def has_seedream5(self) -> bool:
+        return bool(self.seedream5_api_key)
 
     @property
     def has_any_provider(self) -> bool:

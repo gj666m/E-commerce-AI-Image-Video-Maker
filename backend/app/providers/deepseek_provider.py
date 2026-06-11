@@ -6,6 +6,7 @@ import logging
 import httpx
 
 from app.config import settings
+from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -141,10 +142,10 @@ class ProductAnalysisProvider:
         url = f"https://ark.cn-beijing.volces.com/api/v3/responses"
 
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(url, headers=headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
+            client = get_http_client()
+            resp = await client.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
 
             # 从 Responses API 输出中提取文本
             content = self._extract_text(data)
@@ -232,10 +233,10 @@ class ProductAnalysisProvider:
         url = "https://ark.cn-beijing.volces.com/api/v3/responses"
 
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(url, headers=headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
+            client = get_http_client()
+            resp = await client.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
 
             # 检查输出是否被截断
             if data.get("incomplete_details", {}).get("reason") == "length":
@@ -348,10 +349,10 @@ class ProductAnalysisProvider:
         url = "https://ark.cn-beijing.volces.com/api/v3/responses"
 
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(url, headers=headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
+            client = get_http_client()
+            resp = await client.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
 
             # 检查截断
             if data.get("incomplete_details", {}).get("reason") == "length":
@@ -454,10 +455,10 @@ class ProductAnalysisProvider:
         url = "https://ark.cn-beijing.volces.com/api/v3/responses"
 
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(url, headers=headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
+            client = get_http_client()
+            resp = await client.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
 
             content = self._extract_text(data)
             result = self._parse_json(content)
@@ -556,10 +557,10 @@ class ProductAnalysisProvider:
         url = "https://ark.cn-beijing.volces.com/api/v3/responses"
 
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(url, headers=headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
+            client = get_http_client()
+            resp = await client.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
 
             if data.get("incomplete_details", {}).get("reason") == "length":
                 logger.warning("A+ 策划输出被截断，尝试解析已有内容")
@@ -619,14 +620,15 @@ class ProductAnalysisProvider:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(
-                    "https://ark.cn-beijing.volces.com/api/v3/responses",
-                    headers=headers,
-                    json=payload,
-                )
-                resp.raise_for_status()
-                return self._extract_text(resp.json())
+            client = get_http_client()
+            resp = await client.post(
+                "https://ark.cn-beijing.volces.com/api/v3/responses",
+                headers=headers,
+                json=payload,
+                timeout=60,
+            )
+            resp.raise_for_status()
+            return self._extract_text(resp.json())
         except Exception as e:
             logger.error(f"自由文本查询失败: {e}")
             raise RuntimeError(f"AI 查询失败: {str(e)}")

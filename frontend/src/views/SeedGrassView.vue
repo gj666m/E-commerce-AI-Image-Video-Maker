@@ -363,15 +363,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Close, Refresh, Loading, ArrowLeft } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { generateImage, getModels, analyzePersona, planShots } from '../api'
+import { generateImage, getModels, analyzePersona, planShots, getErrorMessage } from '../api'
 import type { ModelInfo, ResultCard, PersonaAnalysis, ShotPlan } from '../types'
+import { useImageList } from '../composables/useImageList'
 
 const mode = ref<'manual' | 'ai-plan'>('manual')
 const loading = ref(false)
@@ -395,8 +396,7 @@ const planModelUsed = ref('')
 const planTotalCost = ref(0)
 
 // 商品图
-const productImages = ref<File[]>([])
-const productPreviews = ref<string[]>([])
+const { files: productImages, previews: productPreviews, add: handleProductImage, remove: removeProductImage } = useImageList(6, '商品图')
 const productInfo = ref('')
 
 // 人设标签
@@ -465,27 +465,16 @@ onMounted(async () => {
   }
 })
 
-// 商品图处理
-function handleProductImage(uploadFile: UploadFile) {
-  const file = uploadFile.raw
-  if (!file) return
-  if (productImages.value.length >= 6) {
-    ElMessage.warning('最多上传 6 张商品图')
-    return
-  }
-  productImages.value.push(file)
-  productPreviews.value.push(URL.createObjectURL(file))
-}
-
-function removeProductImage(index: number) {
-  productImages.value.splice(index, 1)
-  productPreviews.value.splice(index, 1)
-}
+// 组件卸载时释放博主人设照片 Blob URL
+onUnmounted(() => {
+  if (personaPhotoPreview.value) URL.revokeObjectURL(personaPhotoPreview.value)
+})
 
 // 博主照片上传
 function handlePersonaPhoto(uploadFile: UploadFile) {
   const file = uploadFile.raw
   if (!file) return
+  if (personaPhotoPreview.value) URL.revokeObjectURL(personaPhotoPreview.value)
   personaPhotoFile.value = file
   personaPhotoPreview.value = URL.createObjectURL(file)
   personaResult.value = null
@@ -501,8 +490,8 @@ async function handleAnalyzePersona() {
     personaResult.value = data.persona
     personaDescEdit.value = data.persona.description || ''
     ElMessage.success('人设分析完成')
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '人设分析失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '人设分析失败')
     ElMessage.error(msg)
   } finally {
     analyzingPersona.value = false
@@ -536,8 +525,8 @@ async function handleAIPlan() {
 
     planPhase.value = 'ready'
     ElMessage.success(`策划完成：${planList.value.length} 个方案`)
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || 'AI 策划失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, 'AI 策划失败')
     ElMessage.error(msg)
     planPhase.value = ''
   }
@@ -623,8 +612,8 @@ async function handleBatchGenerate() {
       }
     }
     ElMessage.success(`批量生成完成（${totalCount} 张）`)
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '生成失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '生成失败')
     ElMessage.error(msg)
   } finally {
     generating.value = false
@@ -633,7 +622,7 @@ async function handleBatchGenerate() {
 
 // 策划模式单张重试
 async function handlePlanRetry(index: number) {
-  const card = planCards.value[index] as any
+  const card = planCards.value[index]
   const planIdx = card._planIdx ?? index
   planCards.value[index] = { ...card, status: 'loading', error: undefined }
 
@@ -650,8 +639,8 @@ async function handlePlanRetry(index: number) {
       planTotalCost.value += data.cost
       ElMessage.success(`图${planIdx + 1}: ${plan.title} 重新生成完成`)
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '重试失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '重试失败')
     planCards.value[index] = { ...planCards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
   }
@@ -659,7 +648,7 @@ async function handlePlanRetry(index: number) {
 
 // 策划模式编辑 Prompt 重试
 async function handlePlanRetryWithPrompt(index: number, extraPrompt: string) {
-  const card = planCards.value[index] as any
+  const card = planCards.value[index]
   const planIdx = card._planIdx ?? index
   planCards.value[index] = { ...card, status: 'loading', error: undefined }
 
@@ -676,8 +665,8 @@ async function handlePlanRetryWithPrompt(index: number, extraPrompt: string) {
       planTotalCost.value += data.cost
       ElMessage.success(`图${planIdx + 1}: ${plan.title} 重新生成完成`)
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '重试失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '重试失败')
     planCards.value[index] = { ...planCards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
   }
@@ -723,8 +712,8 @@ async function handleManualGenerate() {
     modelUsed.value = data.model_used
     totalCost.value = data.cost
     ElMessage.success('生成完成')
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '生成失败，请稍后重试'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '生成失败，请稍后重试')
     cards.value = cards.value.map(c => ({ ...c, status: 'failed' as const, error: msg }))
     ElMessage.error(msg)
   } finally {
@@ -758,8 +747,8 @@ async function handleRetry(index: number) {
       totalCost.value += data.cost
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '重试失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
   }
@@ -792,8 +781,8 @@ async function handleRetryWithPrompt(index: number, extraPrompt: string) {
       totalCost.value += data.cost
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '重试失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
   }

@@ -244,7 +244,7 @@ import ModelSelector from '../components/ModelSelector.vue'
 import PromptEditor from '../components/PromptEditor.vue'
 import VideoPreview from '../components/VideoPreview.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { submitVideo, getVideoStatus, getVideoModels, analyzeFree } from '../api'
+import { submitVideo, getVideoStatus, getVideoModels, analyzeFree, getErrorMessage } from '../api'
 import type { ModelInfo } from '../types'
 
 const submitting = ref(false)
@@ -442,8 +442,8 @@ async function handleSubmit() {
     taskId.value = data.task_id
     taskStatus.value = 'processing'
     startPolling()
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '提交失败，请稍后重试'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '提交失败，请稍后重试')
     ElMessage.error(msg)
   } finally {
     submitting.value = false

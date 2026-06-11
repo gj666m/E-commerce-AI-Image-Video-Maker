@@ -7,6 +7,26 @@ const api = axios.create({
   timeout: 120000,  // 生图可能需要较长时间
 })
 
+// 网络错误自动重试（最多 2 次，仅对 GET 和网络级错误重试，不重试业务错误）
+api.interceptors.response.use(undefined, async (error) => {
+  const config = error.config
+  if (!config) return Promise.reject(error)
+
+  // 只重试网络错误和 5xx，不重试 4xx 业务错误
+  const isNetworkError = !error.response
+  const isServerError = error.response?.status >= 500
+  if (!isNetworkError && !isServerError) return Promise.reject(error)
+
+  // 已达最大重试次数
+  config.__retryCount = config.__retryCount || 0
+  if (config.__retryCount >= 2) return Promise.reject(error)
+
+  config.__retryCount++
+  // 指数退避：1s, 2s
+  await new Promise(r => setTimeout(r, 1000 * config.__retryCount))
+  return api(config)
+})
+
 // 健康检查
 export async function healthCheck(): Promise<HealthResponse> {
   const { data } = await api.get('/api/health')
@@ -248,4 +268,15 @@ export async function recommendStyles(
     timeout: 60000,
   })
   return data
+}
+
+// 从 catch 的 unknown 错误中提取可读消息
+export function getErrorMessage(e: unknown, fallback = '操作失败，请稍后重试'): string {
+  if (typeof e === 'object' && e !== null) {
+    const resp = (e as { response?: { data?: { detail?: string } } }).response
+    if (resp?.data?.detail) return resp.data.detail
+    const msg = (e as { message?: string }).message
+    if (msg) return msg
+  }
+  return fallback
 }

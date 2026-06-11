@@ -6,6 +6,7 @@ import httpx
 
 from app.config import settings
 from app.providers.video_base import VideoProvider, VideoTask
+from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -98,10 +99,10 @@ class SeedanceVideoProvider(VideoProvider):
         url = f"{self.API_BASE}/contents/generations/tasks"
 
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                resp = await client.post(url, headers=headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
+            client = get_http_client()
+            resp = await client.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
 
             task_id = data.get("id")
             if not task_id:
@@ -126,10 +127,10 @@ class SeedanceVideoProvider(VideoProvider):
         url = f"{self.API_BASE}/contents/generations/tasks/{external_task_id}"
 
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.get(url, headers=headers)
-                resp.raise_for_status()
-                data = resp.json()
+            client = get_http_client()
+            resp = await client.get(url, headers=headers, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
         except httpx.HTTPStatusError as e:
             logger.error(f"Seedance 轮询 API 错误: {e.response.status_code}")
             return VideoTask(
@@ -205,7 +206,7 @@ class SeedanceVideoProvider(VideoProvider):
 
         logger.info(f"Seedance 视频下载中: {video_url[:100]}...")
 
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.get(video_url)
-            resp.raise_for_status()
-            return resp.content
+        client = get_http_client()
+        resp = await client.get(video_url, timeout=120)
+        resp.raise_for_status()
+        return resp.content

@@ -149,12 +149,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UploadFilled, Close, Loading } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
-import { analyzeProduct } from '../api'
+import { analyzeProduct, getErrorMessage } from '../api'
 import type { ProductAnalysis } from '../types'
 
 const router = useRouter()
@@ -165,6 +165,11 @@ const extraPrompt = ref('')
 const loading = ref(false)
 const result = ref<ProductAnalysis | null>(null)
 
+// 组件卸载时释放 Blob URL
+onUnmounted(() => {
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value)
+})
+
 function handleImageChange(uploadFile: UploadFile) {
   const file = uploadFile.raw
   if (!file) return
@@ -172,12 +177,14 @@ function handleImageChange(uploadFile: UploadFile) {
     ElMessage.error('图片大小不能超过 20MB')
     return
   }
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value)
   imageFile.value = file
   imagePreview.value = URL.createObjectURL(file)
   result.value = null
 }
 
 function clearImage() {
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value)
   imageFile.value = null
   imagePreview.value = ''
   result.value = null
@@ -193,8 +200,8 @@ async function handleAnalyze() {
     const data = await analyzeProduct(imageFile.value, extraPrompt.value || undefined)
     result.value = data.analysis
     ElMessage.success('分析完成')
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '分析失败，请稍后重试'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '分析失败，请稍后重试')
     ElMessage.error(msg)
   } finally {
     loading.value = false

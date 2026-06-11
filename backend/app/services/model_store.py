@@ -12,8 +12,19 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # 模特库目录
-MODELS_DIR = Path(settings.model_store_dir)
+MODELS_DIR = Path(settings.model_store_dir).resolve()
 THUMB_SIZE = 256  # 缩略图长边像素
+
+
+def _safe_path(filename: str) -> Path:
+    """安全拼接路径，防止路径遍历攻击"""
+    # 只取文件名部分，去掉任何目录组件
+    safe_name = Path(filename).name
+    full_path = (MODELS_DIR / safe_name).resolve()
+    # 确保解析后的路径仍在目标目录内
+    if not full_path.is_relative_to(MODELS_DIR):
+        raise ValueError(f"非法路径: {filename}")
+    return full_path
 
 
 def _ensure_dir():
@@ -69,7 +80,7 @@ def save_model(name: str, params: dict, image_bytes: bytes) -> dict:
     _ensure_dir()
     model_id = _generate_id()
 
-    # 保存原图
+    # 保存原图（model_id 由系统生成，天然安全）
     img_path = MODELS_DIR / f"{model_id}.jpeg"
     img_path.write_bytes(image_bytes)
 
@@ -117,13 +128,16 @@ def delete_model(model_id: str) -> bool:
     if len(new_index) == len(index):
         return False  # 没找到
 
-    # 删除文件
+    # 删除文件（使用安全路径解析）
     for m in index:
         if m["id"] == model_id:
             for key in ("file", "thumbnail"):
-                fpath = MODELS_DIR / m[key]
-                if fpath.exists():
-                    fpath.unlink()
+                try:
+                    fpath = _safe_path(m[key])
+                    if fpath.exists():
+                        fpath.unlink()
+                except ValueError:
+                    logger.warning(f"跳过非法路径: {m[key]}")
             break
 
     _save_index(new_index)

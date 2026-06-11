@@ -20,4 +20,13 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'element-plus': ['element-plus', '@element-plus/icons-vue'],
+        },
+      },
+    },
+  },
 })

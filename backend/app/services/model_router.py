@@ -5,6 +5,7 @@ from app.providers.mock_provider import MockProvider
 from app.providers.openai_provider import OpenAIProvider
 from app.providers.fal_provider import FalProvider
 from app.providers.volcengine_provider import VolcengineProvider
+from app.providers.seedream5_provider import Seedream5Provider
 from app.providers.nanobanana_provider import NanoBananaProvider
 from app.providers.gptimage_provider import GPTImageProvider
 
@@ -20,6 +21,8 @@ def get_available_providers() -> dict[str, BaseProvider]:
         providers["fal"] = FalProvider()
     if settings.has_volcengine:
         providers["volcengine"] = VolcengineProvider()
+    if settings.has_seedream5:
+        providers["seedream5"] = Seedream5Provider()
     if settings.has_nanobanana:
         providers["nanobanana"] = NanoBananaProvider()
     if settings.has_gptimage:
@@ -83,10 +86,16 @@ _MODEL_META = {
         "api_key_hint": "FAL_API_KEY",
     },
     "volcengine": {
-        "display_name": "Seedream（火山方舟）",
-        "description": "豆包 Seedream 图片生成模型，支持文生图和参考图生图",
+        "display_name": "Seedream 4.5（火山方舟）",
+        "description": "豆包 Seedream 4.5 图片生成模型，支持文生图和参考图生图",
         "capabilities": ["text_to_image", "image_to_image"],
         "api_key_hint": "VOLCENGINE_API_KEY",
+    },
+    "seedream5": {
+        "display_name": "Seedream 5.0 Lite（火山方舟）",
+        "description": "豆包 Seedream 5.0 Lite 图片生成模型，更新一代，支持文生图和参考图生图",
+        "capabilities": ["text_to_image", "image_to_image"],
+        "api_key_hint": "SEEDREAM5_API_KEY",
     },
     "nanobanana": {
         "display_name": "Nano Banana 2（Gemini）",

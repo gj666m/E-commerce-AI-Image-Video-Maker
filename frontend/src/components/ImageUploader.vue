@@ -31,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
@@ -46,9 +46,15 @@ const emit = defineEmits<{
 
 const previewUrl = ref<string | null>(null)
 
+// 组件卸载时释放 Blob URL
+onUnmounted(() => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+})
+
 watch(
   () => props.modelValue,
   (file) => {
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
     if (file) {
       previewUrl.value = URL.createObjectURL(file)
     } else {

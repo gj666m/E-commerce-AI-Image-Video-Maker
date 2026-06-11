@@ -1,6 +1,7 @@
 # 视频生成 API - 提交任务 / 查询状态 / 获取结果
 import asyncio
 import logging
+import time
 import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -70,6 +71,33 @@ _VIDEO_MODEL_META = {
 # ========== 内存任务表 ==========
 
 _tasks: dict[str, dict] = {}
+_TASK_EXPIRE_SECONDS = 3600  # 已完成任务保留 1 小时后清理
+
+
+def cleanup_tasks():
+    """清理过期的已完成任务，防止内存泄漏"""
+    now = time.time()
+    expired_keys = [
+        tid for tid, t in _tasks.items()
+        if t.get("completed_at") and (now - t["completed_at"]) > _TASK_EXPIRE_SECONDS
+    ]
+    for tid in expired_keys:
+        _tasks.pop(tid, None)
+    if expired_keys:
+        logger.info(f"清理过期视频任务: {len(expired_keys)} 个")
+
+
+# 同步清理 MockVideoProvider 的内存任务表
+def cleanup_mock_tasks():
+    """清理 Mock Provider 中过期的内存任务"""
+    expired_keys = [
+        tid for tid, t in _mock_video._tasks.items()
+        if t.status in ("completed", "failed")
+        and t.meta.get("completed_at")
+        and (time.time() - t.meta["completed_at"]) > _TASK_EXPIRE_SECONDS
+    ]
+    for tid in expired_keys:
+        _mock_video._tasks.pop(tid, None)
 
 
 # ========== API 端点 ==========
@@ -100,6 +128,20 @@ async def generate_video(
     流程：接收参数 → 商品图压缩 → 模特图风格转换（按需） → Prompt 拼装 → 提交任务 → 返回 task_id
     """
     cleanup_expired()
+    cleanup_tasks()
+    cleanup_mock_tasks()
+
+    # 参数校验
+    if duration not in (5, 10, 15, -1):
+        raise HTTPException(400, "视频时长仅支持 5/10/15/-1（自动）秒")
+    valid_video_ratios = {"16:9", "9:16", "1:1"}
+    if ratio not in valid_video_ratios:
+        raise HTTPException(400, f"视频比例仅支持: {', '.join(sorted(valid_video_ratios))}")
+    valid_cameras = {"推近", "拉远", "环绕", "平移", "跟随", None}
+    if camera_movement not in valid_cameras:
+        raise HTTPException(400, f"镜头运动仅支持: 推近/拉远/环绕/平移/跟随")
+    if not description or not description.strip():
+        raise HTTPException(400, "视频描述不能为空")
 
     # ========== 1. 图片读取 ==========
     async def _read_images(files: list[UploadFile], max_size: int, label: str) -> list[bytes]:
@@ -231,9 +273,12 @@ async def video_status(task_id: str):
             ext = "gif" if provider.name == "mock_video" else "mp4"
             filename = save_video(task_id, video_data, ext=ext)
             video_task.video_url = make_video_url(filename)
+            # 记录完成时间，用于后续清理
+            task_info["completed_at"] = time.time()
         except RuntimeError as e:
             result["status"] = "failed"
             result["error"] = str(e)
+            task_info["completed_at"] = time.time()
             return result
 
     if video_task.video_url:

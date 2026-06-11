@@ -317,10 +317,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Close, Plus, Loading, ArrowLeft } from '@element-plus/icons-vue'
-import { generateImage, planAplus } from '../api'
+import { generateImage, planAplus, getErrorMessage } from '../api'
 import type { ResultCard, AplusPlan } from '../types'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
@@ -395,14 +395,21 @@ const aplusCardLabels = computed(() =>
   })
 )
 
+// ====== 组件卸载时释放所有 Blob URL ======
+onUnmounted(() => {
+  mainPreviews.value.forEach(url => URL.revokeObjectURL(url))
+  aplusPreviews.value.forEach(url => URL.revokeObjectURL(url))
+})
+
 // ====== 商品主图：图片上传 ======
-function handleMainImage(file: any) {
-  const raw = file.raw as File
+function handleMainImage(file: { raw: File }) {
+  const raw = file.raw
   mainImages.value.push(raw)
   mainPreviews.value.push(URL.createObjectURL(raw))
 }
 
 function removeMainImage(idx: number) {
+  URL.revokeObjectURL(mainPreviews.value[idx])
   mainImages.value.splice(idx, 1)
   mainPreviews.value.splice(idx, 1)
 }
@@ -454,13 +461,13 @@ async function handleMainGenerate() {
     mainModelUsed.value = result.model_used
     mainTotalCost.value += result.cost
     ElMessage.success(`生成 ${result.images.length} 张主图`)
-  } catch (e: any) {
+  } catch (e: unknown) {
     for (let i = 0; i < mainCount.value; i++) {
       mainCards.value[startIdx + i] = {
         imageBase64: '',
         status: 'failed',
         promptUsed: '',
-        error: e?.response?.data?.detail || e.message || '生成失败',
+        error: getErrorMessage(e, '生成失败'),
       }
     }
     ElMessage.error('主图生成失败')
@@ -470,7 +477,11 @@ async function handleMainGenerate() {
 }
 
 function handleMainRetry(idx: number) {
+  const card = mainCards.value[idx]
   mainCards.value.splice(idx, 1)
+  // 用原参数重新生成
+  mainCustomPrompt.value = card?.extraPrompt || mainCustomPrompt.value
+  handleMainGenerate()
 }
 
 function handleMainRetryWithPrompt(idx: number, extraPrompt: string) {
@@ -485,13 +496,14 @@ function handleMainRemove(idx: number) {
 }
 
 // ====== A+ 图：图片上传 ======
-function handleAplusImage(file: any) {
-  const raw = file.raw as File
+function handleAplusImage(file: { raw: File }) {
+  const raw = file.raw
   aplusImages.value.push(raw)
   aplusPreviews.value.push(URL.createObjectURL(raw))
 }
 
 function removeAplusImage(idx: number) {
+  URL.revokeObjectURL(aplusPreviews.value[idx])
   aplusImages.value.splice(idx, 1)
   aplusPreviews.value.splice(idx, 1)
 }
@@ -531,12 +543,12 @@ async function handleAplusManualGenerate() {
     aplusModelUsed.value = result.model_used
     aplusTotalCost.value += result.cost
     ElMessage.success('A+ 图生成成功')
-  } catch (e: any) {
+  } catch (e: unknown) {
     aplusCards.value[idx] = {
       imageBase64: '',
       status: 'failed',
       promptUsed: '',
-      error: e?.response?.data?.detail || e.message || '生成失败',
+      error: getErrorMessage(e, '生成失败'),
     }
     ElMessage.error('A+ 图生成失败')
   } finally {
@@ -561,9 +573,9 @@ async function handleAplusPlan() {
     planCounts.value = result.plans.map(() => 1)
     aplusPhase.value = 'ready'
     ElMessage.success(`策划了 ${result.plans.length} 张 A+ 方案`)
-  } catch (e: any) {
+  } catch (e: unknown) {
     aplusPhase.value = ''
-    ElMessage.error(e?.response?.data?.detail || 'AI 策划失败')
+    ElMessage.error(getErrorMessage(e, 'AI 策划失败'))
   } finally {
     aplusPlanLoading.value = false
   }
@@ -628,12 +640,12 @@ async function handleAplusBatchGenerate() {
       }
       aplusTotalCost.value += result.cost
       aplusModelUsed.value = result.model_used
-    } catch (e: any) {
+    } catch (e: unknown) {
       aplusCards.value[startIdx + i] = {
         imageBase64: '',
         status: 'failed',
         promptUsed: '',
-        error: e?.response?.data?.detail || e.message || '生成失败',
+        error: getErrorMessage(e, '生成失败'),
       }
     }
   })

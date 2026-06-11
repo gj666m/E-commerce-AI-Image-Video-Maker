@@ -6,6 +6,7 @@ import httpx
 
 from app.config import settings
 from app.providers.base import BaseProvider, GenerateResult
+from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -96,10 +97,10 @@ class VolcengineProvider(BaseProvider):
         url = f"{self.API_BASE}/images/generations"
 
         try:
-            async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.post(url, headers=headers, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
+            client = get_http_client()
+            resp = await client.post(url, headers=headers, json=payload, timeout=120)
+            resp.raise_for_status()
+            data = resp.json()
 
             images_result = await self._extract_images(data)
             cost = round(COST_PER_IMAGE * len(images_result), 4)
@@ -137,8 +138,8 @@ class VolcengineProvider(BaseProvider):
             # 从 URL 下载
             img_url = item.get("url")
             if img_url:
-                async with httpx.AsyncClient(timeout=60) as client:
-                    resp = await client.get(img_url)
-                    if resp.status_code == 200:
-                        images.append(resp.content)
+                client = get_http_client()
+                resp = await client.get(img_url, timeout=60)
+                if resp.status_code == 200:
+                    images.append(resp.content)
         return images

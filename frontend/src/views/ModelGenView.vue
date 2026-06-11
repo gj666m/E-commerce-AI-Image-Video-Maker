@@ -266,8 +266,9 @@ import { Plus, Close, MagicStick, Promotion } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { generateModel, saveModel, analyzeFree } from '../api'
+import { generateModel, saveModel, analyzeFree, getErrorMessage } from '../api'
 import type { ResultCard } from '../types'
+import { useImageList } from '../composables/useImageList'
 
 const mode = ref<'text' | 'image'>('text')
 const loading = ref(false)
@@ -278,8 +279,7 @@ const modelUsed = ref('')
 const totalCost = ref(0)
 
 // 参考图（多张）
-const refImages = ref<File[]>([])
-const refPreviews = ref<string[]>([])
+const { files: refImages, previews: refPreviews, add: handleRefImage, remove: removeRefImage } = useImageList(3, '参考图')
 
 // 商品信息（自由文本）
 const productInfo = ref('')
@@ -340,23 +340,6 @@ async function optimizeDescription() {
   }
 }
 
-// 参考图处理
-function handleRefImage(uploadFile: UploadFile) {
-  const file = uploadFile.raw
-  if (!file) return
-  if (refImages.value.length >= 3) {
-    ElMessage.warning('最多上传 3 张参考图')
-    return
-  }
-  refImages.value.push(file)
-  refPreviews.value.push(URL.createObjectURL(file))
-}
-
-function removeRefImage(index: number) {
-  refImages.value.splice(index, 1)
-  refPreviews.value.splice(index, 1)
-}
-
 // 生成
 async function handleGenerate() {
   loading.value = true
@@ -407,8 +390,8 @@ async function handleGenerate() {
     modelUsed.value = data.model_used
     totalCost.value = data.cost
     ElMessage.success(`生成完成，共 ${data.images.length} 张`)
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '生成失败，请稍后重试'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '生成失败，请稍后重试')
     cards.value = cards.value.map(c => ({ ...c, status: 'failed' as const, error: msg }))
     ElMessage.error(msg)
   } finally {
@@ -453,8 +436,8 @@ async function handleRetry(index: number) {
       totalCost.value += data.cost
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '重试失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
   }
@@ -497,8 +480,8 @@ async function handleRetryWithPrompt(index: number, extraPrompt: string) {
       totalCost.value += data.cost
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '重试失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
   }
@@ -522,8 +505,8 @@ async function handleSaveModel(index: number) {
       image_data: card.imageBase64,
     })
     ElMessage.success(`已保存「${name}」到模特库`)
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '保存失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '保存失败')
     ElMessage.error(msg)
   }
 }

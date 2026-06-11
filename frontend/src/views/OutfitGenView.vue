@@ -220,8 +220,9 @@ import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ModelLibrary from '../components/ModelLibrary.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { generateImage, getModels, analyzeFree } from '../api'
+import { generateImage, getModels, analyzeFree, getErrorMessage } from '../api'
 import type { ModelInfo, ModelItem, ResultCard } from '../types'
+import { useImageList } from '../composables/useImageList'
 
 const mode = ref<'single' | 'model'>('single')
 const loading = ref(false)
@@ -233,9 +234,7 @@ const modelUsed = ref('')
 const totalCost = ref(0)
 
 // 商品图（支持多张）
-const productImages = ref<File[]>([])
-const productPreviews = ref<string[]>([])
-
+const { files: productImages, previews: productPreviews, add: handleProductImage, remove: removeProductImage } = useImageList(6, '商品图')
 // 商品信息（自由文本）
 const productInfo = ref('')
 // 模特库
@@ -320,23 +319,6 @@ onMounted(async () => {
     ElMessage.error('获取模型列表失败')
   }
 })
-
-// 商品图处理
-function handleProductImage(uploadFile: UploadFile) {
-  const file = uploadFile.raw
-  if (!file) return
-  if (productImages.value.length >= 6) {
-    ElMessage.warning('最多上传 6 张商品图')
-    return
-  }
-  productImages.value.push(file)
-  productPreviews.value.push(URL.createObjectURL(file))
-}
-
-function removeProductImage(index: number) {
-  productImages.value.splice(index, 1)
-  productPreviews.value.splice(index, 1)
-}
 
 // 模特选择
 async function handleModelSelect(model: ModelItem) {
@@ -439,8 +421,8 @@ async function handleGenerate() {
     modelUsed.value = data.model_used
     totalCost.value = data.cost
     ElMessage.success('生成完成')
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '生成失败，请稍后重试'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '生成失败，请稍后重试')
     cards.value = cards.value.map(c => ({ ...c, status: 'failed' as const, error: msg }))
     ElMessage.error(msg)
   } finally {
@@ -482,8 +464,8 @@ async function handleRetry(index: number) {
       totalCost.value += data.cost
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '重试失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
   }
@@ -517,8 +499,8 @@ async function handleRetryWithPrompt(index: number, extraPrompt: string) {
       totalCost.value += data.cost
       ElMessage.success(`#${index + 1} 重新生成完成`)
     }
-  } catch (e: any) {
-    const msg = e?.response?.data?.detail || '重试失败'
+  } catch (e: unknown) {
+    const msg = getErrorMessage(e, '重试失败')
     cards.value[index] = { ...cards.value[index], status: 'failed', error: msg }
     ElMessage.error(msg)
   }
