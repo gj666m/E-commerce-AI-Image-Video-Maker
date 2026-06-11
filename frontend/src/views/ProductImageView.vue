@@ -477,10 +477,7 @@ async function handleMainGenerate() {
 }
 
 function handleMainRetry(idx: number) {
-  const card = mainCards.value[idx]
   mainCards.value.splice(idx, 1)
-  // 用原参数重新生成
-  mainCustomPrompt.value = card?.extraPrompt || mainCustomPrompt.value
   handleMainGenerate()
 }
 

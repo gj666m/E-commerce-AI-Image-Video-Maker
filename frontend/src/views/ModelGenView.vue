@@ -263,7 +263,6 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Close, MagicStick, Promotion } from '@element-plus/icons-vue'
-import type { UploadFile } from 'element-plus'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
 import { generateModel, saveModel, analyzeFree, getErrorMessage } from '../api'

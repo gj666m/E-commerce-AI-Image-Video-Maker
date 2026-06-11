@@ -215,7 +215,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Close, Upload, EditPen, MagicStick, Promotion } from '@element-plus/icons-vue'
-import type { UploadFile } from 'element-plus'
 import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ModelLibrary from '../components/ModelLibrary.vue'
