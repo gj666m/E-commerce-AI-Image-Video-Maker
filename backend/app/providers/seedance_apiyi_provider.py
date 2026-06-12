@@ -85,7 +85,7 @@ class SeedanceApiyiVideoProvider(SeedanceVideoProvider):
 
         try:
             client = get_http_client()
-            resp = await client.post(url, headers=headers, json=payload, timeout=120)
+            resp = await client.post(url, headers=headers, json=payload, timeout=300)
             resp.raise_for_status()
             data = resp.json()
 
