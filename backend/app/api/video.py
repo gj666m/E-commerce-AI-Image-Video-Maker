@@ -16,6 +16,7 @@ from app.services.video_utils import (
 )
 from app.providers.mock_video_provider import MockVideoProvider
 from app.providers.seedance_provider import SeedanceVideoProvider
+from app.providers.seedance_apiyi_provider import SeedanceApiyiVideoProvider
 from app.providers.video_base import VideoProvider
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/api/video", tags=["video"])
 
 _mock_video = MockVideoProvider()
 _seedance_video = SeedanceVideoProvider()
+_seedance_apiyi_video = SeedanceApiyiVideoProvider()
 
 
 def _get_available_video_providers() -> dict[str, VideoProvider]:
@@ -34,6 +36,8 @@ def _get_available_video_providers() -> dict[str, VideoProvider]:
     }
     if settings.has_seedance:
         providers["seedance"] = _seedance_video
+    if settings.has_seedance_apiyi:
+        providers["seedance_apiyi"] = _seedance_apiyi_video
     return providers
 
 
@@ -45,7 +49,9 @@ def _get_video_provider(model_name: str | None = None) -> VideoProvider:
     if model_name and model_name in providers:
         return providers[model_name]
 
-    # 自动路由：优先真实 Provider，mock 兜底
+    # 自动路由：API易优先（不限并发），火山方舟次之，mock 兜底
+    if settings.has_seedance_apiyi:
+        return providers["seedance_apiyi"]
     if settings.has_seedance:
         return providers["seedance"]
 
@@ -65,6 +71,12 @@ _VIDEO_MODEL_META = {
         "description": "字节跳动 Seedance 视频生成，支持图生视频 + 音频生成",
         "capabilities": ["image_to_video", "text_to_video"],
         "api_key_hint": "VOLCENGINE_SEEDANCE_ENDPOINT",
+    },
+    "seedance_apiyi": {
+        "display_name": "Seedance 2.0（API易中转）",
+        "description": "Seedance 2.0 通过 API易中转站接入，不限并发不排队，按 token 计费",
+        "capabilities": ["image_to_video", "text_to_video"],
+        "api_key_hint": "SEEDANCE_APIYI_API_KEY",
     },
 }
 
