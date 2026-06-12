@@ -185,8 +185,10 @@ async def generate_video(
         product_raw = old_raw  # 旧参数全部当商品图处理
 
     # ========== 2. 图片处理 ==========
-    # 商品图：仅压缩
-    product_bytes = [compress_image(raw) for raw in product_raw]
+    # 视频参考图用更激进的压缩（1280px），减少上传时间避免超时
+    VIDEO_REF_MAX_EDGE = 1280
+    # 商品图：压缩
+    product_bytes = [compress_image(raw, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for raw in product_raw]
 
     # 模特图：含人脸 → 风格转换；不含人脸 → 仅压缩
     has_stylized_model = False
@@ -200,11 +202,11 @@ async def generate_video(
                 *[stylize_for_video(raw) for raw in model_raw]
             )
             # 风格转换后的图再压缩
-            model_bytes = [compress_image(s) for s in stylized_list]
+            model_bytes = [compress_image(s, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for s in stylized_list]
             has_stylized_model = True
             logger.info("模特素材图风格转换完成")
         else:
-            model_bytes = [compress_image(raw) for raw in model_raw]
+            model_bytes = [compress_image(raw, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for raw in model_raw]
 
     # 合并所有图片：商品图在前，模特图在后
     all_images = product_bytes + model_bytes
