@@ -169,17 +169,27 @@
 
             <!-- 生成按钮 -->
             <el-form-item>
-              <el-button
-                type="primary"
-                size="large"
-                :loading="submitting"
-                :disabled="!canGenerate"
-                @click="handleSubmit"
-                style="width: 100%"
-              >
-                <el-icon v-if="!submitting" style="margin-right: 6px"><Promotion /></el-icon>
-                {{ submitting ? '提交中...' : '生成视频' }}
-              </el-button>
+              <div style="display: flex; gap: 10px; width: 100%">
+                <el-button
+                  type="primary"
+                  size="large"
+                  :loading="submitting"
+                  :disabled="!canGenerate"
+                  @click="handleSubmit"
+                  style="flex: 1"
+                >
+                  <el-icon v-if="!submitting" style="margin-right: 6px"><Promotion /></el-icon>
+                  {{ submitting ? '提交中...' : '生成视频' }}
+                </el-button>
+                <el-button
+                  v-if="submitting"
+                  type="danger"
+                  size="large"
+                  @click="cancelSubmit"
+                >
+                  取消
+                </el-button>
+              </div>
             </el-form-item>
           </el-form>
         </el-card>
@@ -268,6 +278,7 @@ const cost = ref(0)
 const currency = ref('¥')
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
+let abortController: AbortController | null = null
 
 const form = ref({
   image: null as File | null,
@@ -429,6 +440,7 @@ async function handleSubmit() {
   taskStatus.value = 'pending'
   progress.value = 0
   videoUrl.value = null
+  abortController = new AbortController()
 
   try {
     const data = await submitVideo({
@@ -451,15 +463,26 @@ async function handleSubmit() {
       camera_movement: form.value.cameraMovement || undefined,
       product_info: productInfo.value || undefined,
       resolution: form.value.resolution || undefined,
-    })
+    }, abortController.signal)
     taskId.value = data.task_id
     taskStatus.value = 'processing'
     startPolling()
   } catch (e: unknown) {
-    const msg = getErrorMessage(e, '提交失败，请稍后重试')
-    ElMessage.error(msg)
+    if (e instanceof DOMException && e.name === 'CanceledError') {
+      ElMessage.info('已取消提交')
+    } else {
+      const msg = getErrorMessage(e, '提交失败，请稍后重试')
+      ElMessage.error(msg)
+    }
   } finally {
     submitting.value = false
+    abortController = null
+  }
+}
+
+function cancelSubmit() {
+  if (abortController) {
+    abortController.abort()
   }
 }
 

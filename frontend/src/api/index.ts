@@ -86,7 +86,7 @@ export async function generateImage(params: GenerateParams): Promise<GenerateRes
 // === 视频模块 ===
 
 // 提交视频生成任务
-export async function submitVideo(params: VideoGenerateParams): Promise<VideoGenerateResponse> {
+export async function submitVideo(params: VideoGenerateParams, signal?: AbortSignal): Promise<VideoGenerateResponse> {
   const formData = new FormData()
   formData.append('description', params.description)
 
@@ -126,6 +126,7 @@ export async function submitVideo(params: VideoGenerateParams): Promise<VideoGen
   const { data } = await api.post('/api/video/generate', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 360000,  // 风格转换 + 大图上传可能较久（最多 6 分钟）
+    signal,
   })
   return data
 }
