@@ -120,7 +120,7 @@ export async function submitVideo(params: VideoGenerateParams): Promise<VideoGen
 
   const { data } = await api.post('/api/video/generate', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 180000,  // 风格转换 + 视频提交可能较久
+    timeout: 360000,  // 风格转换 + 大图上传可能较久（最多 6 分钟）
   })
   return data
 }
