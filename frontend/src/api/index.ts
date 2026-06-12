@@ -17,6 +17,11 @@ api.interceptors.response.use(undefined, async (error) => {
     return Promise.reject(error)
   }
 
+  // POST 视频生成/图片生成等写操作不重试（可能已执行，重试会重复扣费）
+  if (config.method === 'post') {
+    return Promise.reject(error)
+  }
+
   // 只重试网络错误和 5xx，不重试 4xx 业务错误
   const isNetworkError = !error.response
   const isServerError = error.response?.status >= 500
