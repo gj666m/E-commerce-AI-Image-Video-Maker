@@ -80,6 +80,7 @@ export interface VideoGenerateParams {
   generate_audio?: boolean
   camera_movement?: string  // 推近/拉远/环绕/平移/跟随
   product_info?: string     // 商品信息文本
+  resolution?: string       // 480p / 720p / 1080p
 }
 
 // 视频生成提交响应

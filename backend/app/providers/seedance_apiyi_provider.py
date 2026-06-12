@@ -37,6 +37,7 @@ class SeedanceApiyiVideoProvider(SeedanceVideoProvider):
         duration = params.get("duration", 5)
         ratio = params.get("ratio", "16:9")
         generate_audio = params.get("generate_audio", False)
+        resolution = params.get("resolution")  # 480p / 720p / 1080p
 
         import base64
         import httpx
@@ -80,6 +81,10 @@ class SeedanceApiyiVideoProvider(SeedanceVideoProvider):
             "generate_audio": generate_audio,
             "watermark": False,
         }
+
+        # 分辨率（不传则 API 默认）
+        if resolution:
+            payload["resolution"] = resolution
 
         url = f"{self.API_BASE}/contents/generations/tasks"
 

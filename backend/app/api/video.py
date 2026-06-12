@@ -134,6 +134,7 @@ async def generate_video(
     generate_audio: bool = Form(False, description="是否生成音频"),
     camera_movement: str | None = Form(None, description="镜头运动: 推近/拉远/环绕/平移/跟随"),
     product_info: str | None = Form(None, description="商品信息文本"),
+    resolution: str | None = Form(None, description="分辨率: 480p / 720p / 1080p"),
 ):
     """提交视频生成任务
 
@@ -152,6 +153,9 @@ async def generate_video(
     valid_cameras = {"推近", "拉远", "环绕", "平移", "跟随", None}
     if camera_movement not in valid_cameras:
         raise HTTPException(400, f"镜头运动仅支持: 推近/拉远/环绕/平移/跟随")
+    valid_resolutions = {"480p", "720p", "1080p", None}
+    if resolution not in valid_resolutions:
+        raise HTTPException(400, f"分辨率仅支持: 480p / 720p / 1080p")
     if not description or not description.strip():
         raise HTTPException(400, "视频描述不能为空")
 
@@ -228,7 +232,7 @@ async def generate_video(
     try:
         external_id = await provider.submit(
             prompt, image=main_image, extra_images=extra_images,
-            params={"duration": duration, "ratio": ratio, "generate_audio": generate_audio},
+            params={"duration": duration, "ratio": ratio, "generate_audio": generate_audio, "resolution": resolution},
         )
     except RuntimeError as e:
         error_msg = str(e)

@@ -115,9 +115,9 @@
               </el-col>
             </el-row>
 
-            <!-- 比例 + 时长 + 音频 -->
+            <!-- 比例 + 时长 + 音频 + 分辨率 -->
             <el-row :gutter="12">
-              <el-col :span="8">
+              <el-col :span="6">
                 <el-form-item label="视频比例">
                   <el-select v-model="form.ratio">
                     <el-option label="16:9 横屏" value="16:9" />
@@ -126,7 +126,16 @@
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col :span="8">
+              <el-col :span="6">
+                <el-form-item label="分辨率">
+                  <el-select v-model="form.resolution">
+                    <el-option label="480p 标清" value="480p" />
+                    <el-option label="720p 高清" value="720p" />
+                    <el-option label="1080p 全高清" value="1080p" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
                 <el-form-item label="时长">
                   <el-radio-group v-model="form.duration">
                     <el-radio-button :value="5">5秒</el-radio-button>
@@ -136,7 +145,7 @@
                   </el-radio-group>
                 </el-form-item>
               </el-col>
-              <el-col :span="8">
+              <el-col :span="6">
                 <el-form-item label="音频">
                   <el-switch
                     v-model="form.generateAudio"
@@ -270,6 +279,7 @@ const form = ref({
   ratio: '16:9',
   generateAudio: false,
   cameraMovement: '',
+  resolution: '720p',
 })
 
 const videoModels = ref<ModelInfo[]>([])
@@ -440,6 +450,7 @@ async function handleSubmit() {
       generate_audio: form.value.generateAudio,
       camera_movement: form.value.cameraMovement || undefined,
       product_info: productInfo.value || undefined,
+      resolution: form.value.resolution || undefined,
     })
     taskId.value = data.task_id
     taskStatus.value = 'processing'

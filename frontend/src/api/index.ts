@@ -116,6 +116,7 @@ export async function submitVideo(params: VideoGenerateParams): Promise<VideoGen
   if (params.generate_audio !== undefined) formData.append('generate_audio', String(params.generate_audio))
   if (params.camera_movement) formData.append('camera_movement', params.camera_movement)
   if (params.product_info) formData.append('product_info', params.product_info)
+  if (params.resolution) formData.append('resolution', params.resolution)
 
   const { data } = await api.post('/api/video/generate', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
