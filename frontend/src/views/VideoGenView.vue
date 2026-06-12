@@ -4,118 +4,167 @@
       <!-- 左侧：输入区 -->
       <el-col :span="12">
         <el-card>
-          <el-form label-position="top">
-            <!-- 商品图上传（必传） -->
-            <el-form-item label="商品图（必传，1-6张）">
-              <div v-if="productImages.length > 0" class="ref-images-grid">
-                <div v-for="(img, idx) in productImages" :key="'p'+idx" class="ref-image-item">
-                  <el-image
-                    :src="'data:image/png;base64,' + img"
-                    fit="contain"
-                    class="ref-image-thumb"
-                  />
-                  <el-button type="danger" size="small" circle @click="removeProductImage(idx)">
-                    <el-icon><Close /></el-icon>
-                  </el-button>
-                </div>
-              </div>
-              <ImageUploader v-if="productImages.length < 6" v-model="form.image" @update:model-value="(f: File | null) => onImageAdd(f, 'product')" />
-            </el-form-item>
+          <!-- 模式切换 -->
+          <el-tabs v-model="mode" class="mode-tabs">
+            <el-tab-pane label="电商模式" name="ecommerce" />
+            <el-tab-pane label="自由创作" name="free" />
+          </el-tabs>
 
-            <!-- 模特素材图上传（可选） -->
-            <el-form-item>
-              <template #label>
-                <span>模特素材图（可选，0-3张）</span>
-              </template>
-              <div v-if="modelImages.length > 0" class="ref-images-grid">
-                <div v-for="(img, idx) in modelImages" :key="'m'+idx" class="ref-image-item">
-                  <el-image
-                    :src="'data:image/png;base64,' + img"
-                    fit="contain"
-                    class="ref-image-thumb"
-                  />
-                  <el-button type="danger" size="small" circle @click="removeModelImage(idx)">
-                    <el-icon><Close /></el-icon>
-                  </el-button>
+          <el-form label-position="top">
+            <!-- ========== 自由创作模式 ========== -->
+            <template v-if="mode === 'free'">
+              <!-- 参考图上传 -->
+              <el-form-item label="参考图（1-6张）">
+                <div v-if="freeImages.length > 0" class="ref-images-grid">
+                  <div v-for="(img, idx) in freeImages" :key="'f'+idx" class="ref-image-item">
+                    <el-image
+                      :src="'data:image/png;base64,' + img"
+                      fit="contain"
+                      class="ref-image-thumb"
+                    />
+                    <el-button type="danger" size="small" circle @click="freeImages.splice(idx, 1)">
+                      <el-icon><Close /></el-icon>
+                    </el-button>
+                  </div>
                 </div>
-              </div>
-              <ImageUploader v-if="modelImages.length < 3" v-model="form.image" @update:model-value="(f: File | null) => onImageAdd(f, 'model')" />
-              <div class="face-switch">
+                <ImageUploader v-if="freeImages.length < 6" v-model="form.image" @update:model-value="(f: File | null) => onImageAdd(f, 'free')" />
+              </el-form-item>
+
+              <!-- 人脸处理 -->
+              <el-form-item>
                 <el-switch
-                  v-model="modelHasFace"
+                  v-model="freeFaceProcess"
                   active-text="含人脸（自动风格化）"
                   inactive-text="无人脸"
                 />
-              </div>
-            </el-form-item>
+              </el-form-item>
 
-            <!-- 商品信息（结构化，可 AI 分析） -->
-            <ProductInfoForm v-model="productInfo" :image="analyzableImage" />
-
-            <!-- 视频描述 -->
-            <el-form-item label="视频描述" required>
-              <div class="description-row">
+              <!-- 创意描述 -->
+              <el-form-item label="创意描述" required>
                 <el-input
                   v-model="form.description"
                   type="textarea"
-                  :rows="3"
-                  placeholder="描述你想要的视频效果，如：模特穿着连衣裙在花园中优雅转身..."
-                  style="flex: 1"
+                  :rows="4"
+                  placeholder="描述你想要的视频效果，如：一个穿白裙的女孩在海边奔跑，夕阳逆光..."
                 />
-                <el-button
-                  type="success"
-                  plain
-                  :loading="optimizing"
-                  :disabled="!analyzableImage"
-                  @click="optimizeDescription"
-                  style="margin-left: 8px; align-self: flex-start;"
-                >
-                  <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
-                  AI 优化
-                </el-button>
-              </div>
-              <div class="preset-tags">
-                <el-tag
-                  v-for="tag in motionPresets"
-                  :key="tag"
-                  size="small"
-                  effect="plain"
-                  class="preset-tag"
-                  @click="appendDescription(tag)"
-                >
-                  {{ tag }}
-                </el-tag>
-              </div>
-            </el-form-item>
+              </el-form-item>
+            </template>
 
-            <!-- 风格 + 镜头运动 -->
-            <el-row :gutter="12">
-              <el-col :span="12">
-                <el-form-item label="风格">
-                  <el-select v-model="form.style" placeholder="选择风格" clearable>
-                    <el-option label="生活方式" value="lifestyle" />
-                    <el-option label="时尚秀场" value="fashion show" />
-                    <el-option label="棚拍" value="studio" />
-                    <el-option label="户外自然" value="outdoor" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="镜头运动">
-                  <el-select v-model="form.cameraMovement" placeholder="选择镜头运动" clearable>
-                    <el-option label="缓慢环绕" value="缓慢环绕" />
-                    <el-option label="推近特写" value="缓慢推近，从全景到特写" />
-                    <el-option label="拉远全景" value="缓慢拉远，从特写到全景" />
-                    <el-option label="水平平移" value="水平平移，从左到右" />
-                    <el-option label="跟随移动" value="跟随主体移动" />
-                    <el-option label="低角度仰拍" value="低角度仰拍，缓慢上升" />
-                    <el-option label="静态固定" value="固定机位，画面稳定不动" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-            </el-row>
+            <!-- ========== 电商模式 ========== -->
+            <template v-else>
+              <!-- 商品图上传（必传） -->
+              <el-form-item label="商品图（必传，1-6张）">
+                <div v-if="productImages.length > 0" class="ref-images-grid">
+                  <div v-for="(img, idx) in productImages" :key="'p'+idx" class="ref-image-item">
+                    <el-image
+                      :src="'data:image/png;base64,' + img"
+                      fit="contain"
+                      class="ref-image-thumb"
+                    />
+                    <el-button type="danger" size="small" circle @click="removeProductImage(idx)">
+                      <el-icon><Close /></el-icon>
+                    </el-button>
+                  </div>
+                </div>
+                <ImageUploader v-if="productImages.length < 6" v-model="form.image" @update:model-value="(f: File | null) => onImageAdd(f, 'product')" />
+              </el-form-item>
 
-            <!-- 比例 + 时长 + 音频 + 分辨率 -->
+              <!-- 模特素材图上传（可选） -->
+              <el-form-item>
+                <template #label>
+                  <span>模特素材图（可选，0-3张）</span>
+                </template>
+                <div v-if="modelImages.length > 0" class="ref-images-grid">
+                  <div v-for="(img, idx) in modelImages" :key="'m'+idx" class="ref-image-item">
+                    <el-image
+                      :src="'data:image/png;base64,' + img"
+                      fit="contain"
+                      class="ref-image-thumb"
+                    />
+                    <el-button type="danger" size="small" circle @click="removeModelImage(idx)">
+                      <el-icon><Close /></el-icon>
+                    </el-button>
+                  </div>
+                </div>
+                <ImageUploader v-if="modelImages.length < 3" v-model="form.image" @update:model-value="(f: File | null) => onImageAdd(f, 'model')" />
+                <div class="face-switch">
+                  <el-switch
+                    v-model="modelHasFace"
+                    active-text="含人脸（自动风格化）"
+                    inactive-text="无人脸"
+                  />
+                </div>
+              </el-form-item>
+
+              <!-- 商品信息 -->
+              <ProductInfoForm v-model="productInfo" :image="analyzableImage" />
+
+              <!-- 视频描述 -->
+              <el-form-item label="视频描述" required>
+                <div class="description-row">
+                  <el-input
+                    v-model="form.description"
+                    type="textarea"
+                    :rows="3"
+                    placeholder="描述你想要的视频效果，如：模特穿着连衣裙在花园中优雅转身..."
+                    style="flex: 1"
+                  />
+                  <el-button
+                    type="success"
+                    plain
+                    :loading="optimizing"
+                    :disabled="!analyzableImage"
+                    @click="optimizeDescription"
+                    style="margin-left: 8px; align-self: flex-start;"
+                  >
+                    <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
+                    AI 优化
+                  </el-button>
+                </div>
+                <div class="preset-tags">
+                  <el-tag
+                    v-for="tag in motionPresets"
+                    :key="tag"
+                    size="small"
+                    effect="plain"
+                    class="preset-tag"
+                    @click="appendDescription(tag)"
+                  >
+                    {{ tag }}
+                  </el-tag>
+                </div>
+              </el-form-item>
+
+              <!-- 风格 + 镜头运动 -->
+              <el-row :gutter="12">
+                <el-col :span="12">
+                  <el-form-item label="风格">
+                    <el-select v-model="form.style" placeholder="选择风格" clearable>
+                      <el-option label="生活方式" value="lifestyle" />
+                      <el-option label="时尚秀场" value="fashion show" />
+                      <el-option label="棚拍" value="studio" />
+                      <el-option label="户外自然" value="outdoor" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="镜头运动">
+                    <el-select v-model="form.cameraMovement" placeholder="选择镜头运动" clearable>
+                      <el-option label="缓慢环绕" value="缓慢环绕" />
+                      <el-option label="推近特写" value="缓慢推近，从全景到特写" />
+                      <el-option label="拉远全景" value="缓慢拉远，从特写到全景" />
+                      <el-option label="水平平移" value="水平平移，从左到右" />
+                      <el-option label="跟随移动" value="跟随主体移动" />
+                      <el-option label="低角度仰拍" value="低角度仰拍，缓慢上升" />
+                      <el-option label="静态固定" value="固定机位，画面稳定不动" />
+                    </el-select>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </template>
+
+            <!-- ========== 公共参数 ========== -->
+            <!-- 比例 + 分辨率 + 时长 + 音频 -->
             <el-row :gutter="12">
               <el-col :span="6">
                 <el-form-item label="视频比例">
@@ -280,6 +329,9 @@ const currency = ref('¥')
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let abortController: AbortController | null = null
 
+// 模式切换
+const mode = ref<'ecommerce' | 'free'>('free')
+
 const form = ref({
   image: null as File | null,
   description: '',
@@ -310,19 +362,21 @@ function appendDescription(tag: string) {
   }
 }
 
-// 商品图（base64 列表）
+// 电商模式图片
 const productImages = ref<string[]>([])
-// 模特素材图（base64 列表）
 const modelImages = ref<string[]>([])
-// 模特图含人脸开关
 const modelHasFace = ref(true)
-
-// 商品信息（自由文本）
 const productInfo = ref('')
 
-const canGenerate = computed(() =>
-  form.value.description.trim().length > 0 && productImages.value.length > 0
-)
+// 自由创作模式图片
+const freeImages = ref<string[]>([])
+const freeFaceProcess = ref(false)
+
+const canGenerate = computed(() => {
+  if (!form.value.description.trim()) return false
+  if (mode.value === 'free') return freeImages.value.length > 0
+  return productImages.value.length > 0
+})
 
 // 供 ProductInfoForm 分析的图片（取商品图第一张）
 const analyzableImage = computed<File | null>(() => {
@@ -407,7 +461,7 @@ function removeModelImage(idx: number) {
 }
 
 // 本地上传新图时加入对应区域
-function onImageAdd(file: File | null, target: 'product' | 'model') {
+function onImageAdd(file: File | null, target: 'product' | 'model' | 'free') {
   if (!file) return
   const reader = new FileReader()
   reader.onload = () => {
@@ -415,8 +469,10 @@ function onImageAdd(file: File | null, target: 'product' | 'model') {
     if (base64) {
       if (target === 'product') {
         productImages.value.push(base64)
-      } else {
+      } else if (target === 'model') {
         modelImages.value.push(base64)
+      } else {
+        freeImages.value.push(base64)
       }
       form.value.image = null // 清空 uploader
     }
@@ -443,27 +499,47 @@ async function handleSubmit() {
   abortController = new AbortController()
 
   try {
-    const data = await submitVideo({
-      product_images: productImages.value.map((b64, i) =>
-        base64ToFile(b64, `product_${i}.png`)
-      ),
-      model_images: modelImages.value.length > 0
-        ? modelImages.value.map((b64, i) =>
-            base64ToFile(b64, `model_${i}.png`)
-          )
-        : undefined,
-      model_has_face: modelImages.value.length > 0 ? modelHasFace.value : undefined,
-      description: form.value.description,
-      duration: form.value.duration,
-      model_name: form.value.modelName,
-      style: form.value.style || undefined,
-      custom_prompt: form.value.customPrompt || undefined,
-      ratio: form.value.ratio,
-      generate_audio: form.value.generateAudio,
-      camera_movement: form.value.cameraMovement || undefined,
-      product_info: productInfo.value || undefined,
-      resolution: form.value.resolution || undefined,
-    }, abortController.signal)
+    let submitParams
+
+    if (mode.value === 'free') {
+      // 自由创作：开了人脸处理就当 model_images，否则当 product_images
+      const files = freeImages.value.map((b64, i) => base64ToFile(b64, `ref_${i}.png`))
+      submitParams = {
+        product_images: freeFaceProcess.value ? undefined : files,
+        model_images: freeFaceProcess.value ? files : undefined,
+        model_has_face: freeFaceProcess.value ? true : undefined,
+        description: form.value.description,
+        duration: form.value.duration,
+        model_name: form.value.modelName,
+        style: form.value.style || undefined,
+        custom_prompt: form.value.customPrompt || undefined,
+        ratio: form.value.ratio,
+        generate_audio: form.value.generateAudio,
+        camera_movement: form.value.cameraMovement || undefined,
+        resolution: form.value.resolution || undefined,
+      }
+    } else {
+      // 电商模式
+      submitParams = {
+        product_images: productImages.value.map((b64, i) => base64ToFile(b64, `product_${i}.png`)),
+        model_images: modelImages.value.length > 0
+          ? modelImages.value.map((b64, i) => base64ToFile(b64, `model_${i}.png`))
+          : undefined,
+        model_has_face: modelImages.value.length > 0 ? modelHasFace.value : undefined,
+        description: form.value.description,
+        duration: form.value.duration,
+        model_name: form.value.modelName,
+        style: form.value.style || undefined,
+        custom_prompt: form.value.customPrompt || undefined,
+        ratio: form.value.ratio,
+        generate_audio: form.value.generateAudio,
+        camera_movement: form.value.cameraMovement || undefined,
+        product_info: productInfo.value || undefined,
+        resolution: form.value.resolution || undefined,
+      }
+    }
+
+    const data = await submitVideo(submitParams, abortController.signal)
     taskId.value = data.task_id
     taskStatus.value = 'processing'
     startPolling()
@@ -530,6 +606,10 @@ function startPolling() {
 
 .main-content {
   margin-top: 20px;
+}
+
+.mode-tabs {
+  margin-bottom: 16px;
 }
 
 .progress-area {
