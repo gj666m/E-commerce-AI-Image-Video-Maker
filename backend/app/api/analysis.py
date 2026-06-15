@@ -7,13 +7,15 @@ from typing import List
 
 from app.deps import get_current_user
 from app.providers.deepseek_provider import ProductAnalysisProvider
+from app.providers.gemini_provider import GeminiProvider
 from app.services.image_utils import compress_image, get_image_info
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["analysis"])
 
-# 全局单例
+# 全局单例：_provider（豆包，商品/人设分析）、_gemini（Gemini，创意类任务）
 _provider = ProductAnalysisProvider()
+_gemini = GeminiProvider()
 
 
 @router.post("/analyze")
@@ -121,7 +123,7 @@ async def plan_shots(
     logger.info(f"策划请求: {len(img_list)} 张图片")
 
     try:
-        result = await _provider.plan_shots(
+        result = await _gemini.plan_shots(
             img_list,
             product_info or "",
             persona or "",
@@ -159,7 +161,7 @@ async def recommend_styles(
     logger.info(f"风格推荐请求: {len(parsed_plans)} 个方案")
 
     try:
-        result = await _provider.recommend_styles(
+        result = await _gemini.recommend_styles(
             parsed_plans,
             product_info or "",
             persona or "",
@@ -195,7 +197,7 @@ async def analyze_free(
     logger.info(f"自由文本查询: prompt={prompt[:50]}...")
 
     try:
-        text = await _provider.free_text_query(image_bytes, prompt, mime_type)
+        text = await _gemini.free_text_query(image_bytes, prompt, mime_type)
     except RuntimeError as e:
         logger.error(f"自由文本查询失败: {e}")
         raise HTTPException(500, str(e))
@@ -231,7 +233,7 @@ async def plan_aplus(
     logger.info(f"A+ 策划请求: {len(img_list)} 张图片")
 
     try:
-        result = await _provider.plan_aplus(
+        result = await _gemini.plan_aplus(
             img_list,
             product_info or "",
         )
@@ -243,4 +245,48 @@ async def plan_aplus(
         "success": True,
         "plans": result.get("plans", []),
         "_meta": result.get("_meta", {}),
+    }
+
+
+@router.post("/enhance-video-prompt")
+async def enhance_video_prompt(
+    current_user=Depends(get_current_user),
+    description: str = Form(..., description="用户的简短动作描述"),
+    duration: int = Form(5, description="视频时长（秒）"),
+    style: str | None = Form(None, description="风格偏好（可选）"),
+    image: UploadFile | None = File(None, description="参考图（可选，帮助 AI 理解服装）"),
+):
+    """视频 Prompt 智能扩写接口
+
+    简短动作描述 → Gemini 扩写成专业视频叙事 prompt（英文，适配 Seedance）
+    """
+    if not description.strip():
+        raise HTTPException(400, "description 不能为空")
+
+    image_bytes = None
+    mime_type = "image/jpeg"
+    if image:
+        raw = await image.read()
+        if len(raw) > 20 * 1024 * 1024:
+            raise HTTPException(400, "图片大小不能超过 20MB")
+        image_bytes = compress_image(raw)
+        mime_type = image.content_type or "image/jpeg"
+
+    logger.info(f"视频 prompt 扩写: desc={description[:50]}... duration={duration}s")
+
+    try:
+        prompt = await _gemini.enhance_video_prompt(
+            description=description,
+            duration=duration,
+            style=style,
+            image=image_bytes,
+            mime_type=mime_type,
+        )
+    except RuntimeError as e:
+        logger.error(f"视频 prompt 扩写失败: {e}")
+        raise HTTPException(500, str(e))
+
+    return {
+        "success": True,
+        "prompt": prompt,
     }

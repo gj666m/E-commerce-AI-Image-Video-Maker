@@ -160,10 +160,10 @@ def build_video_prompt(
     variables = {
         "product_attrs": description,
         "scene_description": description,
-        "style": style or "专业电商时尚视频",
-        "camera_movement": camera_movement or "缓慢环绕",
+        "style": style or "cinematic e-commerce fashion",
+        "camera_movement": camera_movement or "slow tracking shot",
         "duration": str(duration),
-        "target_audience": "注重时尚的线上购物消费者",
+        "target_audience": "fashion-conscious online shoppers",
         "brand_gene_block": brand_gene_block,
         "user_custom_block": user_custom_block,
         "camera_block": camera_block,

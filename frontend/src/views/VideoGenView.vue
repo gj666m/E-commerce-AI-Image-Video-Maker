@@ -41,12 +41,26 @@
 
               <!-- 创意描述 -->
               <el-form-item label="创意描述" required>
-                <el-input
-                  v-model="form.description"
-                  type="textarea"
-                  :rows="4"
-                  placeholder="描述你想要的视频效果，如：一个穿白裙的女孩在海边奔跑，夕阳逆光..."
-                />
+                <div class="description-row">
+                  <el-input
+                    v-model="form.description"
+                    type="textarea"
+                    :rows="4"
+                    placeholder="描述你想要的视频效果，如：一个穿白裙的女孩在海边奔跑，夕阳逆光..."
+                    style="flex: 1"
+                  />
+                  <el-button
+                    type="primary"
+                    plain
+                    :loading="enhancing"
+                    :disabled="!form.description.trim()"
+                    @click="enhanceDescription"
+                    style="margin-left: 8px; align-self: flex-start;"
+                  >
+                    <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
+                    智能扩写
+                  </el-button>
+                </div>
               </el-form-item>
             </template>
 
@@ -119,6 +133,17 @@
                   >
                     <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
                     AI 优化
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    plain
+                    :loading="enhancing"
+                    :disabled="!form.description.trim()"
+                    @click="enhanceDescription"
+                    style="margin-left: 8px; align-self: flex-start;"
+                  >
+                    <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
+                    智能扩写
                   </el-button>
                 </div>
                 <div class="preset-tags">
@@ -313,7 +338,7 @@ import ModelSelector from '../components/ModelSelector.vue'
 import PromptEditor from '../components/PromptEditor.vue'
 import VideoPreview from '../components/VideoPreview.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { submitVideo, getVideoStatus, getVideoModels, analyzeFree, getErrorMessage } from '../api'
+import { submitVideo, getVideoStatus, getVideoModels, analyzeFree, enhanceVideoPrompt, getErrorMessage } from '../api'
 import type { ModelInfo } from '../types'
 
 const submitting = ref(false)
@@ -408,6 +433,36 @@ async function optimizeDescription() {
     ElMessage.error('AI 优化失败，请手动填写')
   } finally {
     optimizing.value = false
+  }
+}
+
+// 智能（视频）扩写：简短描述 → 专业视频叙事 prompt（英文，适配 Seedance）
+const enhancing = ref(false)
+
+async function enhanceDescription() {
+  const desc = form.value.description.trim()
+  if (!desc) {
+    ElMessage.warning('请先输入简短动作描述')
+    return
+  }
+  // 取当前模式第一张参考图
+  let img: File | undefined
+  if (mode.value === 'free') {
+    img = freeImages.value.length > 0 ? base64ToFile(freeImages.value[0], 'ref_0.png') : undefined
+  } else {
+    img = analyzableImage.value || undefined
+  }
+  enhancing.value = true
+  try {
+    const resp = await enhanceVideoPrompt(desc, form.value.duration, form.value.style || undefined, img)
+    if (resp.prompt) {
+      form.value.description = resp.prompt
+      ElMessage.success('已扩写为专业视频 prompt')
+    }
+  } catch {
+    ElMessage.error('智能扩写失败，请重试')
+  } finally {
+    enhancing.value = false
   }
 }
 

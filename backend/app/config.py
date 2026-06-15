@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     gptimage_vip_base_url: str = "https://api.apiyi.com"
     gptimage_vip_model: str = "gpt-image-2-vip"
 
+    # Gemini（API易中转站，创意类 AI 任务：AI策划/AI优化/智能扩写）
+    gemini_apiyi_api_key: str = ""
+    gemini_apiyi_base_url: str = "https://api.apiyi.com/v1"
+    gemini_apiyi_model: str = "gemini-3.5-flash"
+
     # 模特库
     model_store_dir: str = "assets/models"
 
@@ -112,6 +117,10 @@ class Settings(BaseSettings):
     @property
     def has_seedream5(self) -> bool:
         return bool(self.seedream5_api_key)
+
+    @property
+    def has_gemini(self) -> bool:
+        return bool(self.gemini_apiyi_api_key)
 
     @property
     def has_any_provider(self) -> bool:

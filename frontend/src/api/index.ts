@@ -246,6 +246,26 @@ export async function analyzeFree(image: File, prompt: string): Promise<{ succes
   return data
 }
 
+// 视频 Prompt 智能扩写（简短动作描述 → 专业视频叙事 prompt）
+export async function enhanceVideoPrompt(
+  description: string,
+  duration: number,
+  style?: string,
+  image?: File,
+): Promise<{ success: boolean; prompt: string }> {
+  const formData = new FormData()
+  formData.append('description', description)
+  formData.append('duration', String(duration))
+  if (style) formData.append('style', style)
+  if (image) formData.append('image', image)
+
+  const { data } = await api.post('/api/enhance-video-prompt', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  })
+  return data
+}
+
 // AI 种草图策划
 export async function planShots(
   images: File[],
