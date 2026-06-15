@@ -160,10 +160,10 @@ def build_video_prompt(
     variables = {
         "product_attrs": description,
         "scene_description": description,
-        "style": style or "cinematic e-commerce fashion",
-        "camera_movement": camera_movement or "slow tracking shot",
+        "style": style or "电影感电商时尚",
+        "camera_movement": camera_movement or "缓慢跟拍",
         "duration": str(duration),
-        "target_audience": "fashion-conscious online shoppers",
+        "target_audience": "注重时尚的线上购物者",
         "brand_gene_block": brand_gene_block,
         "user_custom_block": user_custom_block,
         "camera_block": camera_block,
@@ -182,11 +182,9 @@ def build_video_prompt(
     # 风格化模特图引导前缀：引导 Seedance 从插画参考人物形象、从商品图参考服装
     if has_stylized_model:
         guide_prefix = (
-            "Reference the uploaded character design illustrations for "
-            "the person's appearance, and strictly follow the product "
-            "reference photos for clothing details including fabric "
-            "texture, color, pattern and stitching. "
-            "Generate ultra-realistic live-action video. "
+            "请以上传的角色设计插画为参考生成人物外貌形象，"
+            "并严格参照商品参考图还原服装细节（包括面料质感、颜色、图案和走线）。"
+            "生成超写实真人实拍视频。"
         )
         prompt = guide_prefix + prompt
 
