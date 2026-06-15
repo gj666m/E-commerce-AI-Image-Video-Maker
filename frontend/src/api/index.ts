@@ -1,14 +1,33 @@
 // 后端 API 封装
 import axios from 'axios'
-import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse } from '../types'
+import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem } from '../types'
 
 const api = axios.create({
   baseURL: '',
   timeout: 120000,  // 生图可能需要较长时间
 })
 
-// 网络错误自动重试（最多 2 次，仅对 GET 和网络级错误重试，不重试业务错误）
+// 请求拦截器：自动附加 JWT token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('ai-zw-token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// 响应拦截器：401 自动跳转登录
 api.interceptors.response.use(undefined, async (error) => {
+  if (error.response?.status === 401) {
+    localStorage.removeItem('ai-zw-token')
+    localStorage.removeItem('ai-zw-user')
+    // 避免在登录页循环跳转
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+
   const config = error.config
   if (!config) return Promise.reject(error)
 
@@ -292,4 +311,44 @@ export function getErrorMessage(e: unknown, fallback = '操作失败，请稍后
     if (msg) return msg
   }
   return fallback
+}
+
+// === 认证模块 ===
+
+// 用户登录
+export async function login(username: string, password: string): Promise<LoginResponse> {
+  const { data } = await api.post('/api/auth/login', { username, password })
+  return data
+}
+
+// 获取当前用户信息
+export async function getMe(): Promise<{ success: boolean; user: { id: number; username: string; role: string } }> {
+  const { data } = await api.get('/api/auth/me')
+  return data
+}
+
+// === 管理员用户管理 ===
+
+// 获取用户列表
+export async function getUsers(): Promise<{ success: boolean; users: UserItem[] }> {
+  const { data } = await api.get('/api/auth/users')
+  return data
+}
+
+// 创建用户
+export async function createUser(username: string, password: string, role: string): Promise<{ success: boolean; message: string }> {
+  const { data } = await api.post('/api/auth/users', { username, password, role })
+  return data
+}
+
+// 删除用户
+export async function deleteUser(userId: number): Promise<{ success: boolean; message: string }> {
+  const { data } = await api.delete(`/api/auth/users/${userId}`)
+  return data
+}
+
+// 更新用户
+export async function updateUser(userId: number, payload: { password?: string; role?: string }): Promise<{ success: boolean; message: string }> {
+  const { data } = await api.put(`/api/auth/users/${userId}`, payload)
+  return data
 }

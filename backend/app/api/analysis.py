@@ -2,9 +2,10 @@
 import json
 import logging
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from typing import List
 
+from app.deps import get_current_user
 from app.providers.deepseek_provider import ProductAnalysisProvider
 from app.services.image_utils import compress_image, get_image_info
 
@@ -17,6 +18,7 @@ _provider = ProductAnalysisProvider()
 
 @router.post("/analyze")
 async def analyze(
+    current_user=Depends(get_current_user),
     image: UploadFile = File(..., description="商品图片"),
     extra_prompt: str | None = Form(None, description="用户额外提示（可选）"),
     existing_info: str | None = Form(None, description="用户已填写的商品信息 JSON（可选）"),
@@ -62,6 +64,7 @@ async def analyze(
 
 @router.post("/analyze-persona")
 async def analyze_persona(
+    current_user=Depends(get_current_user),
     image: UploadFile = File(..., description="博主照片"),
 ):
     """博主人设分析接口
@@ -93,6 +96,7 @@ async def analyze_persona(
 
 @router.post("/plan-shots")
 async def plan_shots(
+    current_user=Depends(get_current_user),
     images: List[UploadFile] = File(..., description="商品图片（1-6张）"),
     product_info: str | None = Form(None, description="商品信息文本（可选）"),
     persona: str | None = Form(None, description="博主人设描述（可选）"),
@@ -135,6 +139,7 @@ async def plan_shots(
 
 @router.post("/recommend-styles")
 async def recommend_styles(
+    current_user=Depends(get_current_user),
     plans: str = Form(..., description="策划方案 JSON 字符串"),
     product_info: str | None = Form(None, description="商品信息文本（可选）"),
     persona: str | None = Form(None, description="博主人设描述（可选）"),
@@ -172,6 +177,7 @@ async def recommend_styles(
 
 @router.post("/analyze-free")
 async def analyze_free(
+    current_user=Depends(get_current_user),
     image: UploadFile = File(..., description="图片"),
     prompt: str = Form(..., description="自由文本提示词"),
 ):
@@ -202,6 +208,7 @@ async def analyze_free(
 
 @router.post("/plan-aplus")
 async def plan_aplus(
+    current_user=Depends(get_current_user),
     images: List[UploadFile] = File(..., description="商品图片（1-6张）"),
     product_info: str | None = Form(None, description="商品信息文本（可选）"),
 ):

@@ -1,3 +1,24 @@
+// === 认证模块 ===
+
+export interface UserInfo {
+  id: number
+  username: string
+  role: 'admin' | 'user'
+}
+
+export interface LoginResponse {
+  success: boolean
+  token: string
+  user: UserInfo
+}
+
+export interface UserItem {
+  id: number
+  username: string
+  role: string
+  created_at: string
+}
+
 // 生成请求参数
 export interface GenerateParams {
   task_type: 'outfit' | 'seed_grass' | 'product_main' | 'aplus'

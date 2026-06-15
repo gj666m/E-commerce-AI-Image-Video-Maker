@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import generate, models, model, video, analysis
+from app.api import generate, models, model, video, analysis, auth
 from app.config import settings
 
 # 配置日志
@@ -29,9 +29,10 @@ async def _periodic_cleanup():
         await asyncio.sleep(600)  # 10 分钟
         try:
             from app.services.video_utils import cleanup_expired
-            from app.api.video import cleanup_tasks, cleanup_mock_tasks
+            from app.services.task_store import cleanup_expired_tasks
+            from app.api.video import cleanup_mock_tasks
             file_count = cleanup_expired()
-            cleanup_tasks()
+            await cleanup_expired_tasks()
             cleanup_mock_tasks()
             if file_count > 0:
                 logging.getLogger(__name__).info(f"定时清理: 删除 {file_count} 个过期视频文件")
@@ -45,6 +46,10 @@ async def lifespan(app: FastAPI):
     global _background_task
     _background_task = asyncio.create_task(_periodic_cleanup())
     logging.getLogger(__name__).info("后台定时清理任务已启动（每 10 分钟）")
+    # 初始化 SQLite 数据库
+    from app.database import init_db
+    await init_db()
+    logging.getLogger(__name__).info("SQLite 数据库初始化完成")
     yield
     if _background_task:
         _background_task.cancel()
@@ -65,7 +70,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Vite 默认端口
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
     ],
@@ -96,6 +104,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # 注册路由
+app.include_router(auth.router)
 app.include_router(generate.router)
 app.include_router(models.router)
 app.include_router(model.router)

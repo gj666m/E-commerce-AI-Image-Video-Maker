@@ -15,6 +15,26 @@
           @change="toggleTheme"
           style="--el-switch-on-color: #2c2c3e"
         />
+        <div class="user-info">
+          <el-icon><UserFilled /></el-icon>
+          <span class="username">{{ username }}</span>
+          <el-tag v-if="isAdmin" type="danger" size="small" class="role-tag">管理员</el-tag>
+        </div>
+        <el-dropdown trigger="click">
+          <el-button text circle>
+            <el-icon><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item v-if="isAdmin" @click="$router.push('/admin/users')">
+                <el-icon><User /></el-icon>用户管理
+              </el-dropdown-item>
+              <el-dropdown-item divided @click="handleLogout">
+                <el-icon><SwitchButton /></el-icon>退出登录
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </header>
 
@@ -58,6 +78,11 @@
             <el-icon><Present /></el-icon>
             <template #title>商品主图/A+</template>
           </el-menu-item>
+          <!-- 管理员专属 -->
+          <el-menu-item v-if="isAdmin" index="/admin/users">
+            <el-icon><User /></el-icon>
+            <template #title>用户管理</template>
+          </el-menu-item>
         </el-menu>
 
         <!-- 折叠按钮 -->
@@ -91,14 +116,24 @@ import {
   Fold,
   Moon,
   Sunny,
+  UserFilled,
+  User,
+  ArrowDown,
+  SwitchButton,
 } from '@element-plus/icons-vue'
 import { useTheme } from '../composables/useTheme'
+import { useAuth } from '../composables/useAuth'
 
 const route = useRoute()
 const { isDark, toggleTheme } = useTheme()
+const { username, isAdmin, logout } = useAuth()
 
 const sidebarCollapsed = ref(false)
 const currentRoute = computed(() => route.path)
+
+function handleLogout() {
+  logout()
+}
 </script>
 
 <style scoped>
@@ -148,6 +183,22 @@ const currentRoute = computed(() => route.path)
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+}
+
+.username {
+  font-weight: 500;
+}
+
+.role-tag {
+  margin-left: 2px;
 }
 
 /* 主体区域 */

@@ -4,9 +4,10 @@ import logging
 import time
 import uuid
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.config import settings
+from app.deps import get_current_user
 from app.services.image_utils import compress_image, get_image_info, stylize_for_video
 from app.services.prompt_engine import build_video_prompt
 from app.services.video_utils import (
@@ -14,6 +15,7 @@ from app.services.video_utils import (
     make_video_url,
     save_video,
 )
+from app.services.task_store import create_task, get_task, update_task_status, cleanup_expired_tasks
 from app.providers.mock_video_provider import MockVideoProvider
 from app.providers.seedance_provider import SeedanceVideoProvider
 from app.providers.seedance_apiyi_provider import SeedanceApiyiVideoProvider
@@ -45,11 +47,9 @@ def _get_video_provider(model_name: str | None = None) -> VideoProvider:
     """根据用户指定模型或自动路由获取视频 Provider"""
     providers = _get_available_video_providers()
 
-    # 用户指定了模型
     if model_name and model_name in providers:
         return providers[model_name]
 
-    # 自动路由：API易优先（不限并发），火山方舟次之，mock 兜底
     if settings.has_seedance_apiyi:
         return providers["seedance_apiyi"]
     if settings.has_seedance:
@@ -80,23 +80,11 @@ _VIDEO_MODEL_META = {
     },
 }
 
-# ========== 内存任务表 ==========
-
-_tasks: dict[str, dict] = {}
-_TASK_EXPIRE_SECONDS = 3600  # 已完成任务保留 1 小时后清理
-
-
-def cleanup_tasks():
-    """清理过期的已完成任务，防止内存泄漏"""
-    now = time.time()
-    expired_keys = [
-        tid for tid, t in _tasks.items()
-        if t.get("completed_at") and (now - t["completed_at"]) > _TASK_EXPIRE_SECONDS
-    ]
-    for tid in expired_keys:
-        _tasks.pop(tid, None)
-    if expired_keys:
-        logger.info(f"清理过期视频任务: {len(expired_keys)} 个")
+# ========== Provider 实例缓存（用于 poll/get_result） ==========
+# 提交时缓存 provider 实例到内存，poll 时按 provider_name 重新获取
+def _get_provider_by_name(name: str) -> VideoProvider | None:
+    providers = _get_available_video_providers()
+    return providers.get(name)
 
 
 # 同步清理 MockVideoProvider 的内存任务表
@@ -106,7 +94,7 @@ def cleanup_mock_tasks():
         tid for tid, t in _mock_video._tasks.items()
         if t.status in ("completed", "failed")
         and t.meta.get("completed_at")
-        and (time.time() - t.meta["completed_at"]) > _TASK_EXPIRE_SECONDS
+        and (time.time() - t.meta["completed_at"]) > 3600
     ]
     for tid in expired_keys:
         _mock_video._tasks.pop(tid, None)
@@ -117,31 +105,27 @@ def cleanup_mock_tasks():
 
 @router.post("/generate")
 async def generate_video(
-    # 新参数：商品图 + 模特素材图分区
+    current_user=Depends(get_current_user),
     product_images: list[UploadFile] = File(default=[], description="商品图（1-6张）"),
     model_images: list[UploadFile] = File(default=[], description="模特素材图（0-3张，可选）"),
-    model_has_face: bool = Form(True, description="模特图是否含人脸（默认勾选，含人脸则自动风格化）"),
-    # 兼容旧参数
+    model_has_face: bool = Form(True, description="模特图是否含人脸"),
     images: list[UploadFile] = File(default=[], description="[旧] 参考图（最多6张）"),
     image: UploadFile | None = File(None, description="[旧] 参考图（兼容单张）"),
-    # 通用参数
     description: str = Form(..., description="视频描述"),
-    duration: int = Form(5, description="视频时长（秒）: 5 / 10 / 15 / -1（自动）"),
-    model_name: str | None = Form(None, description="指定模型，None 则自动路由"),
+    duration: int = Form(5, description="视频时长（秒）"),
+    model_name: str | None = Form(None, description="指定模型"),
     style: str | None = Form(None, description="风格偏好"),
-    custom_prompt: str | None = Form(None, description="用户自定义 Prompt 补充"),
-    ratio: str = Form("16:9", description="视频比例: 16:9 / 9:16 / 1:1"),
+    custom_prompt: str | None = Form(None, description="用户自定义 Prompt"),
+    ratio: str = Form("16:9", description="视频比例"),
     generate_audio: bool = Form(False, description="是否生成音频"),
-    camera_movement: str | None = Form(None, description="镜头运动: 推近/拉远/环绕/平移/跟随"),
+    camera_movement: str | None = Form(None, description="镜头运动"),
     product_info: str | None = Form(None, description="商品信息文本"),
-    resolution: str | None = Form(None, description="分辨率: 480p / 720p / 1080p"),
+    resolution: str | None = Form(None, description="分辨率"),
 ):
-    """提交视频生成任务
-
-    流程：接收参数 → 商品图压缩 → 模特图风格转换（按需） → Prompt 拼装 → 提交任务 → 返回 task_id
-    """
+    """提交视频生成任务"""
+    user_id = current_user["id"]
     cleanup_expired()
-    cleanup_tasks()
+    await cleanup_expired_tasks()
     cleanup_mock_tasks()
 
     # 参数校验
@@ -152,10 +136,10 @@ async def generate_video(
         raise HTTPException(400, f"视频比例仅支持: {', '.join(sorted(valid_video_ratios))}")
     valid_cameras = {"推近", "拉远", "环绕", "平移", "跟随", None}
     if camera_movement not in valid_cameras:
-        raise HTTPException(400, f"镜头运动仅支持: 推近/拉远/环绕/平移/跟随")
+        raise HTTPException(400, "镜头运动仅支持: 推近/拉远/环绕/平移/跟随")
     valid_resolutions = {"480p", "720p", "1080p", None}
     if resolution not in valid_resolutions:
-        raise HTTPException(400, f"分辨率仅支持: 480p / 720p / 1080p")
+        raise HTTPException(400, "分辨率仅支持: 480p / 720p / 1080p")
     if not description or not description.strip():
         raise HTTPException(400, "视频描述不能为空")
 
@@ -173,7 +157,6 @@ async def generate_video(
     product_raw = await _read_images(product_images, 20 * 1024 * 1024, "商品图")
     model_raw = await _read_images(model_images, 20 * 1024 * 1024, "模特素材图")
 
-    # 兼容旧参数：新参数为空时从旧参数读取（统一放商品图区）
     if not product_raw and not model_raw:
         old_raw = await _read_images(images, 20 * 1024 * 1024, "参考图")
         if not old_raw and image:
@@ -182,33 +165,27 @@ async def generate_video(
                 raise HTTPException(400, "图片大小不能超过 20MB")
             if raw:
                 old_raw.append(raw)
-        product_raw = old_raw  # 旧参数全部当商品图处理
+        product_raw = old_raw
 
     # ========== 2. 图片处理 ==========
-    # 视频参考图用更激进的压缩（1280px），减少上传时间避免超时
     VIDEO_REF_MAX_EDGE = 1280
-    # 商品图：压缩
     product_bytes = [compress_image(raw, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for raw in product_raw]
 
-    # 模特图：含人脸 → 风格转换；不含人脸 → 仅压缩
     has_stylized_model = False
     model_bytes: list[bytes] = []
 
     if model_raw:
         if model_has_face:
             logger.info(f"模特素材图含人脸，开始风格转换（{len(model_raw)} 张）...")
-            # 并行风格转换所有模特图
             stylized_list = await asyncio.gather(
                 *[stylize_for_video(raw) for raw in model_raw]
             )
-            # 风格转换后的图再压缩
             model_bytes = [compress_image(s, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for s in stylized_list]
             has_stylized_model = True
             logger.info("模特素材图风格转换完成")
         else:
             model_bytes = [compress_image(raw, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for raw in model_raw]
 
-    # 合并所有图片：商品图在前，模特图在后
     all_images = product_bytes + model_bytes
 
     if all_images:
@@ -242,20 +219,22 @@ async def generate_video(
             raise HTTPException(400, "参考图包含真实人脸，Seedance 不支持真人图片生成视频。请使用商品图或 AI 生成的模特图。")
         if "SensitiveContent" in error_msg:
             raise HTTPException(400, "参考图内容未通过安全审核，请更换图片后重试。")
-        # 429 限流等用户可理解的错误直接透传
         if "额度不足" in error_msg:
             raise HTTPException(429, error_msg)
         raise HTTPException(500, f"视频提交失败: {error_msg}")
 
-    # ========== 5. 记录任务 ==========
+    # ========== 5. 记录任务到 SQLite ==========
     task_id = uuid.uuid4().hex[:12]
-    _tasks[task_id] = {
-        "external_id": external_id,
-        "provider": provider,
-        "prompt": prompt,
-    }
+    await create_task(
+        task_id=task_id,
+        user_id=user_id,
+        external_id=external_id,
+        provider_name=provider.name,
+        prompt=prompt,
+        resolution=resolution,
+    )
 
-    logger.info(f"视频任务已提交: task_id={task_id}, provider={provider.name}")
+    logger.info(f"视频任务已提交: task_id={task_id}, provider={provider.name}, user={user_id}")
 
     return {
         "success": True,
@@ -265,13 +244,20 @@ async def generate_video(
 
 
 @router.get("/status/{task_id}")
-async def video_status(task_id: str):
+async def video_status(task_id: str, current_user=Depends(get_current_user)):
     """查询视频生成任务状态"""
-    task_info = _tasks.get(task_id)
+    task_info = await get_task(task_id)
     if not task_info:
         raise HTTPException(404, "任务不存在")
 
-    provider: VideoProvider = task_info["provider"]
+    # 权限检查：普通用户只能看自己的任务
+    if current_user["role"] != "admin" and task_info["user_id"] != current_user["id"]:
+        raise HTTPException(403, "无权查看此任务")
+
+    provider = _get_provider_by_name(task_info["provider_name"])
+    if not provider:
+        raise HTTPException(500, f"Provider {task_info['provider_name']} 不可用")
+
     external_id = task_info["external_id"]
 
     # 查询状态
@@ -295,12 +281,11 @@ async def video_status(task_id: str):
             ext = "gif" if provider.name == "mock_video" else "mp4"
             filename = save_video(task_id, video_data, ext=ext)
             video_task.video_url = make_video_url(filename)
-            # 记录完成时间，用于后续清理
-            task_info["completed_at"] = time.time()
+            await update_task_status(task_id, "completed", video_url=video_task.video_url)
         except RuntimeError as e:
             result["status"] = "failed"
             result["error"] = str(e)
-            task_info["completed_at"] = time.time()
+            await update_task_status(task_id, "failed", error=str(e))
             return result
 
     if video_task.video_url:
@@ -314,7 +299,7 @@ async def video_status(task_id: str):
 
 @router.get("/models")
 async def video_models():
-    """返回可用的视频模型列表（供前端展示）"""
+    """返回可用的视频模型列表"""
     providers = _get_available_video_providers()
     models = []
     for name, provider in providers.items():
@@ -328,7 +313,6 @@ async def video_models():
             "api_key_hint": meta.get("api_key_hint", ""),
         })
 
-    # 默认模型：优先真实 Provider
     default = "mock_video"
     for name in providers:
         if name != "mock_video":

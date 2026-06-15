@@ -3,11 +3,12 @@ import asyncio
 import base64
 import logging
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
+from app.deps import get_current_user
 from app.services.model_router import get_provider
-from app.services.model_store import save_model, list_models, delete_model
+from app.services.model_store import save_model, list_models, list_all_models, delete_model
 from app.services.postprocess import apply_realistic_filter
 from app.services.prompt_engine import build_model_prompt
 
@@ -28,6 +29,7 @@ class ModelSaveRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_model(
+    current_user=Depends(get_current_user),
     gender: str = Form("female"),
     ethnicity: str = Form("caucasian"),
     age: str = Form("25-30"),
@@ -124,24 +126,31 @@ async def generate_model(
 
 
 @router.post("/save")
-async def save_model_to_library(req: ModelSaveRequest):
+async def save_model_to_library(req: ModelSaveRequest, current_user=Depends(get_current_user)):
     """保存模特到模特库"""
+    user_id = current_user["id"]
     image_bytes = base64.b64decode(req.image_data)
-    record = save_model(req.name, req.params, image_bytes)
+    record = await save_model(user_id, req.name, req.params, image_bytes)
     return {"success": True, "model_id": record["id"]}
 
 
 @router.get("/list")
-async def get_model_list():
+async def get_model_list(current_user=Depends(get_current_user)):
     """获取模特库列表"""
-    models = list_models()
+    user_id = current_user["id"]
+    # 管理员看所有人的
+    if current_user["role"] == "admin":
+        models = await list_all_models()
+    else:
+        models = await list_models(user_id)
     return {"success": True, "models": models}
 
 
 @router.delete("/{model_id}")
-async def delete_model_from_library(model_id: str):
+async def delete_model_from_library(model_id: str, current_user=Depends(get_current_user)):
     """删除模特"""
-    ok = delete_model(model_id)
+    user_id = current_user["id"]
+    ok = await delete_model(user_id, model_id)
     if not ok:
         raise HTTPException(404, f"模特 {model_id} 不存在")
     return {"success": True}

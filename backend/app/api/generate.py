@@ -3,8 +3,9 @@ import asyncio
 import base64
 import logging
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
+from app.deps import get_current_user
 from app.services.image_utils import compress_image, image_to_base64, get_image_info
 from app.services.model_router import get_provider
 from app.services.postprocess import apply_realistic_filter
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/api", tags=["generate"])
 
 @router.post("/generate")
 async def generate(
+    current_user=Depends(get_current_user),
     task_type: str = Form(..., description="任务类型: outfit / product_video 等"),
     image: UploadFile | None = File(None, description="商品图（场景图时需要）"),
     images: list[UploadFile] = File(default=[], description="多张参考图（composite 模式：图1=模特，图2=商品，图3=场景...）"),
