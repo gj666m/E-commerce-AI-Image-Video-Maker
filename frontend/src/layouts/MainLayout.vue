@@ -54,6 +54,10 @@
             <el-icon><HomeFilled /></el-icon>
             <template #title>首页</template>
           </el-menu-item>
+          <el-menu-item index="/quick-image">
+            <el-icon><MagicStick /></el-icon>
+            <template #title>快速生图</template>
+          </el-menu-item>
           <el-menu-item index="/outfit">
             <el-icon><ShoppingBag /></el-icon>
             <template #title>一键穿搭</template>
@@ -112,6 +116,7 @@ import {
   VideoCameraFilled,
   Picture,
   Present,
+  MagicStick,
   Expand,
   Fold,
   Moon,

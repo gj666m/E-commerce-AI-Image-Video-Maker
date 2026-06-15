@@ -25,10 +25,17 @@
 </template>
 
 <script setup lang="ts">
-import { VideoCameraFilled, Avatar, ShoppingBag, View, Picture, Present } from '@element-plus/icons-vue'
+import { VideoCameraFilled, Avatar, ShoppingBag, View, Picture, Present, MagicStick } from '@element-plus/icons-vue'
 import { markRaw } from 'vue'
 
 const navItems = [
+  {
+    path: '/quick-image',
+    icon: markRaw(MagicStick),
+    title: '快速生图',
+    desc: '上传参考图（可选）+ 描述 + 选模型，一句话出图',
+    color: 'linear-gradient(135deg, #722ed1, #b37feb)',
+  },
   {
     path: '/outfit',
     icon: markRaw(ShoppingBag),

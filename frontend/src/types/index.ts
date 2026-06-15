@@ -21,7 +21,7 @@ export interface UserItem {
 
 // 生成请求参数
 export interface GenerateParams {
-  task_type: 'outfit' | 'seed_grass' | 'product_main' | 'aplus'
+  task_type: 'quick' | 'outfit' | 'seed_grass' | 'product_main' | 'aplus'
   image?: File
   images?: File[]    // 多图参考（种草图等多图模式）
   description: string

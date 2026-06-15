@@ -9,7 +9,7 @@ from app.deps import get_current_user
 from app.services.image_utils import compress_image, image_to_base64, get_image_info
 from app.services.model_router import get_provider
 from app.services.postprocess import apply_realistic_filter
-from app.services.prompt_engine import build_prompt, build_seed_grass_prompt, build_product_main_prompt, build_aplus_prompt
+from app.services.prompt_engine import build_prompt, build_seed_grass_prompt, build_product_main_prompt, build_aplus_prompt, build_quick_prompt
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["generate"])
@@ -47,7 +47,7 @@ async def generate(
     种草图模式（seed_grass）：persona + scene 参数拼入专用模板
     """
     # 参数校验
-    valid_task_types = {"outfit", "product_video", "seed_grass", "product_main", "aplus", "model_gen", "model_ref"}
+    valid_task_types = {"quick", "outfit", "product_video", "seed_grass", "product_main", "aplus", "model_gen", "model_ref"}
     if task_type not in valid_task_types:
         raise HTTPException(400, f"无效的任务类型: {task_type}，支持: {', '.join(sorted(valid_task_types))}")
 
@@ -93,7 +93,10 @@ async def generate(
         image_info = get_image_info(multi_image_bytes[0])
 
     # 2. Prompt 拼装
-    if task_type == "seed_grass":
+    if task_type == "quick":
+        # 快速生图：不走任何模板，用户描述原样透传 + 比例前缀
+        prompt = build_quick_prompt(description=description, aspect_ratio=aspect_ratio)
+    elif task_type == "seed_grass":
         prompt = build_seed_grass_prompt(
             description=description,
             persona=persona,

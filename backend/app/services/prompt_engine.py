@@ -331,6 +331,16 @@ def _aspect_to_resolution(aspect_ratio: str) -> str:
     return ratio_desc.get(aspect_ratio, "正方形构图，1:1 比例")
 
 
+def build_quick_prompt(description: str, aspect_ratio: str = "1:1") -> str:
+    """快速生图 Prompt：用户描述原样透传，仅前置比例描述
+
+    不走任何模板，用户写什么就生成什么。比例描述复用 _aspect_to_resolution()，
+    因为 Seedream/GPT-Image 等模型靠 prompt 前缀控制实际输出比例。
+    """
+    ratio_desc = _aspect_to_resolution(aspect_ratio)
+    return f"{ratio_desc}，{description.strip()}"
+
+
 def build_seed_grass_prompt(
     description: str,
     persona: str | None = None,

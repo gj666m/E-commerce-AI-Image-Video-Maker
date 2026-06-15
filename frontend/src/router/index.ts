@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import('../views/HomeView.vue'),
     },
     {
+      path: '/quick-image',
+      name: 'quick-image',
+      component: () => import('../views/QuickImageView.vue'),
+    },
+    {
       path: '/video',
       name: 'video',
       component: () => import('../views/VideoGenView.vue'),
