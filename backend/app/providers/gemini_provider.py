@@ -140,6 +140,7 @@ class GeminiProvider:
         system_prompt: str,
         user_content: list[dict],
         max_tokens: int = 2048,
+        model: str | None = None,
     ) -> str:
         """通用 OpenAI 兼容 chat/completions 调用
 
@@ -147,11 +148,12 @@ class GeminiProvider:
             system_prompt: 系统提示词
             user_content: user 消息 content 数组（text / image_url 类型，OpenAI 兼容格式）
             max_tokens: 最大输出 token
+            model: 指定模型，None 则用默认 gemini_apiyi_model
         Returns:
             模型回复文本
         """
         payload = {
-            "model": settings.gemini_apiyi_model,
+            "model": model or settings.gemini_apiyi_model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
@@ -169,7 +171,7 @@ class GeminiProvider:
 
         try:
             client = get_http_client()
-            resp = await client.post(url, headers=headers, json=payload, timeout=90)
+            resp = await client.post(url, headers=headers, json=payload, timeout=180)
             resp.raise_for_status()
             data = resp.json()
             return data["choices"][0]["message"]["content"]
@@ -181,8 +183,8 @@ class GeminiProvider:
             logger.error(f"Gemini 响应格式异常: {e}")
             raise RuntimeError(f"Gemini 响应格式异常: {str(e)}")
         except Exception as e:
-            logger.error(f"Gemini 调用失败: {e}")
-            raise RuntimeError(f"Gemini 调用失败: {str(e)}")
+            logger.error(f"Gemini 调用失败: {type(e).__name__}: {e}")
+            raise RuntimeError(f"Gemini 调用失败: {type(e).__name__}: {str(e)}")
 
     @staticmethod
     def _make_image_content(image_bytes: bytes, mime_type: str = "image/jpeg") -> dict:
@@ -319,7 +321,7 @@ class GeminiProvider:
             user_content.append(self._make_image_content(image, mime_type))
         user_content.append(self._make_text_content("\n".join(parts)))
 
-        return await self._chat(ENHANCE_VIDEO_PROMPT_SYSTEM, user_content, max_tokens=1024)
+        return await self._chat(ENHANCE_VIDEO_PROMPT_SYSTEM, user_content, max_tokens=4096)
 
     @staticmethod
     def _parse_json(text: str) -> dict:

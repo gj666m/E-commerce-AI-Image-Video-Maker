@@ -269,8 +269,8 @@ async def enhance_video_prompt(
         raw = await image.read()
         if len(raw) > 20 * 1024 * 1024:
             raise HTTPException(400, "图片大小不能超过 20MB")
-        image_bytes = compress_image(raw)
-        mime_type = image.content_type or "image/jpeg"
+        image_bytes = compress_image(raw, max_long_edge=1280, format="JPEG")
+        mime_type = "image/jpeg"
 
     logger.info(f"视频 prompt 扩写: desc={description[:50]}... duration={duration}s")
 

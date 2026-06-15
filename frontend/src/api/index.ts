@@ -261,7 +261,7 @@ export async function enhanceVideoPrompt(
 
   const { data } = await api.post('/api/enhance-video-prompt', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000,
+    timeout: 180000,
   })
   return data
 }
