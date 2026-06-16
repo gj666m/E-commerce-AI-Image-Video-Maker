@@ -50,6 +50,11 @@ const router = createRouter({
       component: () => import('../views/ProductImageView.vue'),
     },
     {
+      path: '/history',
+      name: 'history',
+      component: () => import('../views/HistoryView.vue'),
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/AdminUsersView.vue'),

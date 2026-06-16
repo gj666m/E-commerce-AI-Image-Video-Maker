@@ -129,10 +129,14 @@ async def delete_user(user_id: int, _admin=Depends(require_admin)):
         # 删除用户的模特库文件
         from app.services.model_store import delete_user_models
         delete_user_models(user_id)
+        # 删除用户的历史文件
+        from app.services.history_store import delete_user_history_files
+        delete_user_history_files(user_id)
 
         # 删除用户数据
         await db.execute("DELETE FROM model_library WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM video_tasks WHERE user_id = ?", (user_id,))
+        await db.execute("DELETE FROM generation_history WHERE user_id = ?", (user_id,))
         cursor = await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         await db.commit()
 

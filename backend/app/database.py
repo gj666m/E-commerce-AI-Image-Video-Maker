@@ -45,8 +45,25 @@ CREATE TABLE IF NOT EXISTS video_tasks (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS generation_history (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    task_type TEXT NOT NULL,
+    prompt TEXT NOT NULL DEFAULT '',
+    params TEXT NOT NULL DEFAULT '{}',
+    model_used TEXT NOT NULL DEFAULT '',
+    file TEXT NOT NULL,
+    thumbnail TEXT NOT NULL,
+    cost REAL NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT '¥',
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_model_library_user ON model_library(user_id);
 CREATE INDEX IF NOT EXISTS idx_video_tasks_user ON video_tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_generation_history_user ON generation_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_generation_history_created ON generation_history(created_at);
 """
 
 

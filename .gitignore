@@ -43,6 +43,10 @@ videos/
 images/
 backend/temp_videos/
 backend/assets/models/model_*
+backend/assets/generations/*/
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
 
 # IDE和编辑器配置
 .vscode/

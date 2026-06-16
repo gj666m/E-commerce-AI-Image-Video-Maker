@@ -1,6 +1,6 @@
 // 后端 API 封装
 import axios from 'axios'
-import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem } from '../types'
+import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem } from '../types'
 
 const api = axios.create({
   baseURL: '',
@@ -159,6 +159,12 @@ export async function getVideoStatus(taskId: string): Promise<VideoTaskStatus> {
 // 获取视频模型列表
 export async function getVideoModels(): Promise<{ models: VideoModelInfo[]; default: string }> {
   const { data } = await api.get('/api/video/models')
+  return data
+}
+
+// 获取当前用户进行中的视频任务（切页面后恢复用）
+export async function getVideoTasks(): Promise<{ tasks: Array<{ id: string; status: string; prompt: string; provider_name: string; created_at: string }> }> {
+  const { data } = await api.get('/api/video/tasks')
   return data
 }
 
@@ -370,5 +376,27 @@ export async function deleteUser(userId: number): Promise<{ success: boolean; me
 // 更新用户
 export async function updateUser(userId: number, payload: { password?: string; role?: string }): Promise<{ success: boolean; message: string }> {
   const { data } = await api.put(`/api/auth/users/${userId}`, payload)
+  return data
+}
+
+// ====== 图片生成历史 ======
+
+// 获取历史列表
+export async function listHistory(taskType?: string): Promise<{ success: boolean; items: HistoryItem[]; count: number }> {
+  const params: Record<string, string> = {}
+  if (taskType) params.task_type = taskType
+  const { data } = await api.get('/api/history', { params })
+  return data
+}
+
+// 删除单条历史
+export async function deleteHistory(historyId: string): Promise<{ success: boolean; message: string }> {
+  const { data } = await api.delete(`/api/history/${historyId}`)
+  return data
+}
+
+// 清空当前用户全部历史
+export async function clearHistory(): Promise<{ success: boolean; message: string; deleted: number }> {
+  const { data } = await api.post('/api/history/clear')
   return data
 }

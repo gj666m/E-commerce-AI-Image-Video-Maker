@@ -82,6 +82,10 @@
             <el-icon><Present /></el-icon>
             <template #title>商品主图/A+</template>
           </el-menu-item>
+          <el-menu-item index="/history">
+            <el-icon><Clock /></el-icon>
+            <template #title>生成历史</template>
+          </el-menu-item>
           <!-- 管理员专属 -->
           <el-menu-item v-if="isAdmin" index="/admin/users">
             <el-icon><User /></el-icon>
@@ -117,6 +121,7 @@ import {
   Picture,
   Present,
   MagicStick,
+  Clock,
   Expand,
   Fold,
   Moon,

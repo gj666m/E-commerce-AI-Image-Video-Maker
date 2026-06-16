@@ -152,6 +152,8 @@ async def generate(
     total_cost = 0.0
     currency = "¥"
     first_error = None
+    # 单张成本（用于历史记录）
+    per_cost = 0.0
     for i, r in enumerate(results):
         if isinstance(r, Exception):
             logger.error(f"第 {i+1} 张生成异常: {r}")
@@ -159,10 +161,30 @@ async def generate(
                 first_error = str(r)
             continue
         if r.success and r.images:
+            per_cost = r.cost / max(1, len(r.images))
             for img in r.images:
                 # 自动后处理：轻微颗粒+色调调整，提升真实感
                 processed = apply_realistic_filter(img, intensity="light")
                 all_images_b64.append(image_to_base64(processed))
+                # 落盘到历史（失败不影响主流程）
+                from app.services.history_store import save_history
+                history_params = {
+                    "description": description,
+                    "style": style,
+                    "aspect_ratio": aspect_ratio,
+                    "model_name": model_name,
+                    "count": count,
+                }
+                await save_history(
+                    user_id=current_user["id"],
+                    task_type=task_type,
+                    prompt=prompt,
+                    params=history_params,
+                    model_used=provider.name,
+                    image_bytes=processed,
+                    cost=per_cost,
+                    currency=r.currency,
+                )
             total_cost += r.cost
             currency = r.currency  # 同一批次用同一 provider，取最后一个即可
         else:

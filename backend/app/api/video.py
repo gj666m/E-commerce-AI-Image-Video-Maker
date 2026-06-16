@@ -15,7 +15,7 @@ from app.services.video_utils import (
     make_video_url,
     save_video,
 )
-from app.services.task_store import create_task, get_task, update_task_status, cleanup_expired_tasks
+from app.services.task_store import create_task, get_task, update_task_status, cleanup_expired_tasks, get_user_active_tasks
 from app.providers.mock_video_provider import MockVideoProvider
 from app.providers.seedance_provider import SeedanceVideoProvider
 from app.providers.seedance_apiyi_provider import SeedanceApiyiVideoProvider
@@ -295,6 +295,13 @@ async def video_status(task_id: str, current_user=Depends(get_current_user)):
         result["error"] = video_task.error
 
     return result
+
+
+@router.get("/tasks")
+async def list_user_video_tasks(current_user=Depends(get_current_user)):
+    """获取当前用户进行中的视频任务（切页面后恢复轮询用）"""
+    tasks = await get_user_active_tasks(current_user["id"])
+    return {"tasks": tasks}
 
 
 @router.get("/models")

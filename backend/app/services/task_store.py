@@ -52,6 +52,20 @@ async def update_task_status(task_id: str, status: str, video_url: str | None = 
         await db.close()
 
 
+async def get_user_active_tasks(user_id: int) -> list[dict]:
+    """获取用户未完成的视频任务（pending / processing），用于切页面后恢复轮询"""
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT * FROM video_tasks WHERE user_id = ? AND status IN ('pending', 'processing') ORDER BY created_at DESC",
+            (user_id,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await db.close()
+
+
 async def cleanup_expired_tasks():
     """清理过期任务"""
     db = await get_db()

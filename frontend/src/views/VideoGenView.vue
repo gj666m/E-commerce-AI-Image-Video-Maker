@@ -338,7 +338,7 @@ import ModelSelector from '../components/ModelSelector.vue'
 import PromptEditor from '../components/PromptEditor.vue'
 import VideoPreview from '../components/VideoPreview.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
-import { submitVideo, getVideoStatus, getVideoModels, analyzeFree, enhanceVideoPrompt, getErrorMessage } from '../api'
+import { submitVideo, getVideoStatus, getVideoModels, getVideoTasks, analyzeFree, enhanceVideoPrompt, getErrorMessage } from '../api'
 import type { ModelInfo } from '../types'
 
 const submitting = ref(false)
@@ -491,6 +491,22 @@ onMounted(async () => {
     if (data.default) form.value.modelName = data.default
   } catch {
     ElMessage.error('获取视频模型列表失败')
+  }
+
+  // 恢复进行中的视频任务（切页面/刷新后自动续接轮询）
+  try {
+    const taskData = await getVideoTasks()
+    if (taskData.tasks.length > 0) {
+      const activeTask = taskData.tasks[0]
+      taskId.value = activeTask.id
+      taskStatus.value = activeTask.status
+      promptUsed.value = activeTask.prompt || ''
+      modelUsed.value = activeTask.provider_name || ''
+      submitting.value = false
+      startPolling()
+    }
+  } catch {
+    // 静默失败，不影响页面正常加载
   }
 })
 

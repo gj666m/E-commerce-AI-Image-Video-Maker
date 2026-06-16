@@ -312,3 +312,21 @@ export interface PlanAplusResponse {
   success: boolean
   plans: AplusPlan[]
 }
+
+// === 图片生成历史 ===
+
+export interface HistoryItem {
+  id: string
+  task_type: string
+  prompt: string
+  params: Record<string, unknown>
+  model_used: string
+  file: string         // 相对路径：{user_id}/{id}.jpeg
+  thumbnail: string    // 相对路径：{user_id}/{id}_thumb.jpeg
+  cost: number
+  currency: string
+  created_at: string
+  // 管理员视图额外字段
+  user_id?: number
+  username?: string
+}

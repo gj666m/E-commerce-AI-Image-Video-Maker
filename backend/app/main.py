@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import generate, models, model, video, analysis, auth
+from app.api import generate, models, model, video, analysis, auth, history
 from app.config import settings
 
 # 配置日志
@@ -31,11 +31,15 @@ async def _periodic_cleanup():
             from app.services.video_utils import cleanup_expired
             from app.services.task_store import cleanup_expired_tasks
             from app.api.video import cleanup_mock_tasks
+            from app.services.history_store import cleanup_expired_history
             file_count = cleanup_expired()
             await cleanup_expired_tasks()
             cleanup_mock_tasks()
+            hist_count = await cleanup_expired_history()
             if file_count > 0:
                 logging.getLogger(__name__).info(f"定时清理: 删除 {file_count} 个过期视频文件")
+            if hist_count > 0:
+                logging.getLogger(__name__).info(f"定时清理: 删除 {hist_count} 条过期生成历史")
         except Exception as e:
             logging.getLogger(__name__).error(f"定时清理失败: {e}")
 
@@ -110,6 +114,7 @@ app.include_router(models.router)
 app.include_router(model.router)
 app.include_router(video.router)
 app.include_router(analysis.router)
+app.include_router(history.router)
 
 # 挂载临时视频文件静态目录
 temp_dir = Path(settings.video_temp_dir)
@@ -120,6 +125,11 @@ app.mount("/video-files", StaticFiles(directory=str(temp_dir)), name="video-file
 models_dir = Path(settings.model_store_dir)
 models_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/model-files", StaticFiles(directory=str(models_dir)), name="model-files")
+
+# 挂载生成历史静态目录（供前端展示历史图）
+history_dir = Path(settings.generation_history_dir)
+history_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/gen-files", StaticFiles(directory=str(history_dir)), name="gen-files")
 
 
 # ====== 生产环境：托管前端静态文件 ======
@@ -158,7 +168,7 @@ async def health_check():
 async def serve_spa(path: str):
     """SPA 路由回退"""
     # /api 开头的走后端路由，不处理
-    if path.startswith("api/") or path.startswith("video-files/") or path.startswith("model-files/"):
+    if path.startswith("api/") or path.startswith("video-files/") or path.startswith("model-files/") or path.startswith("gen-files/"):
         return None
     file_path = FRONTEND_DIST / path
     if file_path.exists() and file_path.is_file():
