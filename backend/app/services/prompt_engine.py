@@ -268,48 +268,36 @@ def build_model_prompt(
     # 额外描述
     custom_block = custom_desc.strip() if custom_desc else ""
 
+    # ---- 组装自然语言主体描述（句号分段：人物→动作→环境） ----
+    age_desc = age_map.get(age, "25岁左右")
+    ethnicity_desc = ethnicity_map.get(ethnicity, "白人欧美")
+    gender_desc = gender_map.get(gender, "女性")
+    facial = facial_map.get(ethnicity, "五官端正")
+    composition_desc = composition_map.get(composition, "全身构图")
+    background_desc = background_map.get(background, "纯白色背景，专业影棚")
+
     if has_reference_image:
-        # ---- 图生图模式：基于参考图变体，但仍可用完整参数控制构图/服装/背景 ----
+        # ---- 图生图模式：强调参考面部特征 ----
         template = load_template("model_ref")
-        variables = {
-            "ethnicity_desc": ethnicity_map.get(ethnicity, "白人欧美"),
-            "age_desc": age_map.get(age, "25岁左右"),
-            "gender_desc": gender_map.get(gender, "女性"),
-            "facial_features": facial_map.get(ethnicity, "五官端正"),
-            "hair_desc": hair_desc,
-            "expression_desc": expression,
-            "pose_desc": pose,
-            "composition_desc": composition_map.get(composition, "全身构图"),
-            "clothing_desc": clothing,
-            "background_desc": background_map.get(background, "纯白色背景，专业影棚"),
-            "lighting_desc": sty["lighting"],
-            "photography_style": sty["photography"],
-            "custom_desc": custom_block,
-        }
+        desc = (
+            f"参考输入图片中人物的面部特征，"
+            f"生成一位{age_desc}{ethnicity_desc}{gender_desc}，{facial}，{hair_desc}。"
+        )
     else:
         # ---- 文生图模式：完整描述 ----
         template = load_template("model_gen")
-        variables = {
-            "ethnicity_desc": ethnicity_map.get(ethnicity, "白人欧美"),
-            "age_desc": age_map.get(age, "25岁左右"),
-            "gender_desc": gender_map.get(gender, "女性"),
-            "body_type_desc": body_map.get(body_type, "身材匀称"),
-            "facial_features": facial_map.get(ethnicity, "五官端正"),
-            "hair_desc": hair_desc,
-            "clothing_desc": clothing,
-            "pose_desc": pose,
-            "expression_desc": expression,
-            "composition_desc": composition_map.get(composition, "全身构图"),
-            "background_desc": background_map.get(background, "纯白色背景，专业影棚"),
-            "lighting_desc": sty["lighting"],
-            "photography_style": sty["photography"],
-            "custom_desc": custom_block,
-        }
+        body_type_desc = body_map.get(body_type, "身材匀称")
+        desc = (
+            f"一位{age_desc}{ethnicity_desc}{gender_desc}，{body_type_desc}，"
+            f"{facial}，{hair_desc}。"
+        )
 
-    prompt = template
-    for key, value in variables.items():
-        prompt = prompt.replace(f"{{{{{key}}}}}", str(value))
+    desc += f"她{clothing}，{pose}，{expression}。"
+    desc += f"{composition_desc}，{background_desc}，{sty['lighting']}，{sty['photography']}风格。"
+    if custom_block:
+        desc += custom_block
 
+    prompt = template.replace("{{main_description}}", desc)
     prompt = re.sub(r"\n{3,}", "\n\n", prompt).strip()
     return prompt
 

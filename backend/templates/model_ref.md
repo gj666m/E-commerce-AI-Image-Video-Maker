@@ -1,6 +1,3 @@
-参考输入图片中的人物面部特征，生成一位{{ethnicity_desc}}{{age_desc}}的{{gender_desc}}模特，
-{{facial_features}}，{{hair_desc}}，{{expression_desc}}，
-{{pose_desc}}，{{composition_desc}}，
-{{clothing_desc}}，{{background_desc}}，{{lighting_desc}}，{{photography_style}}，
-{{custom_desc}}
-高清写实人像摄影，自然真实，五官端正对称，手指正常无畸变，无水印无文字无logo
+{{main_description}}
+
+质量要求：高清写实人像摄影，自然真实，五官端正对称，严格保留参考图中人物的面部特征（脸型、五官比例、肤色）。手指正常五根无畸变，无多余肢体。无 watermark、无文字、无 logo。服装穿着合身，无不合逻辑的褶皱或悬浮。画面干净，无多余物体。
