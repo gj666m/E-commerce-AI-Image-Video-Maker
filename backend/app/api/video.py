@@ -278,16 +278,30 @@ async def video_status(task_id: str, current_user=Depends(get_current_user)):
     # 逻辑：取提交前的 quota 快照 vs 当前 quota，差值即为 API易 实际扣费（含补扣费）
     real_cost = None
     real_currency = video_task.currency
+    is_first_complete = (
+        video_task.status == "completed"
+        and not task_info.get("video_url")  # DB 里还没 video_url = 首次完成
+    )
+
+    # 路径 A：DB 里已有持久化的 cost（非首次完成 poll）→ 直接用，避免降级回 token 估算
     if (
         video_task.status == "completed"
+        and task_info.get("cost") is not None
+    ):
+        real_cost = float(task_info["cost"])
+        real_currency = task_info.get("currency") or video_task.currency
+
+    # 路径 B：首次完成 + API易 + 有 balance_before 快照 → 立即算 + 持久化
+    elif (
+        is_first_complete
         and task_info.get("provider_name") == "seedance_apiyi"
         and task_info.get("balance_before") is not None
-        and not task_info.get("video_url")  # 只在首次完成时算一次
     ):
         try:
             balance_after = await fetch_quota_snapshot()
-            real_cost = compute_real_cost(task_info.get("balance_before"), balance_after)
-            if real_cost is not None:
+            cost_val = compute_real_cost(task_info.get("balance_before"), balance_after)
+            if cost_val is not None:
+                real_cost = cost_val
                 real_currency = "$"  # API易 按美元计费
                 logger.info(
                     f"视频真实扣费 task={task_id}: quota {task_info['balance_before']}→{balance_after}, "
@@ -314,7 +328,15 @@ async def video_status(task_id: str, current_user=Depends(get_current_user)):
             ext = "gif" if provider.name == "mock_video" else "mp4"
             filename = save_video(task_id, video_data, ext=ext)
             video_task.video_url = make_video_url(filename)
-            await update_task_status(task_id, "completed", video_url=video_task.video_url)
+            # 同时持久化 cost（首次完成时算出的真实扣费或降级 token 估算）
+            cost_to_save = real_cost if real_cost is not None else video_task.cost
+            currency_to_save = real_currency if real_cost is not None else video_task.currency
+            await update_task_status(
+                task_id, "completed",
+                video_url=video_task.video_url,
+                cost=cost_to_save,
+                currency=currency_to_save,
+            )
         except RuntimeError as e:
             result["status"] = "failed"
             result["error"] = str(e)

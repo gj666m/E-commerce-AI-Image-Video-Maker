@@ -169,9 +169,9 @@ const balanceClass = computed(() => {
   return 'balance-low'
 })
 
-async function loadBalance() {
+async function loadBalance(opts?: { fresh?: boolean }) {
   try {
-    const res = await getBalance()
+    const res = await getBalance(opts)
     Object.assign(balance, res)
   } catch (e) {
     // 静默失败，不打扰用户（header 隐藏即可）
@@ -180,17 +180,25 @@ async function loadBalance() {
   }
 }
 
+// 提供全局事件总线：其他页面（如视频完成）可触发立即刷新
+function refreshBalanceFresh() {
+  loadBalance({ fresh: true })
+}
+
 function handleLogout() {
   logout()
 }
 
 onMounted(() => {
   loadBalance()
-  balanceTimer = setInterval(loadBalance, 30 * 1000) // 30 秒（与后端缓存对齐）
+  balanceTimer = setInterval(loadBalance, 15 * 1000) // 15 秒（与后端缓存对齐）
+  // 监听全局事件（如视频完成强制刷新余额）
+  window.addEventListener('balance:refresh', refreshBalanceFresh as EventListener)
 })
 
 onBeforeUnmount(() => {
   if (balanceTimer) clearInterval(balanceTimer)
+  window.removeEventListener('balance:refresh', refreshBalanceFresh as EventListener)
 })
 </script>
 

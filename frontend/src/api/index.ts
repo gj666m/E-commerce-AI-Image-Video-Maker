@@ -401,7 +401,7 @@ export async function clearHistory(): Promise<{ success: boolean; message: strin
   return data
 }
 
-// API易余额查询（全员可见，5 分钟缓存）
+// API易余额查询（全员可见，15 秒缓存）
 export interface BalanceResponse {
   success: boolean
   available: boolean
@@ -411,7 +411,9 @@ export interface BalanceResponse {
   request_count?: number
 }
 
-export async function getBalance(): Promise<BalanceResponse> {
-  const { data } = await api.get('/api/balance')
+export async function getBalance(opts?: { fresh?: boolean }): Promise<BalanceResponse> {
+  const params: Record<string, string> = {}
+  if (opts?.fresh) params.fresh = 'true'
+  const { data } = await api.get('/api/balance', { params })
   return data
 }

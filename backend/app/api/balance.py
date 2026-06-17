@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/balance", tags=["balance"])
 # API易用户自助接口（注意：Auth 用直接 token，不是 Bearer）
 _APIYI_USER_SELF = "https://api.apiyi.com/api/user/self"
 _QUOTA_TO_USD = 500000  # 1 USD = 500000 quota
-_CACHE_TTL = 30  # 30 秒（充值/扣费后约 1 分钟内能看到变化）
+_CACHE_TTL = 15  # 15 秒（充值/扣费后约 15-30 秒内能看到变化）
 
 # 模块级缓存
 _cache_lock = asyncio.Lock()
@@ -74,10 +74,21 @@ async def fetch_quota_snapshot() -> int | None:
 
 
 @router.get("")
-async def get_balance(current_user=Depends(get_current_user)):
-    """获取 API易 剩余额度（全员可见，5 分钟缓存）"""
+async def get_balance(fresh: bool = False, current_user=Depends(get_current_user)):
+    """获取 API易 剩余额度
+
+    ?fresh=true 绕过缓存立即查询（用于视频完成等关键时刻强制刷新）
+    默认走 30 秒缓存
+    """
     global _cache
     now = time.time()
+
+    # 强制刷新路径：跳过缓存读取，但仍更新缓存（让后续请求受益）
+    if fresh:
+        data = await _fetch_balance()
+        async with _cache_lock:
+            _cache = {"data": data, "fetched_at": now}
+        return {"success": True, **data}
 
     async with _cache_lock:
         if _cache and now - _cache["fetched_at"] < _CACHE_TTL:

@@ -59,14 +59,30 @@ def compute_real_cost(balance_before: int | None, balance_after: int | None) -> 
     return round(diff / 500000, 4)  # 500000 quota = $1
 
 
-async def update_task_status(task_id: str, status: str, video_url: str | None = None, error: str | None = None):
-    """更新任务状态"""
+async def update_task_status(
+    task_id: str,
+    status: str,
+    video_url: str | None = None,
+    error: str | None = None,
+    cost: float | None = None,
+    currency: str | None = None,
+):
+    """更新任务状态
+
+    cost/currency 仅在首次完成时传入，用于持久化真实扣费
+    """
     db = await get_db()
     try:
         if status in ("completed", "failed"):
+            # 用 COALESCE 保证 cost/currency 列只在传入时更新，不覆盖已有值
             await db.execute(
-                "UPDATE video_tasks SET status = ?, video_url = ?, error = ?, completed_at = datetime('now', 'localtime') WHERE id = ?",
-                (status, video_url, error, task_id),
+                """UPDATE video_tasks
+                   SET status = ?, video_url = ?, error = ?,
+                       cost = COALESCE(?, cost),
+                       currency = COALESCE(?, currency),
+                       completed_at = datetime('now', 'localtime')
+                   WHERE id = ?""",
+                (status, video_url, error, cost, currency, task_id),
             )
         else:
             await db.execute(

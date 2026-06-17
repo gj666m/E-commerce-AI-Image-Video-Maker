@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS video_tasks (
     video_url TEXT,
     error TEXT,
     balance_before INTEGER,  -- 提交任务前的 API易 quota 快照（用于真实扣费计算）
+    cost REAL,                -- 真实扣费（首次完成时计算并持久化）
+    currency TEXT,            -- 费用币种（$ 或 ¥）
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     completed_at TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -105,6 +107,14 @@ async def init_db():
             )
             await db.commit()
             logger.info("已为 video_tasks 添加 balance_before 列")
+        if "cost" not in columns:
+            await db.execute("ALTER TABLE video_tasks ADD COLUMN cost REAL")
+            await db.commit()
+            logger.info("已为 video_tasks 添加 cost 列")
+        if "currency" not in columns:
+            await db.execute("ALTER TABLE video_tasks ADD COLUMN currency TEXT")
+            await db.commit()
+            logger.info("已为 video_tasks 添加 currency 列")
 
         # 检查是否已有管理员
         cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")

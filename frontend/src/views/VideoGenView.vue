@@ -656,6 +656,8 @@ function startPolling() {
         clearInterval(pollTimer!)
         pollTimer = null
         ElMessage.success('视频生成完成')
+        // 通知全局立即刷新 header 余额（绕过 15s 缓存）
+        window.dispatchEvent(new Event('balance:refresh'))
       } else if (data.status === 'failed') {
         clearInterval(pollTimer!)
         pollTimer = null
