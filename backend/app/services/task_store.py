@@ -6,7 +6,7 @@ from app.database import get_db
 
 logger = logging.getLogger(__name__)
 
-TASK_EXPIRE_SECONDS = 3600  # 已完成任务保留 1 小时
+TASK_EXPIRE_SECONDS = 259200  # 已完成任务保留 3 天（与视频文件保留期一致）
 
 
 async def create_task(
@@ -109,11 +109,11 @@ async def get_user_active_tasks(user_id: int) -> list[dict]:
 
 
 async def cleanup_expired_tasks():
-    """清理过期任务"""
+    """清理过期任务（已完成/失败的任务保留 3 天）"""
     db = await get_db()
     try:
         cursor = await db.execute(
-            "DELETE FROM video_tasks WHERE status IN ('completed', 'failed') AND completed_at < datetime('now', '-1 hour', 'localtime')"
+            "DELETE FROM video_tasks WHERE status IN ('completed', 'failed') AND completed_at < datetime('now', '-3 days', 'localtime')"
         )
         count = cursor.rowcount
         if count > 0:

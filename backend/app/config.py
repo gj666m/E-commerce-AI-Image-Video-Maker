@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # 视频临时文件
     video_temp_dir: str = "temp_videos"
-    video_expire_seconds: int = 3600  # 1 小时过期
+    video_expire_seconds: int = 259200  # 3 天过期（与图片历史文件保留期一致）
 
     # AI 模型 API Keys（按需配置，不配则为空字符串）
     openai_api_key: str = ""
