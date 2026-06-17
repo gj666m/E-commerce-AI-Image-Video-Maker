@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import generate, models, model, video, analysis, auth, history
+from app.api import generate, models, model, video, analysis, auth, history, balance
 from app.config import settings
 
 # 配置日志
@@ -115,6 +115,7 @@ app.include_router(model.router)
 app.include_router(video.router)
 app.include_router(analysis.router)
 app.include_router(history.router)
+app.include_router(balance.router)
 
 # 挂载临时视频文件静态目录
 temp_dir = Path(settings.video_temp_dir)

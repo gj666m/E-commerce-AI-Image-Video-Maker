@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS generation_history (
     thumbnail TEXT NOT NULL,
     cost REAL NOT NULL DEFAULT 0,
     currency TEXT NOT NULL DEFAULT '¥',
+    file_expired BOOLEAN NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -83,6 +84,16 @@ async def init_db():
     try:
         await db.executescript(_CREATE_TABLES)
         await db.commit()
+
+        # 兼容迁移：generation_history 旧表无 file_expired 列时补上
+        cursor = await db.execute("PRAGMA table_info(generation_history)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "file_expired" not in columns:
+            await db.execute(
+                "ALTER TABLE generation_history ADD COLUMN file_expired BOOLEAN NOT NULL DEFAULT 0"
+            )
+            await db.commit()
+            logger.info("已为 generation_history 添加 file_expired 列")
 
         # 检查是否已有管理员
         cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")

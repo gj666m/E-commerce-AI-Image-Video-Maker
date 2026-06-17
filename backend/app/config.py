@@ -64,7 +64,8 @@ class Settings(BaseSettings):
 
     # 图片生成历史
     generation_history_dir: str = "assets/generations"
-    generation_history_expire_days: int = 3  # 自动清理超过 N 天的历史
+    generation_history_expire_days: int = 3  # 文件过期天数（到期删盘 + 标记 file_expired）
+    generation_history_record_expire_days: int = 90  # 记录元数据保留天数（到期删整行）
 
     # 模型默认配置
     default_image_model: str = "gpt-image-2"

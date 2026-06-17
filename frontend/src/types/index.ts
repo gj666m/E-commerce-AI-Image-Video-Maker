@@ -325,6 +325,7 @@ export interface HistoryItem {
   thumbnail: string    // 相对路径：{user_id}/{id}_thumb.jpeg
   cost: number
   currency: string
+  file_expired?: boolean  // 文件已过期（磁盘已删，仅保留元数据）
   created_at: string
   // 管理员视图额外字段
   user_id?: number

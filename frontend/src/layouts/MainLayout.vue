@@ -7,6 +7,18 @@
           <span class="logo-text">AI-ZW</span>
         </div>
       </div>
+      <div class="header-center">
+        <!-- API易 余额展示（全员可见） -->
+        <div v-if="balance.available" class="balance-box" :class="balanceClass">
+          <el-icon><Wallet /></el-icon>
+          <span class="balance-label">API易余额</span>
+          <span class="balance-amount">${{ balance.quota_usd?.toFixed(2) }}</span>
+        </div>
+        <div v-else-if="balance.message" class="balance-box balance-error" :title="balance.message">
+          <el-icon><Wallet /></el-icon>
+          <span>余额查询失败</span>
+        </div>
+      </div>
       <div class="header-right">
         <el-switch
           v-model="isDark"
@@ -110,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   HomeFilled,
@@ -130,9 +142,11 @@ import {
   User,
   ArrowDown,
   SwitchButton,
+  Wallet,
 } from '@element-plus/icons-vue'
 import { useTheme } from '../composables/useTheme'
 import { useAuth } from '../composables/useAuth'
+import { getBalance, type BalanceResponse } from '../api'
 
 const route = useRoute()
 const { isDark, toggleTheme } = useTheme()
@@ -141,9 +155,43 @@ const { username, isAdmin, logout } = useAuth()
 const sidebarCollapsed = ref(false)
 const currentRoute = computed(() => route.path)
 
+// API易 余额展示（全员可见，5 分钟自动刷新）
+const balance = reactive<BalanceResponse>({
+  success: false,
+  available: false,
+})
+let balanceTimer: ReturnType<typeof setInterval> | null = null
+
+const balanceClass = computed(() => {
+  const v = balance.quota_usd ?? 0
+  if (v >= 10) return 'balance-ok'
+  if (v >= 1) return 'balance-warn'
+  return 'balance-low'
+})
+
+async function loadBalance() {
+  try {
+    const res = await getBalance()
+    Object.assign(balance, res)
+  } catch (e) {
+    // 静默失败，不打扰用户（header 隐藏即可）
+    balance.available = false
+    balance.message = '加载失败'
+  }
+}
+
 function handleLogout() {
   logout()
 }
+
+onMounted(() => {
+  loadBalance()
+  balanceTimer = setInterval(loadBalance, 5 * 60 * 1000) // 5 分钟
+})
+
+onBeforeUnmount(() => {
+  if (balanceTimer) clearInterval(balanceTimer)
+})
 </script>
 
 <style scoped>
@@ -193,6 +241,56 @@ function handleLogout() {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.balance-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-regular);
+  border: 1px solid transparent;
+  transition: all 0.3s;
+}
+
+.balance-label {
+  color: var(--el-text-color-secondary);
+}
+
+.balance-amount {
+  font-weight: 600;
+}
+
+.balance-ok {
+  background: var(--el-color-success-light-9);
+  border-color: var(--el-color-success-light-5);
+  color: var(--el-color-success);
+}
+
+.balance-warn {
+  background: var(--el-color-warning-light-9);
+  border-color: var(--el-color-warning-light-5);
+  color: var(--el-color-warning);
+}
+
+.balance-low {
+  background: var(--el-color-danger-light-9);
+  border-color: var(--el-color-danger-light-5);
+  color: var(--el-color-danger);
+}
+
+.balance-error {
+  color: var(--el-text-color-placeholder);
 }
 
 .user-info {

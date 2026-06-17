@@ -400,3 +400,18 @@ export async function clearHistory(): Promise<{ success: boolean; message: strin
   const { data } = await api.post('/api/history/clear')
   return data
 }
+
+// API易余额查询（全员可见，5 分钟缓存）
+export interface BalanceResponse {
+  success: boolean
+  available: boolean
+  message?: string
+  quota_usd?: number
+  used_usd?: number
+  request_count?: number
+}
+
+export async function getBalance(): Promise<BalanceResponse> {
+  const { data } = await api.get('/api/balance')
+  return data
+}

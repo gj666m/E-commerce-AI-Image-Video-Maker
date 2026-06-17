@@ -125,7 +125,7 @@ async def list_history(
     try:
         if task_type:
             cursor = await db.execute(
-                """SELECT id, task_type, prompt, params, model_used, file, thumbnail, cost, currency, created_at
+                """SELECT id, task_type, prompt, params, model_used, file, thumbnail, cost, currency, file_expired, created_at
                 FROM generation_history
                 WHERE user_id = ? AND task_type = ?
                 ORDER BY created_at DESC
@@ -134,7 +134,7 @@ async def list_history(
             )
         else:
             cursor = await db.execute(
-                """SELECT id, task_type, prompt, params, model_used, file, thumbnail, cost, currency, created_at
+                """SELECT id, task_type, prompt, params, model_used, file, thumbnail, cost, currency, file_expired, created_at
                 FROM generation_history
                 WHERE user_id = ?
                 ORDER BY created_at DESC
@@ -158,7 +158,7 @@ async def list_all_history(
         if task_type:
             cursor = await db.execute(
                 """SELECT h.id, h.task_type, h.prompt, h.params, h.model_used, h.file, h.thumbnail,
-                          h.cost, h.currency, h.created_at, h.user_id, u.username
+                          h.cost, h.currency, h.file_expired, h.created_at, h.user_id, u.username
                 FROM generation_history h JOIN users u ON h.user_id = u.id
                 WHERE h.task_type = ?
                 ORDER BY h.created_at DESC
@@ -168,7 +168,7 @@ async def list_all_history(
         else:
             cursor = await db.execute(
                 """SELECT h.id, h.task_type, h.prompt, h.params, h.model_used, h.file, h.thumbnail,
-                          h.cost, h.currency, h.created_at, h.user_id, u.username
+                          h.cost, h.currency, h.file_expired, h.created_at, h.user_id, u.username
                 FROM generation_history h JOIN users u ON h.user_id = u.id
                 ORDER BY h.created_at DESC
                 LIMIT ? OFFSET ?""",
@@ -191,6 +191,7 @@ def _row_to_dict(r, user_id: int, include_user: bool = False) -> dict:
         "thumbnail": f"{user_id}/{r['thumbnail']}",
         "cost": r["cost"],
         "currency": r["currency"],
+        "file_expired": bool(r["file_expired"]),
         "created_at": r["created_at"],
     }
     if include_user:
@@ -291,26 +292,30 @@ async def clear_user_history(user_id: int) -> int:
 
 
 async def cleanup_expired_history() -> int:
-    """清理超过 expire_days 天的历史记录"""
-    days = settings.generation_history_expire_days
+    """分层清理历史记录：
+    - 文件过期（generation_history_expire_days，默认 3 天）：删磁盘文件 + 标记 file_expired=1，元数据保留
+    - 记录过期（generation_history_record_expire_days，默认 90 天）：DELETE 整行
+    返回处理的记录数（删文件 + 删行总和）
+    """
+    file_days = settings.generation_history_expire_days
+    record_days = settings.generation_history_record_expire_days
     db = await get_db()
     try:
+        # 阶段 1：文件过期 → 删盘 + 标记 file_expired=1（只处理尚未标记的）
         cursor = await db.execute(
             """SELECT id, user_id, file, thumbnail FROM generation_history
-            WHERE created_at < datetime('now', 'localtime', ?)""",
-            (f"-{days} days",),
+            WHERE file_expired = 0
+              AND created_at < datetime('now', 'localtime', ?)""",
+            (f"-{file_days} days",),
         )
-        rows = await cursor.fetchall()
-        if not rows:
-            return 0
+        file_rows = await cursor.fetchall()
 
-        # 删文件
-        for r in rows:
+        for r in file_rows:
             user_d = HISTORY_DIR / str(r["user_id"])
             for key in ("file", "thumbnail"):
                 fname = Path(r[key]).name
                 fpath = (user_d / fname).resolve()
-                if not fpath.is_relative_to(HISTORY_DIR):
+                if not fpath.is_relative_to(user_d):
                     continue
                 try:
                     if fpath.exists():
@@ -318,14 +323,31 @@ async def cleanup_expired_history() -> int:
                 except OSError:
                     pass
 
-        ids = [r["id"] for r in rows]
-        placeholders = ",".join("?" * len(ids))
-        await db.execute(
-            f"DELETE FROM generation_history WHERE id IN ({placeholders})",
-            ids,
+        if file_rows:
+            file_ids = [r["id"] for r in file_rows]
+            placeholders = ",".join("?" * len(file_ids))
+            await db.execute(
+                f"UPDATE generation_history SET file_expired = 1 WHERE id IN ({placeholders})",
+                file_ids,
+            )
+
+        # 阶段 2：记录过期 → DELETE 整行（不再删文件，阶段 1 已删）
+        cursor = await db.execute(
+            """SELECT id FROM generation_history
+            WHERE created_at < datetime('now', 'localtime', ?)""",
+            (f"-{record_days} days",),
         )
+        record_rows = await cursor.fetchall()
+        if record_rows:
+            record_ids = [r["id"] for r in record_rows]
+            placeholders = ",".join("?" * len(record_ids))
+            await db.execute(
+                f"DELETE FROM generation_history WHERE id IN ({placeholders})",
+                record_ids,
+            )
+
         await db.commit()
-        return len(rows)
+        return len(file_rows) + len(record_rows)
     finally:
         await db.close()
 

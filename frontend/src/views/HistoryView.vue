@@ -5,7 +5,7 @@
         <el-icon class="section-icon"><Clock /></el-icon>
         生成历史
       </h2>
-      <p class="section-desc">自动记录所有图片生成结果，超过 {{ expireDays }} 天自动清理。</p>
+      <p class="section-desc">自动记录所有图片生成结果。文件保留 {{ fileExpireDays }} 天，元数据保留 {{ recordExpireDays }} 天。</p>
     </div>
 
     <!-- 工具栏 -->
@@ -47,8 +47,17 @@
       </div>
 
       <div v-else class="grid">
-        <div v-for="item in items" :key="item.id" class="card">
-          <div class="thumb-wrap" @click="preview(item)">
+        <div v-for="item in items" :key="item.id" class="card" :class="{ 'card-expired': item.file_expired }">
+          <!-- 过期：灰色占位 + 已过期徽章 -->
+          <div v-if="item.file_expired" class="thumb-wrap thumb-expired">
+            <div class="expired-placeholder">
+              <el-icon :size="32"><PictureFilled /></el-icon>
+              <span>文件已过期</span>
+            </div>
+            <div class="expired-badge">已过期</div>
+          </div>
+          <!-- 正常：缩略图 + 预览 -->
+          <div v-else class="thumb-wrap" @click="preview(item)">
             <img :src="`/gen-files/${item.thumbnail}`" :alt="item.task_type" loading="lazy" />
             <div class="thumb-overlay">
               <el-icon><ZoomIn /></el-icon>
@@ -67,7 +76,12 @@
               {{ item.cost.toFixed(2) }} {{ item.currency }}
             </div>
             <div class="card-actions">
-              <el-button size="small" :icon="Download" @click="download(item)">下载</el-button>
+              <el-button
+                size="small"
+                :icon="Download"
+                :disabled="item.file_expired"
+                @click="download(item)"
+              >下载</el-button>
               <el-button size="small" type="danger" plain :icon="Delete" @click="handleDelete(item)">删除</el-button>
             </div>
           </div>
@@ -91,14 +105,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Clock, Refresh, Delete, Download, Picture, ZoomIn } from '@element-plus/icons-vue'
+import { Clock, Refresh, Delete, Download, Picture, ZoomIn, PictureFilled } from '@element-plus/icons-vue'
 import { listHistory, deleteHistory, clearHistory } from '../api'
 import type { HistoryItem } from '../types'
 
 const items = ref<HistoryItem[]>([])
 const loading = ref(false)
 const filterType = ref<string>('')
-const expireDays = 3
+const fileExpireDays = 3
+const recordExpireDays = 90
 const previewVisible = ref(false)
 const previewItem = ref<HistoryItem | null>(null)
 
@@ -294,6 +309,42 @@ onMounted(loadHistory)
 .card:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   transform: translateY(-2px);
+}
+
+.card-expired {
+  opacity: 0.78;
+}
+
+.card-expired:hover {
+  transform: none;
+}
+
+.thumb-expired {
+  cursor: default;
+}
+
+.expired-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--el-text-color-placeholder);
+  background: var(--el-fill-color-light);
+  font-size: 13px;
+}
+
+.expired-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  background: var(--el-color-info-light-5);
+  color: #fff;
+  font-size: 12px;
+  border-radius: 4px;
 }
 
 .thumb-wrap {
