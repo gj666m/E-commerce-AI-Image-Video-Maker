@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS generation_history (
     cost REAL NOT NULL DEFAULT 0,
     currency TEXT NOT NULL DEFAULT '¥',
     file_expired BOOLEAN NOT NULL DEFAULT 0,
+    user_deleted BOOLEAN NOT NULL DEFAULT 0,      -- 用户软删标记（admin 仍可见）
+    user_deleted_at TEXT,                          -- 用户软删时间
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -97,6 +99,18 @@ async def init_db():
             )
             await db.commit()
             logger.info("已为 generation_history 添加 file_expired 列")
+        if "user_deleted" not in columns:
+            await db.execute(
+                "ALTER TABLE generation_history ADD COLUMN user_deleted BOOLEAN NOT NULL DEFAULT 0"
+            )
+            await db.commit()
+            logger.info("已为 generation_history 添加 user_deleted 列")
+        if "user_deleted_at" not in columns:
+            await db.execute(
+                "ALTER TABLE generation_history ADD COLUMN user_deleted_at TEXT"
+            )
+            await db.commit()
+            logger.info("已为 generation_history 添加 user_deleted_at 列")
 
         # 兼容迁移：video_tasks 旧表无 balance_before 列时补上
         cursor = await db.execute("PRAGMA table_info(video_tasks)")

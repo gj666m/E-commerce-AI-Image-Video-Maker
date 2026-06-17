@@ -120,23 +120,25 @@ async def list_history(
     limit: int = 200,
     offset: int = 0,
 ) -> list[dict]:
-    """获取用户的历史列表（按时间倒序）"""
+    """获取用户的历史列表（按时间倒序，自动隐藏用户自己软删的）"""
     db = await get_db()
     try:
         if task_type:
             cursor = await db.execute(
-                """SELECT id, task_type, prompt, params, model_used, file, thumbnail, cost, currency, file_expired, created_at
+                """SELECT id, task_type, prompt, params, model_used, file, thumbnail, cost, currency,
+                          file_expired, user_deleted, user_deleted_at, created_at
                 FROM generation_history
-                WHERE user_id = ? AND task_type = ?
+                WHERE user_id = ? AND task_type = ? AND user_deleted = 0
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?""",
                 (user_id, task_type, limit, offset),
             )
         else:
             cursor = await db.execute(
-                """SELECT id, task_type, prompt, params, model_used, file, thumbnail, cost, currency, file_expired, created_at
+                """SELECT id, task_type, prompt, params, model_used, file, thumbnail, cost, currency,
+                          file_expired, user_deleted, user_deleted_at, created_at
                 FROM generation_history
-                WHERE user_id = ?
+                WHERE user_id = ? AND user_deleted = 0
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?""",
                 (user_id, limit, offset),
@@ -149,31 +151,36 @@ async def list_history(
 
 async def list_all_history(
     task_type: str | None = None,
+    include_deleted: bool = False,
     limit: int = 200,
     offset: int = 0,
 ) -> list[dict]:
-    """管理员获取所有用户的历史"""
+    """管理员获取所有用户的历史
+
+    include_deleted=False（默认）：只看未被用户软删的
+    include_deleted=True：包含用户软删的记录（admin 审计用）
+    """
     db = await get_db()
     try:
+        # 构造 WHERE：默认排除 user_deleted=1
+        where_parts = []
+        params: list = []
         if task_type:
-            cursor = await db.execute(
-                """SELECT h.id, h.task_type, h.prompt, h.params, h.model_used, h.file, h.thumbnail,
-                          h.cost, h.currency, h.file_expired, h.created_at, h.user_id, u.username
-                FROM generation_history h JOIN users u ON h.user_id = u.id
-                WHERE h.task_type = ?
-                ORDER BY h.created_at DESC
-                LIMIT ? OFFSET ?""",
-                (task_type, limit, offset),
-            )
-        else:
-            cursor = await db.execute(
-                """SELECT h.id, h.task_type, h.prompt, h.params, h.model_used, h.file, h.thumbnail,
-                          h.cost, h.currency, h.file_expired, h.created_at, h.user_id, u.username
-                FROM generation_history h JOIN users u ON h.user_id = u.id
-                ORDER BY h.created_at DESC
-                LIMIT ? OFFSET ?""",
-                (limit, offset),
-            )
+            where_parts.append("h.task_type = ?")
+            params.append(task_type)
+        if not include_deleted:
+            where_parts.append("h.user_deleted = 0")
+        where_clause = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
+
+        sql = f"""SELECT h.id, h.task_type, h.prompt, h.params, h.model_used, h.file, h.thumbnail,
+                  h.cost, h.currency, h.file_expired, h.user_deleted, h.user_deleted_at,
+                  h.created_at, h.user_id, u.username
+            FROM generation_history h JOIN users u ON h.user_id = u.id
+            {where_clause}
+            ORDER BY h.created_at DESC
+            LIMIT ? OFFSET ?"""
+        params.extend([limit, offset])
+        cursor = await db.execute(sql, params)
         rows = await cursor.fetchall()
         return [_row_to_dict(r, r["user_id"], include_user=True) for r in rows]
     finally:
@@ -192,6 +199,8 @@ def _row_to_dict(r, user_id: int, include_user: bool = False) -> dict:
         "cost": r["cost"],
         "currency": r["currency"],
         "file_expired": bool(r["file_expired"]),
+        "user_deleted": bool(r["user_deleted"]),
+        "user_deleted_at": r["user_deleted_at"],
         "created_at": r["created_at"],
     }
     if include_user:
@@ -201,7 +210,10 @@ def _row_to_dict(r, user_id: int, include_user: bool = False) -> dict:
 
 
 async def delete_history(user_id: int, history_id: str) -> bool:
-    """删除单条历史（只能删自己的）"""
+    """用户软删单条历史（只能软删自己的）
+
+    行为：删盘文件 + 标记 user_deleted=1（元数据保留，admin 仍可见）
+    """
     db = await get_db()
     try:
         cursor = await db.execute(
@@ -212,6 +224,7 @@ async def delete_history(user_id: int, history_id: str) -> bool:
         if not row:
             return False
 
+        # 删磁盘文件（节省空间，DB 元数据保留）
         user_d = _user_dir(user_id)
         for key in ("file", "thumbnail"):
             fname = Path(row[key]).name
@@ -224,16 +237,22 @@ async def delete_history(user_id: int, history_id: str) -> bool:
             except OSError as e:
                 logger.warning(f"删除历史文件失败 {fpath}: {e}")
 
-        await db.execute("DELETE FROM generation_history WHERE id = ?", (history_id,))
+        # 软删：标记 + 记录时间，不 DELETE
+        await db.execute(
+            """UPDATE generation_history
+               SET user_deleted = 1, user_deleted_at = datetime('now', 'localtime')
+               WHERE id = ?""",
+            (history_id,),
+        )
         await db.commit()
-        logger.info(f"历史已删除: {history_id} (user={user_id})")
+        logger.info(f"用户软删历史: {history_id} (user={user_id})")
         return True
     finally:
         await db.close()
 
 
 async def delete_history_any(history_id: str) -> bool:
-    """管理员删除任意一条历史（不限 user_id）"""
+    """管理员硬删任意一条历史（真删，不可恢复）"""
     db = await get_db()
     try:
         cursor = await db.execute(
@@ -258,36 +277,46 @@ async def delete_history_any(history_id: str) -> bool:
 
         await db.execute("DELETE FROM generation_history WHERE id = ?", (history_id,))
         await db.commit()
-        logger.info(f"管理员删除历史: {history_id}")
+        logger.info(f"管理员硬删历史: {history_id}")
         return True
     finally:
         await db.close()
 
 
 async def clear_user_history(user_id: int) -> int:
-    """清空用户全部历史，返回删除条数"""
+    """用户清空自己的全部历史（软删：文件删，元数据保留，admin 仍可见）
+
+    返回处理的条数
+    """
     db = await get_db()
     try:
+        # 只统计尚未软删的条数（避免重复清空时返回虚高数字）
         cursor = await db.execute(
-            "SELECT COUNT(*) FROM generation_history WHERE user_id = ?",
+            "SELECT COUNT(*) FROM generation_history WHERE user_id = ? AND user_deleted = 0",
             (user_id,),
         )
         row = await cursor.fetchone()
         count = row[0] if row else 0
 
-        await db.execute("DELETE FROM generation_history WHERE user_id = ?", (user_id,))
+        # 软删所有未软删的
+        await db.execute(
+            """UPDATE generation_history
+               SET user_deleted = 1, user_deleted_at = datetime('now', 'localtime')
+               WHERE user_id = ? AND user_deleted = 0""",
+            (user_id,),
+        )
         await db.commit()
     finally:
         await db.close()
 
-    # 清空目录文件
+    # 清空磁盘文件（用户已经看不到了，文件留着也是浪费空间）
     user_d = _user_dir(user_id)
     if user_d.exists():
         import shutil
         shutil.rmtree(user_d, ignore_errors=True)
         user_d.mkdir(parents=True, exist_ok=True)
 
-    logger.info(f"已清空用户 {user_id} 的全部历史，共 {count} 条")
+    logger.info(f"用户 {user_id} 清空历史（软删），共 {count} 条")
     return count
 
 

@@ -40,6 +40,19 @@
             :value="u"
           />
         </el-select>
+        <el-tooltip
+          v-if="isAdmin"
+          content="开启后显示用户已软删的记录（仅管理员可见）"
+          placement="top"
+        >
+          <el-switch
+            v-model="showDeleted"
+            inline-prompt
+            active-text="含已删"
+            inactive-text="全部"
+            @change="loadHistory"
+          />
+        </el-tooltip>
       </div>
       <div class="action-group">
         <span class="count-text" v-if="!loading">共 {{ displayedItems.length }} 条</span>
@@ -63,13 +76,21 @@
 
       <div v-else class="grid">
         <div v-for="item in displayedItems" :key="item.id" class="card" :class="{ 'card-expired': item.file_expired }">
-          <!-- 过期：灰色占位 + 已过期徽章 -->
-          <div v-if="item.file_expired" class="thumb-wrap thumb-expired">
+          <!-- 文件不可用：3 种情况共用占位（文件过期 / 用户软删 / admin 视角的用户软删）-->
+          <div v-if="item.file_expired || (isAdmin && item.user_deleted)" class="thumb-wrap thumb-expired">
             <div class="expired-placeholder">
-              <el-icon :size="32"><PictureFilled /></el-icon>
-              <span>文件已过期</span>
+              <el-icon :size="32">
+                <Delete v-if="isAdmin && item.user_deleted" />
+                <PictureFilled v-else />
+              </el-icon>
+              <span v-if="isAdmin && item.user_deleted">用户已删除</span>
+              <span v-else>文件已过期</span>
+              <span class="deleted-time" v-if="isAdmin && item.user_deleted && item.user_deleted_at">
+                {{ formatTime(item.user_deleted_at) }}
+              </span>
             </div>
-            <div class="expired-badge">已过期</div>
+            <div v-if="isAdmin && item.user_deleted" class="user-deleted-badge">用户已删</div>
+            <div v-else class="expired-badge">已过期</div>
           </div>
           <!-- 正常：缩略图 + 预览 -->
           <div v-else class="thumb-wrap" @click="preview(item)">
@@ -134,6 +155,7 @@ const items = ref<HistoryItem[]>([])
 const loading = ref(false)
 const filterType = ref<string>('')
 const filterUser = ref<string>('')
+const showDeleted = ref(false)  // admin 专属：是否显示用户软删的记录
 const fileExpireDays = 3
 const recordExpireDays = 90
 const previewVisible = ref(false)
@@ -194,7 +216,9 @@ function formatTime(t: string) {
 async function loadHistory() {
   loading.value = true
   try {
-    const res = await listHistory(filterType.value || undefined)
+    const res = await listHistory(filterType.value || undefined, {
+      includeDeleted: isAdmin.value && showDeleted.value,
+    })
     items.value = res.items
   } catch (e) {
     ElMessage.error('加载历史失败')
@@ -228,9 +252,12 @@ async function download(item: HistoryItem) {
 }
 
 async function handleDelete(item: HistoryItem) {
+  const tip = isAdmin.value
+    ? `管理员将【永久硬删】这张${typeLabel(item.task_type)}记录，不可恢复。确定？`
+    : `确定删除这张${typeLabel(item.task_type)}历史图？（管理员仍可查看）`
   try {
-    await ElMessageBox.confirm(`确定删除这张${typeLabel(item.task_type)}历史图？`, '删除确认', {
-      type: 'warning',
+    await ElMessageBox.confirm(tip, '删除确认', {
+      type: isAdmin.value ? 'error' : 'warning',
     })
   } catch {
     return
@@ -238,7 +265,7 @@ async function handleDelete(item: HistoryItem) {
   try {
     await deleteHistory(item.id)
     items.value = items.value.filter(i => i.id !== item.id)
-    ElMessage.success('已删除')
+    ElMessage.success(isAdmin.value ? '已硬删' : '已删除')
   } catch (e) {
     ElMessage.error('删除失败')
     console.error(e)
@@ -248,9 +275,9 @@ async function handleDelete(item: HistoryItem) {
 async function handleClear() {
   try {
     await ElMessageBox.confirm(
-      `将清空你的全部历史（共 ${items.value.length} 条），此操作不可恢复。确定继续？`,
+      `将清空你的全部历史（共 ${items.value.length} 条）。\n记录将不再显示给你，但管理员仍可查看用于对账。`,
       '清空全部历史',
-      { type: 'error', confirmButtonText: '清空', cancelButtonText: '取消' },
+      { type: 'warning', confirmButtonText: '清空', cancelButtonText: '取消' },
     )
   } catch {
     return
@@ -382,6 +409,23 @@ onMounted(loadHistory)
   color: #fff;
   font-size: 12px;
   border-radius: 4px;
+}
+
+.user-deleted-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  background: var(--el-color-danger-light-5);
+  color: #fff;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.deleted-time {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
 }
 
 .thumb-wrap {

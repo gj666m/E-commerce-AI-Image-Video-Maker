@@ -382,9 +382,13 @@ export async function updateUser(userId: number, payload: { password?: string; r
 // ====== 图片生成历史 ======
 
 // 获取历史列表
-export async function listHistory(taskType?: string): Promise<{ success: boolean; items: HistoryItem[]; count: number }> {
+export async function listHistory(
+  taskType?: string,
+  opts?: { includeDeleted?: boolean },
+): Promise<{ success: boolean; items: HistoryItem[]; count: number }> {
   const params: Record<string, string> = {}
   if (taskType) params.task_type = taskType
+  if (opts?.includeDeleted) params.include_deleted = 'true'
   const { data } = await api.get('/api/history', { params })
   return data
 }
