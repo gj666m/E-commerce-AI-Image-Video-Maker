@@ -209,48 +209,6 @@ def _row_to_dict(r, user_id: int, include_user: bool = False) -> dict:
     return d
 
 
-async def delete_history(user_id: int, history_id: str) -> bool:
-    """用户软删单条历史（只能软删自己的）
-
-    行为：删盘文件 + 标记 user_deleted=1（元数据保留，admin 仍可见）
-    """
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT file, thumbnail FROM generation_history WHERE id = ? AND user_id = ?",
-            (history_id, user_id),
-        )
-        row = await cursor.fetchone()
-        if not row:
-            return False
-
-        # 删磁盘文件（节省空间，DB 元数据保留）
-        user_d = _user_dir(user_id)
-        for key in ("file", "thumbnail"):
-            fname = Path(row[key]).name
-            fpath = (user_d / fname).resolve()
-            if not fpath.is_relative_to(user_d):
-                continue
-            try:
-                if fpath.exists():
-                    fpath.unlink()
-            except OSError as e:
-                logger.warning(f"删除历史文件失败 {fpath}: {e}")
-
-        # 软删：标记 + 记录时间，不 DELETE
-        await db.execute(
-            """UPDATE generation_history
-               SET user_deleted = 1, user_deleted_at = datetime('now', 'localtime')
-               WHERE id = ?""",
-            (history_id,),
-        )
-        await db.commit()
-        logger.info(f"用户软删历史: {history_id} (user={user_id})")
-        return True
-    finally:
-        await db.close()
-
-
 async def delete_history_any(history_id: str) -> bool:
     """管理员硬删任意一条历史（真删，不可恢复）"""
     db = await get_db()
@@ -283,41 +241,57 @@ async def delete_history_any(history_id: str) -> bool:
         await db.close()
 
 
-async def clear_user_history(user_id: int) -> int:
-    """用户清空自己的全部历史（软删：文件删，元数据保留，admin 仍可见）
+async def clear_all_history_admin(username: str | None = None) -> int:
+    """管理员硬删全部历史（真删：删盘文件 + DELETE 整行，不可恢复）
 
-    返回处理的条数
+    Args:
+        username: 指定用户名则只清该用户，None 则清所有用户
+    返回删除条数
     """
+    import shutil
     db = await get_db()
     try:
-        # 只统计尚未软删的条数（避免重复清空时返回虚高数字）
-        cursor = await db.execute(
-            "SELECT COUNT(*) FROM generation_history WHERE user_id = ? AND user_deleted = 0",
-            (user_id,),
-        )
-        row = await cursor.fetchone()
-        count = row[0] if row else 0
-
-        # 软删所有未软删的
-        await db.execute(
-            """UPDATE generation_history
-               SET user_deleted = 1, user_deleted_at = datetime('now', 'localtime')
-               WHERE user_id = ? AND user_deleted = 0""",
-            (user_id,),
-        )
-        await db.commit()
+        if username:
+            # 按 username 定位 user_id，只清该用户
+            cursor = await db.execute(
+                """SELECT id FROM users WHERE username = ?""",
+                (username,),
+            )
+            u = await cursor.fetchone()
+            if not u:
+                return 0
+            uid = u["id"]
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM generation_history WHERE user_id = ?",
+                (uid,),
+            )
+            count = (await cursor.fetchone())[0] or 0
+            await db.execute(
+                "DELETE FROM generation_history WHERE user_id = ?",
+                (uid,),
+            )
+            await db.commit()
+            # 清空该用户的磁盘目录
+            user_d = HISTORY_DIR / str(uid)
+            if user_d.exists():
+                shutil.rmtree(user_d, ignore_errors=True)
+                user_d.mkdir(parents=True, exist_ok=True)
+            logger.info(f"管理员硬删用户 {username}(id={uid}) 全部历史，共 {count} 条")
+        else:
+            # 清所有用户
+            cursor = await db.execute("SELECT COUNT(*) FROM generation_history")
+            count = (await cursor.fetchone())[0] or 0
+            await db.execute("DELETE FROM generation_history")
+            await db.commit()
+            # 清空整个历史目录下的用户子目录
+            if HISTORY_DIR.exists():
+                for child in HISTORY_DIR.iterdir():
+                    if child.is_dir():
+                        shutil.rmtree(child, ignore_errors=True)
+            logger.info(f"管理员硬删所有用户历史，共 {count} 条")
+        return count
     finally:
         await db.close()
-
-    # 清空磁盘文件（用户已经看不到了，文件留着也是浪费空间）
-    user_d = _user_dir(user_id)
-    if user_d.exists():
-        import shutil
-        shutil.rmtree(user_d, ignore_errors=True)
-        user_d.mkdir(parents=True, exist_ok=True)
-
-    logger.info(f"用户 {user_id} 清空历史（软删），共 {count} 条")
-    return count
 
 
 async def cleanup_expired_history() -> int:

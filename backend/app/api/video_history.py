@@ -3,7 +3,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.deps import get_current_user
+from app.deps import get_current_user, require_admin
 from app.services import video_history_store
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,10 @@ async def list_video_history(
     limit: int = Query(200, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
-    """获取视频历史列表（admin 可看所有人，user 只看自己）"""
+    """获取视频历史列表（admin 可看所有人，user 只看自己）
+
+    普通用户无删除权限，但历史可见只读
+    """
     if current_user["role"] == "admin":
         items = await video_history_store.list_all_video_history(
             include_deleted=include_deleted,
@@ -34,31 +37,35 @@ async def list_video_history(
 
 
 @router.delete("/{task_id}")
-async def delete_one(task_id: str, current_user=Depends(get_current_user)):
-    """删除单条视频历史
+async def delete_one(
+    task_id: str,
+    admin=Depends(require_admin),
+):
+    """硬删单条视频历史（仅 admin）
 
-    - admin：硬删（真删，不可恢复），可删任何人的
-    - user：软删（自己看不到了，admin 仍可见），只能删自己的
+    用户无删除权限。admin 硬删任意一条（真删，不可恢复）。
     """
-    if current_user["role"] == "admin":
-        ok = await video_history_store.delete_video_history_any(task_id)
-        action = "硬删"
-    else:
-        ok = await video_history_store.delete_video_history(current_user["id"], task_id)
-        action = "软删"
+    ok = await video_history_store.delete_video_history_any(task_id)
     if not ok:
-        raise HTTPException(404, "视频记录不存在或无权删除")
-    logger.info(f"用户 {current_user['username']} {action} 视频历史 {task_id}")
-    return {"success": True, "message": "已删除", "action": action}
+        raise HTTPException(404, "视频记录不存在")
+    logger.info(f"管理员 {admin['username']} 硬删视频历史 {task_id}")
+    return {"success": True, "message": "已硬删", "action": "硬删"}
 
 
 @router.post("/clear")
-async def clear_mine(current_user=Depends(get_current_user)):
-    """清空当前用户的全部视频历史（软删：admin 仍可见）"""
-    count = await video_history_store.clear_user_video_history(current_user["id"])
-    logger.info(f"用户 {current_user['username']} 清空视频历史（软删），共 {count} 条")
+async def clear_all(
+    admin=Depends(require_admin),
+    username: str | None = Query(None, description="指定用户名则只清该用户，不传则清所有用户"),
+):
+    """清空视频历史（仅 admin，硬删）
+
+    用户无清空权限。admin 可清空所有用户或指定用户的视频历史（真删不可恢复）。
+    """
+    count = await video_history_store.clear_all_video_history_admin(username=username)
+    target = f"用户 {username}" if username else "所有用户"
+    logger.info(f"管理员 {admin['username']} 清空 {target} 视频历史（硬删），共 {count} 条")
     return {
         "success": True,
-        "message": f"已清空 {count} 条视频历史（管理员仍可查看）",
+        "message": f"已清空 {target} 的 {count} 条视频历史（硬删，不可恢复）",
         "deleted": count,
     }

@@ -399,9 +399,10 @@ export async function deleteHistory(historyId: string): Promise<{ success: boole
   return data
 }
 
-// 清空当前用户全部历史
-export async function clearHistory(): Promise<{ success: boolean; message: string; deleted: number }> {
-  const { data } = await api.post('/api/history/clear')
+// 清空历史（仅 admin）— 可选 username 只清指定用户
+export async function clearHistory(username?: string): Promise<{ success: boolean; message: string; deleted: number }> {
+  const config = username ? { params: { username } } : undefined
+  const { data } = await api.post('/api/history/clear', undefined, config)
   return data
 }
 
@@ -423,9 +424,10 @@ export async function deleteVideoHistory(taskId: string): Promise<{ success: boo
   return data
 }
 
-// 清空当前用户全部视频历史
-export async function clearVideoHistory(): Promise<{ success: boolean; message: string; deleted: number }> {
-  const { data } = await api.post('/api/video/history/clear')
+// 清空视频历史（仅 admin）— 可选 username 只清指定用户
+export async function clearVideoHistory(username?: string): Promise<{ success: boolean; message: string; deleted: number }> {
+  const config = username ? { params: { username } } : undefined
+  const { data } = await api.post('/api/video/history/clear', undefined, config)
   return data
 }
 

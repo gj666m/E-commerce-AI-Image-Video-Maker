@@ -91,38 +91,6 @@ def _row_to_dict(r, include_user: bool = False) -> dict:
     return d
 
 
-async def delete_video_history(user_id: int, task_id: str) -> bool:
-    """用户软删单条视频历史（只能软删自己的）
-
-    行为：删盘文件 + 标记 user_deleted=1（元数据保留，admin 仍可见）
-    """
-    db = await get_db()
-    try:
-        cursor = await db.execute(
-            "SELECT video_url FROM video_tasks WHERE id = ? AND user_id = ?",
-            (task_id, user_id),
-        )
-        row = await cursor.fetchone()
-        if not row:
-            return False
-
-        # 删磁盘文件
-        _safe_unlink(row["video_url"])
-
-        # 软删
-        await db.execute(
-            """UPDATE video_tasks
-               SET user_deleted = 1, user_deleted_at = datetime('now', 'localtime')
-               WHERE id = ?""",
-            (task_id,),
-        )
-        await db.commit()
-        logger.info(f"用户软删视频历史: {task_id} (user={user_id})")
-        return True
-    finally:
-        await db.close()
-
-
 async def delete_video_history_any(task_id: str) -> bool:
     """管理员硬删任意一条视频历史（真删，不可恢复）"""
     db = await get_db()
@@ -145,38 +113,67 @@ async def delete_video_history_any(task_id: str) -> bool:
         await db.close()
 
 
-async def clear_user_video_history(user_id: int) -> int:
-    """用户清空自己的全部视频历史（软删：文件删，元数据保留，admin 仍可见）
+async def clear_all_video_history_admin(username: str | None = None) -> int:
+    """管理员硬删全部视频历史（真删：删盘文件 + DELETE 整行，不可恢复）
 
-    返回处理的条数
+    Args:
+        username: 指定用户名则只清该用户，None 则清所有用户
+    返回删除条数
     """
     db = await get_db()
     try:
-        cursor = await db.execute(
-            "SELECT COUNT(*) FROM video_tasks WHERE user_id = ? AND status = 'completed' AND user_deleted = 0",
-            (user_id,),
-        )
-        row = await cursor.fetchone()
-        count = row[0] if row else 0
-
-        await db.execute(
-            """UPDATE video_tasks
-               SET user_deleted = 1, user_deleted_at = datetime('now', 'localtime')
-               WHERE user_id = ? AND status = 'completed' AND user_deleted = 0""",
-            (user_id,),
-        )
-        await db.commit()
+        if username:
+            cursor = await db.execute("SELECT id FROM users WHERE username = ?", (username,))
+            u = await cursor.fetchone()
+            if not u:
+                return 0
+            uid = u["id"]
+            # 先查出要删的视频文件
+            cursor = await db.execute(
+                "SELECT video_url FROM video_tasks WHERE user_id = ? AND status = 'completed'",
+                (uid,),
+            )
+            rows = await cursor.fetchall()
+            for r in rows:
+                _safe_unlink(r["video_url"])
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM video_tasks WHERE user_id = ? AND status = 'completed'",
+                (uid,),
+            )
+            count = (await cursor.fetchone())[0] or 0
+            await db.execute(
+                "DELETE FROM video_tasks WHERE user_id = ? AND status = 'completed'",
+                (uid,),
+            )
+            await db.commit()
+            user_dir = get_temp_dir() / str(uid)
+            if user_dir.exists():
+                shutil.rmtree(user_dir, ignore_errors=True)
+                user_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"管理员硬删用户 {username}(id={uid}) 全部视频历史，共 {count} 条")
+        else:
+            cursor = await db.execute(
+                "SELECT video_url FROM video_tasks WHERE status = 'completed'"
+            )
+            rows = await cursor.fetchall()
+            for r in rows:
+                _safe_unlink(r["video_url"])
+            cursor = await db.execute(
+                "SELECT COUNT(*) FROM video_tasks WHERE status = 'completed'"
+            )
+            count = (await cursor.fetchone())[0] or 0
+            await db.execute("DELETE FROM video_tasks WHERE status = 'completed'")
+            await db.commit()
+            # 清空整个 temp_dir 下所有用户子目录
+            temp = get_temp_dir()
+            if temp.exists():
+                for child in temp.iterdir():
+                    if child.is_dir():
+                        shutil.rmtree(child, ignore_errors=True)
+            logger.info(f"管理员硬删所有用户视频历史，共 {count} 条")
+        return count
     finally:
         await db.close()
-
-    # 清空该用户的视频文件目录（节省磁盘）
-    user_dir = get_temp_dir() / str(user_id)
-    if user_dir.exists():
-        shutil.rmtree(user_dir, ignore_errors=True)
-        user_dir.mkdir(parents=True, exist_ok=True)
-
-    logger.info(f"用户 {user_id} 清空视频历史（软删），共 {count} 条")
-    return count
 
 
 async def cleanup_expired_video_history() -> int:

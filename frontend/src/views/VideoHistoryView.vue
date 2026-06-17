@@ -44,6 +44,7 @@
         <span class="count-text" v-if="!loading">共 {{ displayedItems.length }} 条</span>
         <el-button :icon="Refresh" @click="loadHistory" :loading="loading">刷新</el-button>
         <el-button
+          v-if="isAdmin"
           type="danger"
           plain
           :icon="Delete"
@@ -116,7 +117,7 @@
                 :disabled="item.file_expired"
                 @click="download(item)"
               >下载</el-button>
-              <el-button size="small" type="danger" plain :icon="Delete" @click="handleDelete(item)">删除</el-button>
+              <el-button v-if="isAdmin" size="small" type="danger" plain :icon="Delete" @click="handleDelete(item)">删除</el-button>
             </div>
           </div>
         </div>
@@ -242,20 +243,18 @@ async function download(item: VideoHistoryItem) {
 }
 
 async function handleDelete(item: VideoHistoryItem) {
-  const tip = isAdmin.value
-    ? `管理员将【永久硬删】这条视频记录，不可恢复。确定？`
-    : `确定删除这条视频历史？（管理员仍可查看）`
+  // 仅 admin 可调（按钮已隐藏，此处兜底）
+  if (!isAdmin.value) return
+  const tip = `管理员将【永久硬删】这条视频记录，不可恢复。确定？`
   try {
-    await ElMessageBox.confirm(tip, '删除确认', {
-      type: isAdmin.value ? 'error' : 'warning',
-    })
+    await ElMessageBox.confirm(tip, '删除确认', { type: 'error' })
   } catch {
     return
   }
   try {
     await deleteVideoHistory(item.id)
     items.value = items.value.filter(i => i.id !== item.id)
-    ElMessage.success(isAdmin.value ? '已硬删' : '已删除')
+    ElMessage.success('已硬删')
   } catch (e) {
     ElMessage.error('删除失败')
     console.error(e)
@@ -263,19 +262,25 @@ async function handleDelete(item: VideoHistoryItem) {
 }
 
 async function handleClear() {
+  // 仅 admin 可调（按钮已隐藏，此处兜底）
+  if (!isAdmin.value) return
+  const target = filterUser.value
+    ? `用户【${filterUser.value}】的`
+    : '所有用户的'
+  const scope = filterUser.value ? '当前筛选用户' : '所有用户'
   try {
     await ElMessageBox.confirm(
-      `将清空你的全部视频历史（共 ${items.value.length} 条）。\n记录将不再显示给你，但管理员仍可查看用于对账。`,
-      '清空全部视频历史',
-      { type: 'warning', confirmButtonText: '清空', cancelButtonText: '取消' },
+      `将【永久硬删】${target}全部视频历史（当前显示 ${displayedItems.value.length} 条）。\n此操作不可恢复，确定？`,
+      `清空${scope}视频历史`,
+      { type: 'error', confirmButtonText: '永久清空', cancelButtonText: '取消' },
     )
   } catch {
     return
   }
   try {
-    const res = await clearVideoHistory()
+    const res = await clearVideoHistory(filterUser.value || undefined)
     ElMessage.success(res.message)
-    items.value = []
+    await loadHistory()
   } catch (e) {
     ElMessage.error('清空失败')
     console.error(e)
