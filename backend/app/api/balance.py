@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/balance", tags=["balance"])
 # API易用户自助接口（注意：Auth 用直接 token，不是 Bearer）
 _APIYI_USER_SELF = "https://api.apiyi.com/api/user/self"
 _QUOTA_TO_USD = 500000  # 1 USD = 500000 quota
-_CACHE_TTL = 300  # 5 分钟
+_CACHE_TTL = 30  # 30 秒（充值/扣费后约 1 分钟内能看到变化）
 
 # 模块级缓存
 _cache_lock = asyncio.Lock()

@@ -186,7 +186,7 @@ function handleLogout() {
 
 onMounted(() => {
   loadBalance()
-  balanceTimer = setInterval(loadBalance, 5 * 60 * 1000) // 5 分钟
+  balanceTimer = setInterval(loadBalance, 30 * 1000) // 30 秒（与后端缓存对齐）
 })
 
 onBeforeUnmount(() => {
