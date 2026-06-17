@@ -98,6 +98,10 @@
             <el-icon><Clock /></el-icon>
             <template #title>生成历史</template>
           </el-menu-item>
+          <el-menu-item index="/video-history">
+            <el-icon><VideoCamera /></el-icon>
+            <template #title>视频历史</template>
+          </el-menu-item>
           <!-- 管理员专属 -->
           <el-menu-item v-if="isAdmin" index="/admin/users">
             <el-icon><User /></el-icon>
@@ -130,6 +134,7 @@ import {
   View,
   Avatar,
   VideoCameraFilled,
+  VideoCamera,
   Picture,
   Present,
   MagicStick,

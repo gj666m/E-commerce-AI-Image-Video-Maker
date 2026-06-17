@@ -1,30 +1,16 @@
 <template>
-  <div class="history-view">
+  <div class="video-history-view">
     <div class="page-header">
       <h2 class="section-title">
-        <el-icon class="section-icon"><Clock /></el-icon>
-        生成历史
+        <el-icon class="section-icon"><VideoCamera /></el-icon>
+        视频历史
       </h2>
-      <p class="section-desc">自动记录所有图片生成结果。文件保留 {{ fileExpireDays }} 天，元数据保留 {{ recordExpireDays }} 天。</p>
+      <p class="section-desc">自动记录所有生成完成的视频。文件保留 {{ fileExpireDays }} 天，元数据保留 {{ recordExpireDays }} 天。</p>
     </div>
 
     <!-- 工具栏 -->
     <div class="toolbar">
       <div class="filter-group">
-        <el-select
-          v-model="filterType"
-          placeholder="全部类型"
-          clearable
-          style="width: 160px"
-          @change="loadHistory"
-        >
-          <el-option
-            v-for="opt in typeOptions"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
         <el-select
           v-if="isAdmin"
           v-model="filterUser"
@@ -70,13 +56,13 @@
     <!-- 网格 -->
     <div v-loading="loading">
       <div v-if="items.length === 0 && !loading" class="empty-state">
-        <el-icon :size="48" color="#c0c4cc"><Picture /></el-icon>
-        <p>暂无生成历史</p>
+        <el-icon :size="48" color="#c0c4cc"><VideoCamera /></el-icon>
+        <p>暂无视频历史</p>
       </div>
 
       <div v-else class="grid">
         <div v-for="item in displayedItems" :key="item.id" class="card" :class="{ 'card-expired': item.file_expired }">
-          <!-- 文件不可用：3 种情况共用占位（文件过期 / 用户软删 / admin 视角的用户软删）-->
+          <!-- 文件不可用：文件过期 / 用户软删 -->
           <div
             v-if="item.file_expired || (isAdmin && item.user_deleted)"
             class="thumb-wrap thumb-expired thumb-clickable"
@@ -85,7 +71,7 @@
             <div class="expired-placeholder">
               <el-icon :size="32">
                 <Delete v-if="isAdmin && item.user_deleted" />
-                <PictureFilled v-else />
+                <VideoPause v-else />
               </el-icon>
               <span v-if="isAdmin && item.user_deleted">用户已删除</span>
               <span v-else>文件已过期</span>
@@ -97,26 +83,30 @@
             <div v-if="isAdmin && item.user_deleted" class="user-deleted-badge">用户已删</div>
             <div v-else class="expired-badge">已过期</div>
           </div>
-          <!-- 正常：缩略图 + 预览 -->
+          <!-- 正常：视频首帧 + 点击播放 -->
           <div v-else class="thumb-wrap" @click="preview(item)">
-            <img :src="`/gen-files/${item.thumbnail}`" :alt="item.task_type" loading="lazy" />
+            <video
+              :src="item.video_url || ''"
+              preload="metadata"
+              muted
+              class="thumb-video"
+            ></video>
             <div class="thumb-overlay">
-              <el-icon><ZoomIn /></el-icon>
-              <span>查看</span>
+              <el-icon :size="32"><VideoPlay /></el-icon>
+              <span>播放</span>
             </div>
+            <div class="duration-badge" v-if="item.resolution">{{ item.resolution }}</div>
           </div>
           <div class="card-meta">
             <div class="meta-row">
-              <el-tag size="small" :type="tagType(item.task_type)">
-                {{ typeLabel(item.task_type) }}
-              </el-tag>
+              <el-tag size="small" type="warning">{{ providerLabel(item.provider_name) }}</el-tag>
               <el-tag v-if="isAdmin && item.username" size="small" type="primary" class="user-tag">
                 {{ item.username }}
               </el-tag>
               <span class="meta-time">{{ formatTime(item.created_at) }}</span>
             </div>
-            <div class="meta-model">{{ item.model_used || '—' }}</div>
-            <div class="meta-cost" v-if="item.cost > 0">
+            <div class="meta-prompt">{{ item.prompt || '—' }}</div>
+            <div class="meta-cost" v-if="item.cost && item.cost > 0">
               {{ item.cost.toFixed(2) }} {{ item.currency }}
             </div>
             <div class="card-actions">
@@ -135,22 +125,25 @@
 
     <!-- 预览弹窗 -->
     <el-dialog v-model="previewVisible" width="80%" :show-close="true" align-center>
-      <div v-if="previewItem" class="preview-img-wrap">
-        <img
-          v-if="!imgLoadFailed"
-          :src="`/gen-files/${previewItem.file}`"
-          class="preview-img"
-          @error="imgLoadFailed = true"
-        />
-        <div v-else class="preview-img-fallback">
-          <el-icon :size="40"><PictureFilled /></el-icon>
+      <div v-if="previewItem" class="preview-video-wrap">
+        <video
+          v-if="!videoLoadFailed && previewItem.video_url"
+          :src="previewItem.video_url"
+          controls
+          autoplay
+          class="preview-video"
+          @error="videoLoadFailed = true"
+        ></video>
+        <div v-else class="preview-video-fallback">
+          <el-icon :size="40"><VideoPause /></el-icon>
           <span>文件不可用（已过期或已删除）</span>
         </div>
       </div>
       <div v-if="previewItem" class="preview-info">
-        <p><b>类型：</b>{{ typeLabel(previewItem.task_type) }}</p>
-        <p><b>模型：</b>{{ previewItem.model_used }}</p>
+        <p><b>模型：</b>{{ providerLabel(previewItem.provider_name) }}</p>
+        <p><b>分辨率：</b>{{ previewItem.resolution || '—' }}</p>
         <p><b>时间：</b>{{ formatTime(previewItem.created_at) }}</p>
+        <p v-if="previewItem.cost && previewItem.cost > 0"><b>花费：</b>{{ previewItem.cost.toFixed(2) }} {{ previewItem.currency }}</p>
         <p v-if="previewItem.prompt"><b>Prompt：</b><span class="prompt-text">{{ previewItem.prompt }}</span></p>
       </div>
     </el-dialog>
@@ -160,25 +153,33 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Clock, Refresh, Delete, Download, Picture, ZoomIn, PictureFilled } from '@element-plus/icons-vue'
-import { listHistory, deleteHistory, clearHistory } from '../api'
+import { VideoCamera, Refresh, Delete, Download, VideoPlay, VideoPause } from '@element-plus/icons-vue'
+import { listVideoHistory, deleteVideoHistory, clearVideoHistory } from '../api'
 import { useAuth } from '../composables/useAuth'
-import type { HistoryItem } from '../types'
+import type { VideoHistoryItem } from '../types'
 
 const { isAdmin } = useAuth()
 
-const items = ref<HistoryItem[]>([])
+const items = ref<VideoHistoryItem[]>([])
 const loading = ref(false)
-const filterType = ref<string>('')
 const filterUser = ref<string>('')
-const showDeleted = ref(false)  // admin 专属：是否显示用户软删的记录
+const showDeleted = ref(false)
 const fileExpireDays = 3
 const recordExpireDays = 90
 const previewVisible = ref(false)
-const previewItem = ref<HistoryItem | null>(null)
-const imgLoadFailed = ref(false)
+const previewItem = ref<VideoHistoryItem | null>(null)
+const videoLoadFailed = ref(false)
 
-// admin 视角：从所有记录中提取去重的用户名列表
+const providerLabelMap: Record<string, string> = {
+  seedance_apiyi: 'Seedance 2.0',
+  seedance: 'Seedance 2.0',
+  mock_video: 'Mock',
+}
+
+function providerLabel(name: string) {
+  return providerLabelMap[name] || name
+}
+
 const userOptions = computed(() => {
   const set = new Set<string>()
   for (const it of items.value) {
@@ -187,78 +188,49 @@ const userOptions = computed(() => {
   return Array.from(set).sort()
 })
 
-// 前端按用户筛选（admin 专属）
 const displayedItems = computed(() => {
   if (!filterUser.value) return items.value
   return items.value.filter(it => it.username === filterUser.value)
 })
 
-const typeOptions = [
-  { label: '快速生图', value: 'quick' },
-  { label: '一键穿搭', value: 'outfit' },
-  { label: '模特生成', value: 'model_gen' },
-  { label: '模特参考', value: 'model_ref' },
-  { label: '种草图', value: 'seed_grass' },
-  { label: '商品主图', value: 'product_main' },
-  { label: 'A+ 图', value: 'aplus' },
-  { label: '商品视频图', value: 'product_video' },
-]
-
-const typeLabelMap: Record<string, string> = Object.fromEntries(typeOptions.map(o => [o.value, o.label]))
-
-function typeLabel(t: string) {
-  return typeLabelMap[t] || t
-}
-
-function tagType(t: string): '' | 'success' | 'warning' | 'info' | 'danger' {
-  const map: Record<string, '' | 'success' | 'warning' | 'info' | 'danger'> = {
-    quick: '',
-    outfit: 'success',
-    model_gen: 'warning',
-    model_ref: 'warning',
-    seed_grass: 'danger',
-    product_main: 'info',
-    aplus: 'info',
-    product_video: 'info',
-  }
-  return map[t] || 'info'
-}
-
-function formatTime(t: string) {
+function formatTime(t: string | null) {
   if (!t) return ''
-  // 兼容 "2026-06-16T12:00:00" 和 "2026-06-16 12:00:00"
   return t.replace('T', ' ')
 }
 
 async function loadHistory() {
   loading.value = true
   try {
-    const res = await listHistory(filterType.value || undefined, {
+    const res = await listVideoHistory({
       includeDeleted: isAdmin.value && showDeleted.value,
     })
     items.value = res.items
   } catch (e) {
-    ElMessage.error('加载历史失败')
+    ElMessage.error('加载视频历史失败')
     console.error(e)
   } finally {
     loading.value = false
   }
 }
 
-function preview(item: HistoryItem) {
+function preview(item: VideoHistoryItem) {
   previewItem.value = item
-  imgLoadFailed.value = false
+  videoLoadFailed.value = false
   previewVisible.value = true
 }
 
-async function download(item: HistoryItem) {
+async function download(item: VideoHistoryItem) {
+  if (!item.video_url) {
+    ElMessage.warning('视频文件不可用')
+    return
+  }
   try {
-    const resp = await fetch(`/gen-files/${item.file}`)
+    const resp = await fetch(item.video_url)
     const blob = await resp.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${item.task_type}_${item.id}.jpeg`
+    a.download = `${item.id}.mp4`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -269,10 +241,10 @@ async function download(item: HistoryItem) {
   }
 }
 
-async function handleDelete(item: HistoryItem) {
+async function handleDelete(item: VideoHistoryItem) {
   const tip = isAdmin.value
-    ? `管理员将【永久硬删】这张${typeLabel(item.task_type)}记录，不可恢复。确定？`
-    : `确定删除这张${typeLabel(item.task_type)}历史图？（管理员仍可查看）`
+    ? `管理员将【永久硬删】这条视频记录，不可恢复。确定？`
+    : `确定删除这条视频历史？（管理员仍可查看）`
   try {
     await ElMessageBox.confirm(tip, '删除确认', {
       type: isAdmin.value ? 'error' : 'warning',
@@ -281,7 +253,7 @@ async function handleDelete(item: HistoryItem) {
     return
   }
   try {
-    await deleteHistory(item.id)
+    await deleteVideoHistory(item.id)
     items.value = items.value.filter(i => i.id !== item.id)
     ElMessage.success(isAdmin.value ? '已硬删' : '已删除')
   } catch (e) {
@@ -293,15 +265,15 @@ async function handleDelete(item: HistoryItem) {
 async function handleClear() {
   try {
     await ElMessageBox.confirm(
-      `将清空你的全部历史（共 ${items.value.length} 条）。\n记录将不再显示给你，但管理员仍可查看用于对账。`,
-      '清空全部历史',
+      `将清空你的全部视频历史（共 ${items.value.length} 条）。\n记录将不再显示给你，但管理员仍可查看用于对账。`,
+      '清空全部视频历史',
       { type: 'warning', confirmButtonText: '清空', cancelButtonText: '取消' },
     )
   } catch {
     return
   }
   try {
-    const res = await clearHistory()
+    const res = await clearVideoHistory()
     ElMessage.success(res.message)
     items.value = []
   } catch (e) {
@@ -314,7 +286,7 @@ onMounted(loadHistory)
 </script>
 
 <style scoped>
-.history-view {
+.video-history-view {
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -352,6 +324,12 @@ onMounted(loadHistory)
   border-radius: 8px;
 }
 
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .action-group {
   display: flex;
   align-items: center;
@@ -376,7 +354,7 @@ onMounted(loadHistory)
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
 }
 
@@ -463,16 +441,27 @@ onMounted(loadHistory)
 .thumb-wrap {
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
-  background: var(--el-fill-color-light);
+  aspect-ratio: 16 / 9;
+  background: #000;
   cursor: pointer;
   overflow: hidden;
 }
 
-.thumb-wrap img {
+.thumb-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.duration-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 12px;
+  border-radius: 4px;
 }
 
 .thumb-overlay {
@@ -492,10 +481,6 @@ onMounted(loadHistory)
 
 .thumb-wrap:hover .thumb-overlay {
   opacity: 1;
-}
-
-.thumb-overlay .el-icon {
-  font-size: 28px;
 }
 
 .card-meta {
@@ -520,13 +505,16 @@ onMounted(loadHistory)
   color: var(--el-text-color-secondary);
 }
 
-.meta-model {
+.meta-prompt {
   font-size: 12px;
   color: var(--el-text-color-regular);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 4px;
+  min-height: 32px;
 }
 
 .meta-cost {
@@ -544,19 +532,20 @@ onMounted(loadHistory)
   flex: 1;
 }
 
-.preview-img {
+.preview-video {
   width: 100%;
   display: block;
   border-radius: 4px;
+  background: #000;
 }
 
-.preview-img-wrap {
+.preview-video-wrap {
   width: 100%;
 }
 
-.preview-img-fallback {
+.preview-video-fallback {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 16 / 9;
   background: var(--el-fill-color-light);
   display: flex;
   flex-direction: column;

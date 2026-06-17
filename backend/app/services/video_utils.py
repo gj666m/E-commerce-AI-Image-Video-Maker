@@ -1,6 +1,4 @@
-# 临时视频文件管理 - 存储、URL 生成、过期清理
-import time
-import uuid
+# 临时视频文件管理 - 存储、URL 生成、路径反推
 from pathlib import Path
 
 from app.config import settings
@@ -8,74 +6,61 @@ from app.config import settings
 
 def get_temp_dir() -> Path:
     """获取临时视频目录，不存在则创建"""
-    temp_dir = Path(settings.video_temp_dir)
+    temp_dir = Path(settings.video_temp_dir).resolve()
     temp_dir.mkdir(parents=True, exist_ok=True)
     return temp_dir
 
 
-def save_video(task_id: str, data: bytes, ext: str = "mp4") -> str:
-    """保存视频到临时目录
+def save_video(user_id: int, task_id: str, data: bytes, ext: str = "mp4") -> str:
+    """保存视频到用户子目录
 
     Args:
+        user_id: 用户 ID（用于按用户隔离文件）
         task_id: 任务 ID
         data: 视频二进制
         ext: 文件扩展名
 
     Returns:
-        文件名（不含路径）
+        相对路径（含 user_id 前缀），如 "3/abc123.mp4"
     """
-    temp_dir = get_temp_dir()
-    filename = f"{task_id}.{ext}"
-    filepath = temp_dir / filename
+    user_dir = get_temp_dir() / str(user_id)
+    user_dir.mkdir(parents=True, exist_ok=True)
+    rel_path = f"{user_id}/{task_id}.{ext}"
+    filepath = get_temp_dir() / rel_path
     filepath.write_bytes(data)
-    return filename
+    return rel_path
 
 
-def get_video_path(filename: str) -> Path | None:
-    """获取视频文件路径
-
-    Args:
-        filename: 文件名
-
-    Returns:
-        文件完整路径，不存在返回 None
-    """
-    filepath = get_temp_dir() / filename
-    if filepath.exists():
-        return filepath
-    return None
-
-
-def make_video_url(filename: str) -> str:
+def make_video_url(rel_path: str) -> str:
     """生成视频访问 URL
 
     Args:
-        filename: 文件名
+        rel_path: 相对路径（含 user_id 前缀，或旧任务的纯 filename）
 
     Returns:
-        访问 URL，如 /video-files/abc123.mp4
+        访问 URL，如 /video-files/3/abc123.mp4
     """
-    return f"/video-files/{filename}"
+    return f"/video-files/{rel_path}"
 
 
-def cleanup_expired() -> int:
-    """清理过期的临时视频文件
+def get_video_abs_path(video_url: str) -> Path | None:
+    """从 video_url 反推磁盘绝对路径，用于删除/清理
+
+    Args:
+        video_url: DB 中存储的 URL，如 /video-files/3/abc123.mp4
 
     Returns:
-        清理的文件数
+        校验通过的绝对路径；不通过（越权/空）返回 None
     """
+    if not video_url:
+        return None
+    prefix = "/video-files/"
+    if not video_url.startswith(prefix):
+        return None
+    rel_path = video_url[len(prefix):]
     temp_dir = get_temp_dir()
-    if not temp_dir.exists():
-        return 0
-
-    now = time.time()
-    expire_seconds = settings.video_expire_seconds
-    count = 0
-
-    for f in temp_dir.iterdir():
-        if f.is_file():
-            if now - f.stat().st_mtime > expire_seconds:
-                f.unlink()
-                count += 1
-
-    return count
+    abs_path = (temp_dir / rel_path).resolve()
+    # 安全校验：必须在 temp_dir 下，防止 ../ 越权
+    if not abs_path.is_relative_to(temp_dir):
+        return None
+    return abs_path

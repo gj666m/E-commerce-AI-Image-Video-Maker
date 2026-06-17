@@ -11,11 +11,11 @@ from app.deps import get_current_user
 from app.services.image_utils import compress_image, get_image_info, stylize_for_video
 from app.services.prompt_engine import build_video_prompt
 from app.services.video_utils import (
-    cleanup_expired,
     make_video_url,
     save_video,
 )
 from app.services.task_store import create_task, get_task, update_task_status, cleanup_expired_tasks, get_user_active_tasks, compute_real_cost
+from app.services.video_history_store import cleanup_expired_video_history
 from app.providers.mock_video_provider import MockVideoProvider
 from app.providers.seedance_provider import SeedanceVideoProvider
 from app.providers.seedance_apiyi_provider import SeedanceApiyiVideoProvider
@@ -125,7 +125,7 @@ async def generate_video(
 ):
     """提交视频生成任务"""
     user_id = current_user["id"]
-    cleanup_expired()
+    await cleanup_expired_video_history()
     await cleanup_expired_tasks()
     cleanup_mock_tasks()
 
@@ -326,8 +326,8 @@ async def video_status(task_id: str, current_user=Depends(get_current_user)):
         try:
             video_data = await provider.get_result(external_id)
             ext = "gif" if provider.name == "mock_video" else "mp4"
-            filename = save_video(task_id, video_data, ext=ext)
-            video_task.video_url = make_video_url(filename)
+            rel_path = save_video(task_info["user_id"], task_id, video_data, ext=ext)
+            video_task.video_url = make_video_url(rel_path)
             # 同时持久化 cost（首次完成时算出的真实扣费或降级 token 估算）
             cost_to_save = real_cost if real_cost is not None else video_task.cost
             currency_to_save = real_currency if real_cost is not None else video_task.currency

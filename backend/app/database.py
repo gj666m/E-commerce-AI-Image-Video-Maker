@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS video_tasks (
     balance_before INTEGER,  -- 提交任务前的 API易 quota 快照（用于真实扣费计算）
     cost REAL,                -- 真实扣费（首次完成时计算并持久化）
     currency TEXT,            -- 费用币种（$ 或 ¥）
+    file_expired BOOLEAN NOT NULL DEFAULT 0,      -- 文件已过期（磁盘已删，元数据保留）
+    user_deleted BOOLEAN NOT NULL DEFAULT 0,      -- 用户软删标记（admin 仍可见）
+    user_deleted_at TEXT,                          -- 用户软删时间
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     completed_at TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -129,6 +132,22 @@ async def init_db():
             await db.execute("ALTER TABLE video_tasks ADD COLUMN currency TEXT")
             await db.commit()
             logger.info("已为 video_tasks 添加 currency 列")
+        if "file_expired" not in columns:
+            await db.execute(
+                "ALTER TABLE video_tasks ADD COLUMN file_expired BOOLEAN NOT NULL DEFAULT 0"
+            )
+            await db.commit()
+            logger.info("已为 video_tasks 添加 file_expired 列")
+        if "user_deleted" not in columns:
+            await db.execute(
+                "ALTER TABLE video_tasks ADD COLUMN user_deleted BOOLEAN NOT NULL DEFAULT 0"
+            )
+            await db.commit()
+            logger.info("已为 video_tasks 添加 user_deleted 列")
+        if "user_deleted_at" not in columns:
+            await db.execute("ALTER TABLE video_tasks ADD COLUMN user_deleted_at TEXT")
+            await db.commit()
+            logger.info("已为 video_tasks 添加 user_deleted_at 列")
 
         # 检查是否已有管理员
         cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")

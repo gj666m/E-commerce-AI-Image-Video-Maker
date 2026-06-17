@@ -1,6 +1,6 @@
 // 后端 API 封装
 import axios from 'axios'
-import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem } from '../types'
+import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem } from '../types'
 
 const api = axios.create({
   baseURL: '',
@@ -402,6 +402,30 @@ export async function deleteHistory(historyId: string): Promise<{ success: boole
 // 清空当前用户全部历史
 export async function clearHistory(): Promise<{ success: boolean; message: string; deleted: number }> {
   const { data } = await api.post('/api/history/clear')
+  return data
+}
+
+// === 视频生成历史 ===
+
+// 获取视频历史列表
+export async function listVideoHistory(
+  opts?: { includeDeleted?: boolean },
+): Promise<{ success: boolean; items: VideoHistoryItem[]; count: number }> {
+  const params: Record<string, string> = {}
+  if (opts?.includeDeleted) params.include_deleted = 'true'
+  const { data } = await api.get('/api/video/history', { params })
+  return data
+}
+
+// 删除单条视频历史
+export async function deleteVideoHistory(taskId: string): Promise<{ success: boolean; message: string }> {
+  const { data } = await api.delete(`/api/video/history/${taskId}`)
+  return data
+}
+
+// 清空当前用户全部视频历史
+export async function clearVideoHistory(): Promise<{ success: boolean; message: string; deleted: number }> {
+  const { data } = await api.post('/api/video/history/clear')
   return data
 }
 

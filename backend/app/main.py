@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import generate, models, model, video, analysis, auth, history, balance
+from app.api import generate, models, model, video, analysis, auth, history, balance, video_history
 from app.config import settings
 
 # 配置日志
@@ -28,16 +28,16 @@ async def _periodic_cleanup():
     while True:
         await asyncio.sleep(600)  # 10 分钟
         try:
-            from app.services.video_utils import cleanup_expired
             from app.services.task_store import cleanup_expired_tasks
             from app.api.video import cleanup_mock_tasks
             from app.services.history_store import cleanup_expired_history
-            file_count = cleanup_expired()
+            from app.services.video_history_store import cleanup_expired_video_history
+            video_hist_count = await cleanup_expired_video_history()
             await cleanup_expired_tasks()
             cleanup_mock_tasks()
             hist_count = await cleanup_expired_history()
-            if file_count > 0:
-                logging.getLogger(__name__).info(f"定时清理: 删除 {file_count} 个过期视频文件")
+            if video_hist_count > 0:
+                logging.getLogger(__name__).info(f"定时清理: 处理 {video_hist_count} 条过期视频历史")
             if hist_count > 0:
                 logging.getLogger(__name__).info(f"定时清理: 删除 {hist_count} 条过期生成历史")
         except Exception as e:
@@ -115,6 +115,7 @@ app.include_router(model.router)
 app.include_router(video.router)
 app.include_router(analysis.router)
 app.include_router(history.router)
+app.include_router(video_history.router)
 app.include_router(balance.router)
 
 # 挂载临时视频文件静态目录

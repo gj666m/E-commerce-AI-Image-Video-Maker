@@ -333,3 +333,22 @@ export interface HistoryItem {
   user_id?: number
   username?: string
 }
+
+// === 视频生成历史 ===
+
+export interface VideoHistoryItem {
+  id: string
+  prompt: string
+  provider_name: string
+  resolution: string | null
+  video_url: string | null       // /video-files/{user_id}/{task_id}.mp4 或旧路径
+  cost: number | null
+  currency: string | null
+  file_expired: boolean
+  user_deleted: boolean
+  user_deleted_at: string | null
+  created_at: string
+  // 管理员视图额外字段
+  user_id?: number
+  username?: string
+}

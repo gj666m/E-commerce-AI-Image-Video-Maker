@@ -1,12 +1,9 @@
 # 视频任务存储 - SQLite 持久化
 import logging
-import time
 
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
-
-TASK_EXPIRE_SECONDS = 259200  # 已完成任务保留 3 天（与视频文件保留期一致）
 
 
 async def create_task(
@@ -109,15 +106,21 @@ async def get_user_active_tasks(user_id: int) -> list[dict]:
 
 
 async def cleanup_expired_tasks():
-    """清理过期任务（已完成/失败的任务保留 3 天）"""
+    """清理失败/卡死的任务（completed 任务的分层清理由 video_history_store 负责）
+
+    - failed：完成 3 天后 DELETE 整行
+    - pending 卡死：创建 1 天后仍未开始处理的，DELETE（避免僵尸任务占用轮询）
+    """
     db = await get_db()
     try:
         cursor = await db.execute(
-            "DELETE FROM video_tasks WHERE status IN ('completed', 'failed') AND completed_at < datetime('now', '-3 days', 'localtime')"
+            "DELETE FROM video_tasks "
+            "WHERE (status = 'failed' AND completed_at < datetime('now', '-3 days', 'localtime')) "
+            "OR (status = 'pending' AND created_at < datetime('now', '-1 days', 'localtime'))"
         )
         count = cursor.rowcount
         if count > 0:
-            logger.info(f"清理过期视频任务: {count} 个")
+            logger.info(f"清理过期失败/卡死视频任务: {count} 个")
         return count
     finally:
         await db.close()
