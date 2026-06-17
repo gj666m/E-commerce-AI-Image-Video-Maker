@@ -24,9 +24,9 @@ _cache: dict | None = None  # {"data": {...}, "fetched_at": ts}
 
 async def _fetch_balance() -> dict:
     """调 API易 /api/user/self 获取 quota/used_quota，换算为 USD"""
-    token = settings.seedance_apiyi_api_key
+    token = settings.apiyi_balance_token
     if not token:
-        return {"available": False, "message": "未配置 API易 API Key"}
+        return {"available": False, "message": "未配置 API易 余额令牌"}
 
     client = get_http_client()
     try:
@@ -34,7 +34,7 @@ async def _fetch_balance() -> dict:
             _APIYI_USER_SELF,
             headers={
                 "Authorization": token,  # 直接 token，不是 Bearer
-                "Accept-Encoding": "identity",
+                "Accept": "application/json",
             },
             timeout=15,
         )

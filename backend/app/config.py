@@ -30,6 +30,15 @@ class Settings(BaseSettings):
     seedance_apiyi_api_key: str = ""
     seedance_apiyi_base_url: str = "https://api.apiyi.com/seedance/api/v3"
     seedance_apiyi_model: str = "doubao-seedance-2-0-260128"
+    # API易账户系统令牌（个人中心生成，用于 /api/user/self 查余额；非业务 sk- key）
+    apiyi_balance_token: str = ""
+    # Seedream 图片生成（API易中转站，2026-06-17 由火山方舟官方切中转）
+    # 注意：4.5/5.0 使用独立 API Key + Model ID（无 doubao- 前缀）
+    seedream_apiyi_base_url: str = "https://api.apiyi.com/v1"
+    seedream45_apiyi_api_key: str = ""
+    seedream45_apiyi_model: str = "seedream-4-5-251128"
+    seedream5_apiyi_api_key: str = ""
+    seedream5_apiyi_model: str = "seedream-5-0-260128"
     # Seedream 5.0 Lite（独立 API Key）
     seedream5_api_key: str = ""
     seedream5_model_id: str = "doubao-seedream-5-0-lite"
@@ -99,6 +108,14 @@ class Settings(BaseSettings):
         return bool(self.seedance_apiyi_api_key)
 
     @property
+    def has_seedream45_apiyi(self) -> bool:
+        return bool(self.seedream45_apiyi_api_key)
+
+    @property
+    def has_seedream5_apiyi(self) -> bool:
+        return bool(self.seedream5_apiyi_api_key)
+
+    @property
     def has_deepseek(self) -> bool:
         return bool(self.deepseek_api_key)
 
@@ -130,7 +147,7 @@ class Settings(BaseSettings):
     @property
     def has_any_provider(self) -> bool:
         """是否有至少一个可用的 AI 模型"""
-        return any([self.has_openai, self.has_fal, self.has_kling, self.has_photoroom, self.has_volcengine, self.has_deepseek, self.has_seedance, self.has_seedance_apiyi, self.has_nanobanana, self.has_gptimage, self.has_gptimage_vip])
+        return any([self.has_openai, self.has_fal, self.has_kling, self.has_photoroom, self.has_volcengine, self.has_seedream45_apiyi, self.has_seedream5, self.has_seedream5_apiyi, self.has_deepseek, self.has_seedance, self.has_seedance_apiyi, self.has_nanobanana, self.has_gptimage, self.has_gptimage_vip])
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

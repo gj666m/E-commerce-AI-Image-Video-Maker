@@ -20,9 +20,9 @@ def get_available_providers() -> dict[str, BaseProvider]:
         providers["openai"] = OpenAIProvider()
     if settings.has_fal:
         providers["fal"] = FalProvider()
-    if settings.has_volcengine:
+    if settings.has_volcengine or settings.has_seedream45_apiyi:
         providers["volcengine"] = VolcengineProvider()
-    if settings.has_seedream5:
+    if settings.has_seedream5 or settings.has_seedream5_apiyi:
         providers["seedream5"] = Seedream5Provider()
     if settings.has_nanobanana:
         providers["nanobanana"] = NanoBananaProvider()
@@ -91,16 +91,16 @@ _MODEL_META = {
         "api_key_hint": "FAL_API_KEY",
     },
     "volcengine": {
-        "display_name": "Seedream 4.5（火山方舟）",
-        "description": "豆包 Seedream 4.5 图片生成模型，支持文生图和参考图生图",
+        "display_name": "Seedream 4.5（API易中转）",
+        "description": "豆包 Seedream 4.5 图片生成模型，支持文生图和参考图生图，通过 API易中转站调用，$0.04/张",
         "capabilities": ["text_to_image", "image_to_image"],
-        "api_key_hint": "VOLCENGINE_API_KEY",
+        "api_key_hint": "SEEDREAM45_APIYI_API_KEY",
     },
     "seedream5": {
-        "display_name": "Seedream 5.0 Lite（火山方舟）",
-        "description": "豆包 Seedream 5.0 Lite 图片生成模型，更新一代，支持文生图和参考图生图",
+        "display_name": "Seedream 5.0（API易中转）",
+        "description": "豆包 Seedream 5.0 图片生成模型，更新一代，支持文生图和参考图生图，通过 API易中转站调用，$0.035/张",
         "capabilities": ["text_to_image", "image_to_image"],
-        "api_key_hint": "SEEDREAM5_API_KEY",
+        "api_key_hint": "SEEDREAM5_APIYI_API_KEY",
     },
     "nanobanana": {
         "display_name": "Nano Banana 2（Gemini）",

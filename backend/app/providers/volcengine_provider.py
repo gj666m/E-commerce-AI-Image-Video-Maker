@@ -1,4 +1,4 @@
-# 火山方舟 Seedream Provider - 文生图 + 图生图 + 多图生图
+# Seedream Provider - 文生图 + 图生图 + 多图生图（API易中转，2026-06-17 由火山方舟官方切中转）
 import base64
 import logging
 
@@ -10,23 +10,23 @@ from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
-# Seedream 4.5 定价（元/张，火山方舟国内版）
-COST_PER_IMAGE = 0.25
+# Seedream 4.5 定价（USD/张，API易中转站）
+COST_PER_IMAGE = 0.04
 
 
 class VolcengineProvider(BaseProvider):
-    """火山方舟 Seedream 图片生成 Provider
+    """Seedream 4.5 图片生成 Provider（通过 API易 中转站）
 
     API 兼容 OpenAI 格式：
-    POST https://ark.cn-beijing.volces.com/api/v3/images/generations
+    POST https://api.apiyi.com/v1/images/generations
 
     支持：
     - 文生图：仅 prompt
     - 单图生图：image（单张参考图）
-    - 多图生图：images（最多 14 张参考图，prompt 中用"图1""图2"引用）
+    - 多图生图：images（最多 10 张参考图，prompt 中用"图1""图2"引用）
     """
 
-    API_BASE = "https://ark.cn-beijing.volces.com/api/v3"
+    API_BASE = "https://api.apiyi.com/v1"
 
     @property
     def name(self) -> str:
@@ -34,26 +34,31 @@ class VolcengineProvider(BaseProvider):
 
     @property
     def is_available(self) -> bool:
-        return bool(settings.volcengine_api_key)
+        return bool(settings.seedream45_apiyi_api_key)
 
-    # Seedream 4.5 尺寸/质量映射
+    # Seedream 4.5 尺寸档位（API易：1K/2K/4K 大写档位，或像素）
+    # 4.5 支持 2K/4K；比例统一走 4K 档位（模型从 prompt 推断宽高比）
     SIZE_MAP = {
         # 质量级别
-        "4k": "4k",
-        "2k": "2k",
-        "1k": "1k",
-        # 比例格式（全部用 4k 质量级别）
-        "1:1": "4k",
-        "3:4": "4k",
-        "4:3": "4k",
-        "4:5": "4k",
-        "5:4": "4k",
-        "9:16": "4k",
-        "16:9": "4k",
+        "4K": "4K",
+        "2K": "2K",
+        "1K": "1K",
+        # 旧格式（小写）兼容
+        "4k": "4K",
+        "2k": "2K",
+        "1k": "1K",
+        # 比例格式（全部用 4K 质量级别，宽高比从 prompt 推断）
+        "1:1": "4K",
+        "3:4": "4K",
+        "4:3": "4K",
+        "4:5": "4K",
+        "5:4": "4K",
+        "9:16": "4K",
+        "16:9": "4K",
         # 旧格式兼容
-        "1024x1024": "4k",
-        "1536x1024": "4k",
-        "1024x1536": "4k",
+        "1024x1024": "4K",
+        "1536x1024": "4K",
+        "1024x1536": "4K",
     }
 
     async def generate(
@@ -67,12 +72,12 @@ class VolcengineProvider(BaseProvider):
         size = self.SIZE_MAP.get(params.get("size", "2K"), "2K")
 
         headers = {
-            "Authorization": f"Bearer {settings.volcengine_api_key}",
+            "Authorization": f"Bearer {settings.seedream45_apiyi_api_key}",
             "Content-Type": "application/json",
         }
 
         payload = {
-            "model": settings.volcengine_model_id,
+            "model": settings.seedream45_apiyi_model,
             "prompt": prompt,
             "size": size,
             "response_format": "url",
@@ -109,6 +114,7 @@ class VolcengineProvider(BaseProvider):
                 success=True,
                 images=images_result,
                 cost=cost,
+                currency="$",
                 raw_response=data,
             )
         except httpx.HTTPStatusError as e:
@@ -116,14 +122,14 @@ class VolcengineProvider(BaseProvider):
             logger.error(f"Volcengine API 错误: {e.response.status_code} - {error_detail}")
             return GenerateResult(
                 success=False,
-                error=http_error_message(e.response.status_code, error_detail, "火山方舟"),
+                error=http_error_message(e.response.status_code, error_detail, "Seedream 4.5"),
                 raw_response={"status_code": e.response.status_code},
             )
         except Exception as e:
             logger.error(f"Volcengine 调用失败: {e}")
             return GenerateResult(
                 success=False,
-                error=f"火山方舟调用失败: {str(e)}",
+                error=f"Seedream 4.5 调用失败: {str(e)}",
             )
 
     async def _extract_images(self, data: dict) -> list[bytes]:
