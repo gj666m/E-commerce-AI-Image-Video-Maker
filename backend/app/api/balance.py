@@ -54,10 +54,23 @@ async def _fetch_balance() -> dict:
             "quota_usd": round(quota / _QUOTA_TO_USD, 2),
             "used_usd": round(used_quota / _QUOTA_TO_USD, 2),
             "request_count": request_count,
+            "quota_raw": int(quota),  # 原始配额值（供视频真实扣费计算用）
         }
     except Exception as e:
         logger.warning(f"API易余额查询异常: {e}")
         return {"available": False, "message": f"查询失败: {e}"}
+
+
+async def fetch_quota_snapshot() -> int | None:
+    """绕过缓存，立即查一次 API易 quota 原始值（用于视频任务前后差值计费）
+
+    返回当前 quota（int），失败返回 None。
+    用于视频提交前/完成后双快照比对，算出 API易 真实扣费。
+    """
+    data = await _fetch_balance()
+    if data.get("available"):
+        return data.get("quota_raw")
+    return None
 
 
 @router.get("")

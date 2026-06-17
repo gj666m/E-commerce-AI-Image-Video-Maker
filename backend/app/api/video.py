@@ -15,11 +15,12 @@ from app.services.video_utils import (
     make_video_url,
     save_video,
 )
-from app.services.task_store import create_task, get_task, update_task_status, cleanup_expired_tasks, get_user_active_tasks
+from app.services.task_store import create_task, get_task, update_task_status, cleanup_expired_tasks, get_user_active_tasks, compute_real_cost
 from app.providers.mock_video_provider import MockVideoProvider
 from app.providers.seedance_provider import SeedanceVideoProvider
 from app.providers.seedance_apiyi_provider import SeedanceApiyiVideoProvider
 from app.providers.video_base import VideoProvider
+from app.api.balance import fetch_quota_snapshot
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/video", tags=["video"])
@@ -208,6 +209,15 @@ async def generate_video(
     provider = _get_video_provider(model_name)
     main_image = all_images[0] if all_images else None
     extra_images = all_images[1:] if len(all_images) > 1 else []
+
+    # 提交前对 API易 余额做一次快照（仅对 API易 中转的 provider 有意义）
+    balance_before = None
+    if provider.name == "seedance_apiyi":
+        try:
+            balance_before = await fetch_quota_snapshot()
+        except Exception as e:
+            logger.warning(f"提交前余额快照失败（降级 token 估算）: {e}")
+
     try:
         external_id = await provider.submit(
             prompt, image=main_image, extra_images=extra_images,
@@ -232,6 +242,7 @@ async def generate_video(
         provider_name=provider.name,
         prompt=prompt,
         resolution=resolution,
+        balance_before=balance_before,
     )
 
     logger.info(f"视频任务已提交: task_id={task_id}, provider={provider.name}, user={user_id}")
@@ -263,6 +274,28 @@ async def video_status(task_id: str, current_user=Depends(get_current_user)):
     # 查询状态
     video_task = await provider.poll(external_id)
 
+    # 真实扣费计算（仅对 API易 中转 + 任务刚完成的场景）
+    # 逻辑：取提交前的 quota 快照 vs 当前 quota，差值即为 API易 实际扣费（含补扣费）
+    real_cost = None
+    real_currency = video_task.currency
+    if (
+        video_task.status == "completed"
+        and task_info.get("provider_name") == "seedance_apiyi"
+        and task_info.get("balance_before") is not None
+        and not task_info.get("video_url")  # 只在首次完成时算一次
+    ):
+        try:
+            balance_after = await fetch_quota_snapshot()
+            real_cost = compute_real_cost(task_info.get("balance_before"), balance_after)
+            if real_cost is not None:
+                real_currency = "$"  # API易 按美元计费
+                logger.info(
+                    f"视频真实扣费 task={task_id}: quota {task_info['balance_before']}→{balance_after}, "
+                    f"cost=${real_cost} (token 估算 ¥{video_task.cost})"
+                )
+        except Exception as e:
+            logger.warning(f"完成后余额快照失败，降级 token 估算: {e}")
+
     # 构建返回
     result = {
         "task_id": task_id,
@@ -270,8 +303,8 @@ async def video_status(task_id: str, current_user=Depends(get_current_user)):
         "progress": video_task.progress,
         "model_used": video_task.model_used or provider.name,
         "prompt_used": video_task.prompt_used or task_info["prompt"],
-        "cost": video_task.cost,
-        "currency": video_task.currency,
+        "cost": real_cost if real_cost is not None else video_task.cost,
+        "currency": real_currency,
     }
 
     # 完成时：获取视频 → 保存临时文件 → 返回 URL

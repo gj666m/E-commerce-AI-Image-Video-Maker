@@ -9,13 +9,25 @@ logger = logging.getLogger(__name__)
 TASK_EXPIRE_SECONDS = 3600  # 已完成任务保留 1 小时
 
 
-async def create_task(task_id: str, user_id: int, external_id: str, provider_name: str, prompt: str, resolution: str | None = None):
-    """创建视频任务记录"""
+async def create_task(
+    task_id: str,
+    user_id: int,
+    external_id: str,
+    provider_name: str,
+    prompt: str,
+    resolution: str | None = None,
+    balance_before: int | None = None,
+):
+    """创建视频任务记录
+
+    balance_before: 提交任务前的 API易 quota 快照，用于完成后算真实扣费
+    """
     db = await get_db()
     try:
         await db.execute(
-            "INSERT INTO video_tasks (id, user_id, external_id, provider_name, prompt, status, resolution) VALUES (?, ?, ?, ?, ?, 'pending', ?)",
-            (task_id, user_id, external_id, provider_name, prompt, resolution),
+            "INSERT INTO video_tasks (id, user_id, external_id, provider_name, prompt, status, resolution, balance_before) "
+            "VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)",
+            (task_id, user_id, external_id, provider_name, prompt, resolution, balance_before),
         )
         await db.commit()
     finally:
@@ -31,6 +43,20 @@ async def get_task(task_id: str) -> dict | None:
         return dict(row) if row else None
     finally:
         await db.close()
+
+
+def compute_real_cost(balance_before: int | None, balance_after: int | None) -> float | None:
+    """根据前后 quota 快照算真实 USD 花费
+
+    返回 None 表示无法计算（降级用 token 估算）
+    """
+    if balance_before is None or balance_after is None:
+        return None
+    diff = balance_before - balance_after
+    if diff <= 0:
+        # 差值为 0 或负（并发干扰），不可信，降级
+        return None
+    return round(diff / 500000, 4)  # 500000 quota = $1
 
 
 async def update_task_status(task_id: str, status: str, video_url: str | None = None, error: str | None = None):

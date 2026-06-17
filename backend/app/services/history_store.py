@@ -248,7 +248,7 @@ async def delete_history_any(history_id: str) -> bool:
         for key in ("file", "thumbnail"):
             fname = Path(row[key]).name
             fpath = (user_d / fname).resolve()
-            if not fpath.is_relative_to(HISTORY_DIR):
+            if not fpath.is_relative_to(user_d):
                 continue
             try:
                 if fpath.exists():

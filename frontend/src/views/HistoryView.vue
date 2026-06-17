@@ -25,9 +25,24 @@
             :value="opt.value"
           />
         </el-select>
+        <el-select
+          v-if="isAdmin"
+          v-model="filterUser"
+          placeholder="全部用户"
+          clearable
+          filterable
+          style="width: 160px"
+        >
+          <el-option
+            v-for="u in userOptions"
+            :key="u"
+            :label="u"
+            :value="u"
+          />
+        </el-select>
       </div>
       <div class="action-group">
-        <span class="count-text" v-if="!loading">共 {{ items.length }} 条</span>
+        <span class="count-text" v-if="!loading">共 {{ displayedItems.length }} 条</span>
         <el-button :icon="Refresh" @click="loadHistory" :loading="loading">刷新</el-button>
         <el-button
           type="danger"
@@ -47,7 +62,7 @@
       </div>
 
       <div v-else class="grid">
-        <div v-for="item in items" :key="item.id" class="card" :class="{ 'card-expired': item.file_expired }">
+        <div v-for="item in displayedItems" :key="item.id" class="card" :class="{ 'card-expired': item.file_expired }">
           <!-- 过期：灰色占位 + 已过期徽章 -->
           <div v-if="item.file_expired" class="thumb-wrap thumb-expired">
             <div class="expired-placeholder">
@@ -68,6 +83,9 @@
             <div class="meta-row">
               <el-tag size="small" :type="tagType(item.task_type)">
                 {{ typeLabel(item.task_type) }}
+              </el-tag>
+              <el-tag v-if="isAdmin && item.username" size="small" type="primary" class="user-tag">
+                {{ item.username }}
               </el-tag>
               <span class="meta-time">{{ formatTime(item.created_at) }}</span>
             </div>
@@ -103,19 +121,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Clock, Refresh, Delete, Download, Picture, ZoomIn, PictureFilled } from '@element-plus/icons-vue'
 import { listHistory, deleteHistory, clearHistory } from '../api'
+import { useAuth } from '../composables/useAuth'
 import type { HistoryItem } from '../types'
+
+const { isAdmin } = useAuth()
 
 const items = ref<HistoryItem[]>([])
 const loading = ref(false)
 const filterType = ref<string>('')
+const filterUser = ref<string>('')
 const fileExpireDays = 3
 const recordExpireDays = 90
 const previewVisible = ref(false)
 const previewItem = ref<HistoryItem | null>(null)
+
+// admin 视角：从所有记录中提取去重的用户名列表
+const userOptions = computed(() => {
+  const set = new Set<string>()
+  for (const it of items.value) {
+    if (it.username) set.add(it.username)
+  }
+  return Array.from(set).sort()
+})
+
+// 前端按用户筛选（admin 专属）
+const displayedItems = computed(() => {
+  if (!filterUser.value) return items.value
+  return items.value.filter(it => it.username === filterUser.value)
+})
 
 const typeOptions = [
   { label: '快速生图', value: 'quick' },
@@ -393,7 +430,13 @@ onMounted(loadHistory)
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
   margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.user-tag {
+  margin-right: auto;
 }
 
 .meta-time {

@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS video_tasks (
     resolution TEXT,
     video_url TEXT,
     error TEXT,
+    balance_before INTEGER,  -- 提交任务前的 API易 quota 快照（用于真实扣费计算）
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     completed_at TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
@@ -94,6 +95,16 @@ async def init_db():
             )
             await db.commit()
             logger.info("已为 generation_history 添加 file_expired 列")
+
+        # 兼容迁移：video_tasks 旧表无 balance_before 列时补上
+        cursor = await db.execute("PRAGMA table_info(video_tasks)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "balance_before" not in columns:
+            await db.execute(
+                "ALTER TABLE video_tasks ADD COLUMN balance_before INTEGER"
+            )
+            await db.commit()
+            logger.info("已为 video_tasks 添加 balance_before 列")
 
         # 检查是否已有管理员
         cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
