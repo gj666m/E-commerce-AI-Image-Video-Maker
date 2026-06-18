@@ -25,6 +25,11 @@ const router = createRouter({
       component: () => import('../views/VideoGenView.vue'),
     },
     {
+      path: '/video-prompt',
+      name: 'video-prompt',
+      component: () => import('../views/VideoPromptView.vue'),
+    },
+    {
       path: '/model-gen',
       name: 'model-gen',
       component: () => import('../views/ModelGenView.vue'),

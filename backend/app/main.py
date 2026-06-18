@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import generate, models, model, video, analysis, auth, history, balance, video_history
+from app.api import generate, models, model, video, analysis, auth, history, balance, video_history, video_prompt
 from app.config import settings
 
 # 配置日志
@@ -114,6 +114,7 @@ app.include_router(models.router)
 app.include_router(model.router)
 app.include_router(video.router)
 app.include_router(analysis.router)
+app.include_router(video_prompt.router)
 app.include_router(history.router)
 app.include_router(video_history.router)
 app.include_router(balance.router)

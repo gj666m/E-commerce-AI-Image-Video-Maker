@@ -447,3 +447,34 @@ export async function getBalance(opts?: { fresh?: boolean }): Promise<BalanceRes
   const { data } = await api.get('/api/balance', { params })
   return data
 }
+
+// ===== 视频提示词反推 =====
+
+export interface VideoPromptResult {
+  success: boolean
+  prompt: string
+  model_used: string
+  video_size: number
+  video_mime: string
+}
+
+/**
+ * 视频转结构化分镜 prompt（提示词反推）
+ * 上传短视频 → Gemini 分析 → Sora 结构化分镜格式 prompt
+ */
+export async function reverseVideoPrompt(
+  video: File,
+  style?: string,
+  extraPrompt?: string,
+): Promise<VideoPromptResult> {
+  const formData = new FormData()
+  formData.append('video', video)
+  if (style) formData.append('style', style)
+  if (extraPrompt) formData.append('extra_prompt', extraPrompt)
+
+  const { data } = await api.post('/api/video-to-prompt', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000, // Gemini 视频分析可能 30-90s，留 3 分钟
+  })
+  return data
+}

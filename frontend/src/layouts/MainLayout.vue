@@ -86,6 +86,10 @@
             <el-icon><VideoCameraFilled /></el-icon>
             <template #title>视频生成</template>
           </el-menu-item>
+          <el-menu-item index="/video-prompt">
+            <el-icon><MagicStick /></el-icon>
+            <template #title>提示词反推</template>
+          </el-menu-item>
           <el-menu-item index="/seed-grass">
             <el-icon><Picture /></el-icon>
             <template #title>种草图</template>
