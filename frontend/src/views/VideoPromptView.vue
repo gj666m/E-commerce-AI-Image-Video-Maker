@@ -15,11 +15,17 @@
             <el-form-item label="提示词风格">
               <el-select v-model="style" style="width: 100%">
                 <el-option
-                  label="Sora 结构化分镜格式（适合 OpenAI Sora 等大多数模型）"
+                  label="Sora 结构化分镜格式，适合 OpenAI Sora 等大多数模型"
                   value="sora_structured"
                 />
-                <el-option label="自然语言描述（即将支持）" value="natural_language" disabled />
-                <el-option label="RunwayML 格式（即将支持）" value="runwayml" disabled />
+                <el-option
+                  label="Seedance 自然流式散文格式，更适合字节 Seedance 模型"
+                  value="seedance_prose"
+                />
+                <el-option
+                  label="HappyHorse 影视级散文格式，更适合阿里 HappyHorse 模型"
+                  value="happyhorse_cinematic"
+                />
               </el-select>
             </el-form-item>
 
@@ -128,7 +134,7 @@
             <div class="result-header">
               <div class="result-title">
                 <el-icon><MagicStick /></el-icon>
-                <span>Sora 结构化分镜提示词</span>
+                <span>{{ styleLabel }} 提示词</span>
               </div>
               <div class="result-actions">
                 <el-tag size="small" type="info">{{ formatSize(result.video_size) }}</el-tag>
@@ -148,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadFile } from 'element-plus'
 import {
@@ -165,6 +171,14 @@ import { getErrorMessage } from '../api'
 const MAX_VIDEO_SIZE = 15 * 1024 * 1024 // 15MB（与后端一致）
 
 const style = ref('sora_structured')
+const styleLabel = computed(() => {
+  const map: Record<string, string> = {
+    sora_structured: 'Sora 结构化分镜',
+    seedance_prose: 'Seedance 自然散文',
+    happyhorse_cinematic: 'HappyHorse 影视级散文',
+  }
+  return map[style.value] || '视频反推'
+})
 const videoUrl = ref('')
 const videoFile = ref<File | null>(null)
 const extraPrompt = ref('')
