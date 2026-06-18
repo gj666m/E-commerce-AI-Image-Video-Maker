@@ -478,3 +478,99 @@ export async function reverseVideoPrompt(
   })
   return data
 }
+
+// ===== 爆品复刻 =====
+
+export interface ViralStructureShot {
+  time: string
+  function: string
+  narrative: string
+  shot_type: string
+}
+
+export interface ViralStructure {
+  duration: number
+  shot_count: number
+  pacing: string
+  vibe: string
+  structure: ViralStructureShot[]
+  why_viral: string
+}
+
+export interface ReplicateVariation {
+  variation_type: string
+  title: string
+  reason: string
+  prompt: string
+}
+
+export interface ReplicateResult {
+  success: boolean
+  structure: ViralStructure
+  variations: ReplicateVariation[]
+  product_analysis: any
+  video_source: string
+  video_size: number
+  video_mime: string
+}
+
+/**
+ * 爆品复刻：3 步 AI 链路
+ * 上传爆款视频 + 商品信息 → 骨架提取 → 商品分析 → 3 份裂变 prompt
+ */
+export async function replicateAnalyze(
+  params: {
+    video?: File
+    videoUrl?: string
+    productImages?: File[]
+    productInfo?: string
+    extraPrompt?: string
+  },
+  signal?: AbortSignal,
+): Promise<ReplicateResult> {
+  const formData = new FormData()
+  if (params.video) formData.append('video', params.video)
+  if (params.videoUrl) formData.append('video_url', params.videoUrl)
+  if (params.productImages) {
+    for (const img of params.productImages) {
+      formData.append('product_images', img)
+    }
+  }
+  if (params.productInfo) formData.append('product_info', params.productInfo)
+  if (params.extraPrompt) formData.append('extra_prompt', params.extraPrompt)
+
+  const { data } = await api.post('/api/replicate/analyze', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000, // 5 分钟（3 步 AI 链路较慢）
+    signal,
+  })
+  return data
+}
+
+// ===== TikTok 脚本提取 =====
+
+export interface TiktokScriptResult {
+  success: boolean
+  url: string
+  script: string | null
+  error: string | null
+  video_size?: number
+}
+
+/**
+ * 单条 TikTok 链接 → SRT 字幕（前端循环串行调用）
+ */
+export async function extractTiktokScript(
+  url: string,
+  signal?: AbortSignal,
+): Promise<TiktokScriptResult> {
+  const formData = new FormData()
+  formData.append('url', url)
+
+  const { data } = await api.post('/api/tiktok-script/extract', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000, // 单条下载+Gemini 转写约 30-90s，留 3 分钟
+    signal,
+  })
+  return data
+}

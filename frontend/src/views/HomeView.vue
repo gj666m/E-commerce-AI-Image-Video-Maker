@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { VideoCameraFilled, Avatar, ShoppingBag, View, Picture, Present, MagicStick } from '@element-plus/icons-vue'
+import { VideoCameraFilled, Avatar, ShoppingBag, View, Picture, Present, MagicStick, TrendCharts, DocumentCopy } from '@element-plus/icons-vue'
 import { markRaw } from 'vue'
 
 const navItems = [
@@ -63,6 +63,34 @@ const navItems = [
     title: '视频生成',
     desc: '上传参考图，生成商品展示视频',
     color: 'linear-gradient(135deg, #f56c6c, #fab6b6)',
+  },
+  {
+    path: '/video-prompt',
+    icon: markRaw(MagicStick),
+    title: '提示词反推',
+    desc: '上传短视频，AI 反推 Sora / Seedance / HappyHorse 三种风格 prompt',
+    color: 'linear-gradient(135deg, #13c2c2, #5cdbd3)',
+  },
+  {
+    path: '/replicate',
+    icon: markRaw(TrendCharts),
+    title: '爆品复刻',
+    desc: '上传爆款视频 + 商品，AI 抽骨架 + 裂变 3 份新视频 prompt',
+    color: 'linear-gradient(135deg, #eb2f96, #ff85c0)',
+  },
+  {
+    path: '/tiktok-script',
+    icon: markRaw(DocumentCopy),
+    title: 'TikTok 脚本提取',
+    desc: '粘贴 TikTok 链接，AI 批量转写为 SRT 字幕',
+    color: 'linear-gradient(135deg, #fa8c16, #ffc069)',
+  },
+  {
+    path: '/seed-grass',
+    icon: markRaw(Picture),
+    title: '种草图生成',
+    desc: '博主人设 + 场景，生成博主生活照',
+    color: 'linear-gradient(135deg, #b37feb, #d3adf7)',
   },
   {
     path: '/seed-grass',

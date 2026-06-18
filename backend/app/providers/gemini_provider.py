@@ -246,6 +246,119 @@ REVERSE_VIDEO_PROMPT_STYLES = {
 }
 
 
+# === TikTok 脚本字幕提取系统提示词 ===
+EXTRACT_VIDEO_SCRIPT_SYSTEM = """你是一个专业的视频字幕转写专家。请仔细观看用户上传的视频（按 1 帧/秒采样，包含音频轨），把视频中人物说的话（旁白 / 对话 / 口播）完整转写成字幕。
+
+【输出格式 —— 必须严格按 SRT 字幕格式输出】
+
+```
+1
+00:00:00,000 --> 00:00:03,200
+这是第一句字幕，按人物实际说话内容逐字转写
+
+2
+00:00:03,200 --> 00:00:07,500
+这是第二句字幕
+
+3
+00:00:07,500 --> 00:00:12,000
+...
+```
+
+【转写要求】
+1. **完整转写**：把整段视频从头到尾所有可听清的人声都转写出来，不要漏、不要省略、不要总结
+2. **逐字转写**：按人物原话，不要改写、不要润色、不要翻译。英文说英文，中文说中文，混着说就混着写
+3. **断句合理**：每句字幕长度控制在 5-15 个词（中文 8-20 字），按语义停顿断句，不要一句太长
+4. **时间戳精确**：每条字幕的开始/结束时间要对齐人物实际说话的起止。如果 Gemini 没法精确到毫秒，就按采样的秒数估算，但格式必须严格 `HH:MM:SS,mmm --> HH:MM:SS,mmm`
+5. **背景音不算**：只转写**人声**，背景音乐 / 音效 / 嘈杂环境音不要转写
+6. **保留语气词**：um / uh / 嗯 / 啊 这类语气词保留（这是真实口语的体现）
+7. **不要任何解释**：只输出 SRT 内容本身，不要前言、不要后记、不要 ``` 包裹、不要"以下是字幕"等说明
+
+【如果视频没有人声】
+只输出一行 `（视频无人声，未识别到可转写内容）`，不要输出 SRT。"""
+
+
+# === 爆品复刻：视频骨架提取系统提示词 ===
+EXTRACT_VIRAL_STRUCTURE_SYSTEM = """你是一个短视频爆款拆解专家。分析视频，提取【叙事骨架】而非具体内容。
+
+输出 JSON 格式（只输出 JSON，不要任何其他文字）：
+{
+  "duration": 视频时长秒数,
+  "shot_count": 镜头数,
+  "pacing": "快切卡点 | 慢摇叙事 | 混合",
+  "vibe": "整体情绪基调",
+  "structure": [
+    {
+      "time": "0-3s",
+      "function": "hook | product_reveal | showcase | cta",
+      "narrative": "这一段在叙事上做什么（抽象描述，不要具体画面）",
+      "shot_type": "景别 + 运镜类型"
+    }
+  ],
+  "why_viral": "为什么这条视频能火（前3秒抓人？情感共鸣？反差？）"
+}
+
+关键：描述叙事功能不描述具体内容。
+- 错误："女生穿红裙在咖啡店转身"
+- 正确："人物使用商品的展示镜头，配合360度环绕运镜突出商品外观"
+
+只输出 JSON，不要 ```json``` 代码块包裹，不要前言、不要解释。"""
+
+
+# === 爆品复刻：裂变融合系统提示词 ===
+GENERATE_REPLICATE_VARIATIONS_SYSTEM = """你是爆品视频裂变工程师。
+
+输入：
+1. 原爆款视频的叙事骨架（JSON）
+2. 用户的商品信息（类型/卖点/受众/场景，自由文本）
+
+任务：保留爆款骨架（hook 类型、镜头数、节奏、CTA 结构不变），换掉表层执行，生成 3 份不同的 Seedance 视频 prompt。
+
+3 份必须分别在以下维度显著差异化：
+
+【变体 1 - 场景迁移】
+把原视频的场景，换成「最适合该商品使用的真实场景」（基于商品类型智能匹配）。
+例如：原视频场景=咖啡店，商品=运动鞋 → 新场景=晨跑跑道。
+
+【变体 2 - 受众错位】
+针对与原视频不同的目标受众重新演绎。
+例如：原视频受众=年轻女性，商品=口红 → 新受众=职场白领女性。
+
+【变体 3 - 风格变体】
+保留结构和场景类型，但换调性/视觉风格。
+例如：原风格=快切活力卡点 → 新风格=优雅慢摇电影感。
+
+输出 JSON 数组（3 个对象，只输出 JSON，不要任何其他文字）：
+[
+  {
+    "variation_type": "场景迁移",
+    "title": "简短标题（如：晨跑场景版）",
+    "reason": "为什么这样变（一句话，给用户判断用）",
+    "prompt": "完整 Seedance 格式 prompt（中文散文，单段连贯）"
+  },
+  {
+    "variation_type": "受众错位",
+    "title": "...",
+    "reason": "...",
+    "prompt": "..."
+  },
+  {
+    "variation_type": "风格变体",
+    "title": "...",
+    "reason": "...",
+    "prompt": "..."
+  }
+]
+
+要求：
+- 保留骨架的镜头数和叙事功能分布
+- prompt 必须包含商品的卖点（基于商品信息）
+- prompt 不能要求 AI 渲染文字（如"印有LOGO"），AI 视频模型无法准确渲染文字
+- 3 份必须明显不同（场景、受众、风格至少一项截然不同）
+- prompt 用中文，单段连贯散文，运镜动词密集，含明确画面动态
+- 只输出 JSON 数组，不要 ```json``` 代码块包裹，不要前言、不要解释"""
+
+
 class GeminiProvider:
     """Gemini 创意类 AI Provider（API易中转，OpenAI 兼容格式）
 
@@ -503,9 +616,46 @@ class GeminiProvider:
             max_tokens=4096,
         )
 
+    async def extract_video_script(
+        self,
+        video_bytes: bytes,
+        mime_type: str = "video/mp4",
+    ) -> str:
+        """视频 → SRT 格式字幕文本（TikTok 脚本提取）
+
+        利用 Gemini 视频理解能力（1 FPS 采样 + 音频理解），
+        把视频中的人声逐字转写成 SRT 字幕格式。
+
+        Args:
+            video_bytes: 视频二进制（≤ 15MB）
+            mime_type: 视频 MIME
+
+        Returns:
+            SRT 格式字幕文本（含序号 + 时间戳 + 文本），或 "（视频无人声...）"
+        """
+        b64 = base64.b64encode(video_bytes).decode()
+        video_content = {
+            "type": "image_url",
+            "image_url": {"url": f"data:{mime_type};base64,{b64}"},
+        }
+
+        user_content = [
+            video_content,
+            self._make_text_content(
+                "请仔细观看视频，把所有可听清的人声逐字转写成 SRT 字幕。"
+            ),
+        ]
+
+        # 字幕可能较长（30 秒视频约 50-100 句），max_tokens 给足
+        return await self._chat(
+            EXTRACT_VIDEO_SCRIPT_SYSTEM,
+            user_content,
+            max_tokens=4096,
+        )
+
     @staticmethod
     def _parse_json(text: str) -> dict:
-        """解析模型输出的 JSON（兼容 markdown 代码块包裹）"""
+        """解析模型输出的 JSON（兼容 markdown 代码块包裹 + 返回 dict 或 list）"""
         text = text.strip()
         try:
             return json.loads(text)
@@ -522,3 +672,95 @@ class GeminiProvider:
             return json.loads(text[start:end].strip())
 
         raise ValueError(f"无法解析模型输出为 JSON: {text[:200]}")
+
+    async def extract_viral_structure(
+        self,
+        video_bytes: bytes,
+        mime_type: str = "video/mp4",
+    ) -> dict:
+        """视频 → 叙事骨架 JSON（爆品复刻 Step 1）
+
+        利用 Gemini 视频理解能力（1 FPS 采样 + 音频理解），
+        提取「叙事功能」级别的骨架，而非具体画面内容。
+
+        Args:
+            video_bytes: 视频二进制（≤ 15MB）
+            mime_type: 视频 MIME
+
+        Returns:
+            dict {
+                duration, shot_count, pacing, vibe,
+                structure: [{time, function, narrative, shot_type}],
+                why_viral
+            }
+        """
+        b64 = base64.b64encode(video_bytes).decode()
+        video_content = {
+            "type": "image_url",
+            "image_url": {"url": f"data:{mime_type};base64,{b64}"},
+        }
+
+        user_content = [
+            video_content,
+            self._make_text_content(
+                "请仔细观看视频，提取它的【叙事骨架】。"
+                "记住：提取叙事功能，不要描述具体画面内容。"
+            ),
+        ]
+
+        raw = await self._chat(
+            EXTRACT_VIRAL_STRUCTURE_SYSTEM,
+            user_content,
+            max_tokens=4096,
+        )
+        return self._parse_json(raw)
+
+    async def generate_replicate_variations(
+        self,
+        structure: dict,
+        product_info: str,
+        extra_prompt: str = "",
+        count: int = 3,
+    ) -> list[dict]:
+        """骨架 + 商品 → N 份视频 prompt 变体（爆品复刻 Step 3）
+
+        Args:
+            structure: extract_viral_structure 返回的骨架 dict
+            product_info: 商品信息文本（用户输入 + AI 分析拼接）
+            extra_prompt: 用户额外要求（可选）
+            count: 变体数量（默认 3，对应场景/受众/风格三维度）
+
+        Returns:
+            list[dict]，每项 {variation_type, title, reason, prompt}
+        """
+        text_parts = [
+            "# 原爆款视频叙事骨架",
+            json.dumps(structure, ensure_ascii=False, indent=2),
+            "",
+            "# 用户商品信息",
+            product_info or "（用户未提供商品信息，按常见商品推断）",
+        ]
+        if extra_prompt.strip():
+            text_parts.append("")
+            text_parts.append(f"# 用户额外要求\n{extra_prompt.strip()}")
+        text_parts.append("")
+        text_parts.append(f"请生成 {count} 份差异化的 Seedance 视频 prompt。")
+
+        user_content = [self._make_text_content("\n".join(text_parts))]
+
+        raw = await self._chat(
+            GENERATE_REPLICATE_VARIATIONS_SYSTEM,
+            user_content,
+            max_tokens=4096,
+        )
+        parsed = self._parse_json(raw)
+
+        # 容错：模型可能返回 {"variations": [...]}
+        if isinstance(parsed, dict):
+            if "variations" in parsed and isinstance(parsed["variations"], list):
+                return parsed["variations"]
+            # 兜底：当作单条包裹
+            return [parsed]
+        if isinstance(parsed, list):
+            return parsed
+        raise ValueError(f"裂变变体解析失败：未知结构 {str(parsed)[:200]}")

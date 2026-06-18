@@ -90,6 +90,14 @@
             <el-icon><MagicStick /></el-icon>
             <template #title>提示词反推</template>
           </el-menu-item>
+          <el-menu-item index="/replicate">
+            <el-icon><TrendCharts /></el-icon>
+            <template #title>爆品复刻</template>
+          </el-menu-item>
+          <el-menu-item index="/tiktok-script">
+            <el-icon><DocumentCopy /></el-icon>
+            <template #title>TikTok 脚本提取</template>
+          </el-menu-item>
           <el-menu-item index="/seed-grass">
             <el-icon><Picture /></el-icon>
             <template #title>种草图</template>
@@ -142,6 +150,8 @@ import {
   Picture,
   Present,
   MagicStick,
+  TrendCharts,
+  DocumentCopy,
   Clock,
   Expand,
   Fold,

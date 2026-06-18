@@ -30,6 +30,16 @@ const router = createRouter({
       component: () => import('../views/VideoPromptView.vue'),
     },
     {
+      path: '/replicate',
+      name: 'replicate',
+      component: () => import('../views/ViralReplicateView.vue'),
+    },
+    {
+      path: '/tiktok-script',
+      name: 'tiktok-script',
+      component: () => import('../views/TiktokScriptView.vue'),
+    },
+    {
       path: '/model-gen',
       name: 'model-gen',
       component: () => import('../views/ModelGenView.vue'),
