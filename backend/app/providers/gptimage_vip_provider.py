@@ -48,11 +48,12 @@ class GPTImageVipProvider(GPTImageProvider):
         return settings.gptimage_vip_model
 
     def _build_generate_payload(self, prompt: str, params: dict | None = None) -> dict:
-        """文生图请求体（含 size 参数）"""
+        """文生图请求体（含 size 参数，显式 n=1 按次计费）"""
         payload = {
             "model": self._get_model(),
             "prompt": prompt,
             "response_format": "b64_json",
+            "n": 1,
         }
         # VIP 支持 size 参数，默认 4K Detail 档
         aspect_ratio = (params or {}).get("aspect_ratio", "")

@@ -125,11 +125,12 @@ class GPTImageProvider(BaseProvider):
             )
 
     def _build_generate_payload(self, prompt: str) -> dict:
-        """文生图请求体（不传 size/n/quality）"""
+        """文生图请求体（显式 n=1，按次计费 $0.03/张）"""
         return {
             "model": settings.gptimage_model,
             "prompt": prompt,
             "response_format": "b64_json",
+            "n": 1,
         }
 
     def _build_edit_form(self, prompt: str, ref_images: list[bytes]) -> list:
@@ -148,27 +149,28 @@ class GPTImageProvider(BaseProvider):
 
         gpt-image-2-all 的 b64_json 已含 data:image/png;base64, 前缀，
         需要先剥离再 decode。
-        """
-        images = []
-        for item in data.get("data", []):
-            # 优先取 b64_json
-            b64 = item.get("b64_json")
-            if b64:
-                # 剥离可能的 data URL 前缀
-                if b64.startswith("data:"):
-                    b64 = b64.split(",", 1)[1]
-                images.append(base64.b64decode(b64))
-                continue
 
-            # 备用：url 格式（不应走到这里，因为请求了 b64_json）
-            url = item.get("url")
-            if url:
-                logger.info(f"GPT-Image 返回了 URL 而非 b64_json: {url[:80]}...")
-                # 同步下载 URL（在异步上下文中用 httpx 同步客户端）
-                try:
-                    resp = httpx.get(url, timeout=60)
-                    resp.raise_for_status()
-                    images.append(resp.content)
-                except Exception as e:
-                    logger.error(f"下载 GPT-Image URL 失败: {e}")
-        return images
+        设计为 n=1 按次计费，中转站偶发返回多张图（上游聚合 bug），
+        只取第一张，避免 cost 被错误平摊（generate.py 里 per_cost = cost/len(images)）。
+        """
+        items = data.get("data", [])
+        if not items:
+            return []
+        # 只取第一张，丢弃中转站偶发返回的冗余图
+        item = items[0]
+        b64 = item.get("b64_json")
+        if b64:
+            if b64.startswith("data:"):
+                b64 = b64.split(",", 1)[1]
+            return [base64.b64decode(b64)]
+        # 备用：url 格式（不应走到这里，因为请求了 b64_json）
+        url = item.get("url")
+        if url:
+            logger.info(f"GPT-Image 返回了 URL 而非 b64_json: {url[:80]}...")
+            try:
+                resp = httpx.get(url, timeout=60)
+                resp.raise_for_status()
+                return [resp.content]
+            except Exception as e:
+                logger.error(f"下载 GPT-Image URL 失败: {e}")
+        return []
