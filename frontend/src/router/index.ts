@@ -40,6 +40,16 @@ const router = createRouter({
       component: () => import('../views/TiktokScriptView.vue'),
     },
     {
+      path: '/outfit-scrape',
+      name: 'outfit-scrape',
+      component: () => import('../views/OutfitScraperView.vue'),
+    },
+    {
+      path: '/video-shots',
+      name: 'video-shots',
+      component: () => import('../views/VideoShotView.vue'),
+    },
+    {
       path: '/model-gen',
       name: 'model-gen',
       component: () => import('../views/ModelGenView.vue'),

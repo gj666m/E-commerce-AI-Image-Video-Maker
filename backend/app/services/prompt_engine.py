@@ -191,6 +191,65 @@ def build_video_prompt(
     return prompt
 
 
+def build_shot_video_prompt(shots: list[dict]) -> str:
+    """把用户编辑后的分镜列表拼装成单段叙事视频 prompt
+
+    入参 shots 是前端用户编辑后的分镜 JSON，字段同 GeminiProvider.plan_video_shots 输出：
+    - index / start_time / end_time / duration / purpose / action / camera / focus / garment_focus / visual_style
+
+    输出格式示例：
+        【分镜 1 / 0-5s · Hook】{action}。镜头：{camera}。视觉焦点：{focus}。服装强调：{garment_focus}。
+        【分镜 2 / 5-10s · Detail】{action}。镜头：{camera}。视觉焦点：{focus}。服装强调：{garment_focus}。
+        【分镜 3 / 10-15s · Recall】{action}。镜头：{camera}。视觉焦点：{focus}。服装强调：{garment_focus}。
+
+        整体风格：{visual_style}。
+
+    Args:
+        shots: 分镜列表
+
+    Returns:
+        拼装后的单段叙事 description（用于 build_video_prompt 的 description 参数）
+    """
+    if not shots:
+        return ""
+
+    lines = []
+    visual_style = ""
+    for shot in shots:
+        index = shot.get("index", "?")
+        start = shot.get("start_time", 0)
+        end = shot.get("end_time", 0)
+        duration = shot.get("duration", end - start)
+        purpose = shot.get("purpose", "")
+        action = shot.get("action", "").strip()
+        camera = shot.get("camera", "").strip()
+        focus = shot.get("focus", "").strip()
+        garment_focus = shot.get("garment_focus", "").strip()
+        # 所有分镜应共享同一个 visual_style，取最后一个非空值
+        if shot.get("visual_style", "").strip():
+            visual_style = shot["visual_style"].strip()
+
+        parts: list[str] = []
+        if action:
+            parts.append(action)
+        if camera:
+            parts.append(f"镜头：{camera}")
+        if focus:
+            parts.append(f"视觉焦点：{focus}")
+        if garment_focus:
+            parts.append(f"服装强调：{garment_focus}")
+
+        purpose_tag = f" · {purpose}" if purpose else ""
+        line = f"【分镜 {index} / {int(start)}-{int(end)}s{purpose_tag}】{'。'.join(parts)}。"
+        lines.append(line)
+
+    # 空行 + 整体风格
+    result = "\n".join(lines)
+    if visual_style:
+        result = result + f"\n\n整体风格：{visual_style}。"
+    return result
+
+
 def build_model_prompt(
     gender: str = "female",
     ethnicity: str = "caucasian",

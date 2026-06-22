@@ -574,3 +574,126 @@ export async function extractTiktokScript(
   })
   return data
 }
+
+// ===== 穿搭素材抓取 =====
+export interface OutfitScrapeResult {
+  success: boolean
+  url: string
+  frames: string[]  // data URL 数组
+  error: string | null
+  video_size?: number
+}
+
+/** 单条 TikTok 链接 → 关键帧列表（前端循环串行调用） */
+export async function scrapeOutfit(
+  url: string,
+  maxFrames: number = 8,
+  signal?: AbortSignal,
+): Promise<OutfitScrapeResult> {
+  const formData = new FormData()
+  formData.append('url', url)
+  formData.append('max_frames', String(maxFrames))
+
+  const { data } = await api.post('/api/outfit-scrape/extract', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000, // 下载 + ffmpeg 抽帧约 10-30s
+    signal,
+  })
+  return data
+}
+
+// ===== 分镜视频生成 =====
+export interface VideoShot {
+  index: number
+  start_time: number
+  end_time: number
+  duration: number
+  purpose: string
+  action: string
+  camera: string
+  focus: string
+  garment_focus: string
+  visual_style: string
+}
+
+export interface PlanVideoShotsResponse {
+  success: boolean
+  shots: VideoShot[]
+  total_duration: number
+}
+
+/** AI 策划分镜 */
+export async function planVideoShots(params: {
+  theme: string
+  totalDuration: number
+  productInfo?: string
+  extraPrompt?: string
+  referenceImage?: File | null
+}): Promise<PlanVideoShotsResponse> {
+  const formData = new FormData()
+  formData.append('theme', params.theme)
+  formData.append('total_duration', String(params.totalDuration))
+  if (params.productInfo) formData.append('product_info', params.productInfo)
+  if (params.extraPrompt) formData.append('extra_prompt', params.extraPrompt)
+  if (params.referenceImage) formData.append('reference_image', params.referenceImage)
+
+  const { data } = await api.post('/api/video-shots/plan', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+  })
+  return data
+}
+
+export interface SubmitShotVideoParams {
+  shots: VideoShot[]
+  productImages: File[]
+  modelImages?: File[]
+  modelHasFace?: boolean
+  duration: number
+  modelName?: string | null
+  style?: string | null
+  ratio: string
+  generateAudio?: boolean
+  resolution?: string | null
+  productInfo?: string
+  customPrompt?: string
+}
+
+export interface SubmitShotVideoResponse {
+  success: boolean
+  task_id: string
+  status: string
+}
+
+/** 提交分镜视频生成 */
+export async function submitShotVideo(
+  params: SubmitShotVideoParams,
+  signal?: AbortSignal,
+): Promise<SubmitShotVideoResponse> {
+  const formData = new FormData()
+  formData.append('shots_json', JSON.stringify(params.shots))
+  for (const f of params.productImages) {
+    formData.append('product_images', f)
+  }
+  if (params.modelImages) {
+    for (const f of params.modelImages) {
+      formData.append('model_images', f)
+    }
+  }
+  formData.append('model_has_face', String(params.modelHasFace ?? true))
+  formData.append('duration', String(params.duration))
+  if (params.modelName) formData.append('model_name', params.modelName)
+  if (params.style) formData.append('style', params.style)
+  formData.append('ratio', params.ratio)
+  formData.append('generate_audio', String(params.generateAudio ?? false))
+  if (params.resolution) formData.append('resolution', params.resolution)
+  if (params.productInfo) formData.append('product_info', params.productInfo)
+  if (params.customPrompt) formData.append('custom_prompt', params.customPrompt)
+
+  const { data } = await api.post('/api/video-shots/generate', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 360000, // 视频提交 6 分钟（参考 video.py）
+    signal,
+  })
+  return data
+}

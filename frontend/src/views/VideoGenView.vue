@@ -331,7 +331,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, Close, MagicStick, Promotion } from '@element-plus/icons-vue'
 import ImageUploader from '../components/ImageUploader.vue'
 import ModelSelector from '../components/ModelSelector.vue'
@@ -561,6 +561,17 @@ function base64ToFile(base64: string, filename: string): File {
 
 async function handleSubmit() {
   if (!canGenerate.value) return
+
+  // 二次确认（防误触扣费）
+  try {
+    await ElMessageBox.confirm(
+      `将提交生成 ${form.value.duration}秒 ${form.value.ratio} 视频，预计耗时 1-3 分钟。是否继续？`,
+      '确认提交',
+      { confirmButtonText: '提交', cancelButtonText: '取消', type: 'info' }
+    )
+  } catch {
+    return // 用户取消
+  }
 
   submitting.value = true
   taskId.value = null

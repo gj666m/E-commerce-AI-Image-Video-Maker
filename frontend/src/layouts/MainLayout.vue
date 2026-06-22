@@ -86,6 +86,10 @@
             <el-icon><VideoCameraFilled /></el-icon>
             <template #title>视频生成</template>
           </el-menu-item>
+          <el-menu-item index="/video-shots">
+            <el-icon><Film /></el-icon>
+            <template #title>分镜视频</template>
+          </el-menu-item>
           <el-menu-item index="/video-prompt">
             <el-icon><MagicStick /></el-icon>
             <template #title>提示词反推</template>
@@ -97,6 +101,10 @@
           <el-menu-item index="/tiktok-script">
             <el-icon><DocumentCopy /></el-icon>
             <template #title>TikTok 脚本提取</template>
+          </el-menu-item>
+          <el-menu-item index="/outfit-scrape">
+            <el-icon><PictureFilled /></el-icon>
+            <template #title>穿搭素材抓取</template>
           </el-menu-item>
           <el-menu-item index="/seed-grass">
             <el-icon><Picture /></el-icon>
@@ -162,6 +170,8 @@ import {
   ArrowDown,
   SwitchButton,
   Wallet,
+  Film,
+  PictureFilled,
 } from '@element-plus/icons-vue'
 import { useTheme } from '../composables/useTheme'
 import { useAuth } from '../composables/useAuth'

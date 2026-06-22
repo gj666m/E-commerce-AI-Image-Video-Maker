@@ -246,6 +246,69 @@ REVERSE_VIDEO_PROMPT_STYLES = {
 }
 
 
+# === 分镜视频 AI 策划系统提示词（新） ===
+PLAN_VIDEO_SHOTS_SYSTEM = """你是一位专业的时尚短视频导演，特别熟悉 TikTok 爆款女装视频的镜头节奏与叙事结构。
+
+你的任务：根据用户的主题、商品信息和总时长，规划一段 {total_duration} 秒视频的分镜方案，每个分镜独立设计动作+运镜+视觉焦点。
+
+【叙事结构 —— 必须遵守】
+按"Hook → Detail → Recall"三段式规划：
+1. **开场 Hook（第一镜）**：前 2-3 秒必须抓住眼球，用强视觉冲击（动态姿势 / 强烈光影 / 意外构图 / 明确情绪）。不要慢热铺垫。
+2. **中段 Detail（第二镜）**：展示商品核心细节（面料动态 / 版型轮廓 / 工艺特写），靠人物动作自然呈现，不是静态展示。
+3. **收尾 Recall（第三镜）**：强化记忆点（完整廓形 / 定格姿态 / 转身离场），让用户记住整体穿搭印象。
+
+【分镜数与时长分配】
+- 10 秒：2 个分镜（Hook 4s + Detail&Recall 6s，或 5s + 5s）
+- 15 秒：3 个分镜（Hook 5s + Detail 5s + Recall 5s，或 4s + 6s + 5s）
+- 总时长严格等于用户输入，单镜不少于 3 秒（太短 Seedance 难以叙事）
+
+【视觉一致性】
+- 整体视觉风格（色调/胶片质感/光线风格）必须跨镜头连贯，不允许一会电影感一会鱼眼
+- 人物形象（发型/妆容/肤色）跨镜头一致
+- 场景可以变换但风格要延续（同一时段光线 / 同一城市氛围）
+
+【动态感 —— 强制要求】
+每个分镜都必须有画面动态来源（至少两项）：
+- 镜头运动（推/拉/摇/移/跟/环绕/升降/甩）
+- 人物动作（走动/转身/甩发/推墨镜/抬头/侧身/屈膝）
+- 场景变化（跳切换景 / 前景后景切换）
+禁止：镜头静止 + 人物静止 = 死板照片。
+
+【常见错误 —— 必须避免】
+- 把 Hook 写成"模特缓缓走来"（太慢热，前 3 秒已划走）
+- 中段 Detail 写成"镜头展示服装细节"（无动作，等于静态图）
+- 给服装/道具指定具体文字（如"印有 LOGO"）——AI 视频无法准确渲染文字，会乱码
+- 跨镜头风格断裂（Hook 鱼眼街拍，Detail 突然变成柔和影棚）
+- 单镜时长 < 3 秒（Seedance 难以完成叙事）
+- 输出英文（必须中文，方便运营团队编辑）
+
+【输出格式 —— 严格 JSON 数组】
+```json
+[
+  {
+    "index": 1,
+    "start_time": 0,
+    "end_time": 5,
+    "duration": 5,
+    "purpose": "Hook / Detail / Recall",
+    "action": "人物动作的具体描述（如：模特从画面左侧快速迈步入画，皮夹克衣角随转身扬起，直视镜头推近）",
+    "camera": "镜头语言（景别+运镜，如：中景→近景 / 手持跟拍 + 急速推近）",
+    "focus": "这个镜头的视觉焦点（如：皮夹克动态 + 自信眼神）",
+    "garment_focus": "本镜要突出展示的服装元素（如：皮夹克廓形 / 裙摆飘逸 / 面料质感）",
+    "visual_style": "整体视觉风格描述（所有分镜应保持一致，如：烈日硬光 + 复古胶片颗粒 + 美式街头酷感）"
+  },
+  ...
+]
+```
+
+只输出 JSON 数组本体，不要解释、不要前言、不要 markdown 代码块包裹（直接以 `[` 开头、`]` 结尾）。"""
+
+
+def _build_plan_video_shots_system(total_duration: int) -> str:
+    """填充时长到分镜策划系统提示词"""
+    return PLAN_VIDEO_SHOTS_SYSTEM.replace("{total_duration}", str(total_duration))
+
+
 # === TikTok 脚本字幕提取系统提示词 ===
 EXTRACT_VIDEO_SCRIPT_SYSTEM = """你是一个专业的视频字幕转写专家。请仔细观看用户上传的视频（按 1 帧/秒采样，包含音频轨），把视频中人物说的话（旁白 / 对话 / 口播）完整转写成字幕。
 
@@ -530,6 +593,60 @@ class GeminiProvider:
         result = self._parse_json(raw)
         result["_meta"] = {"model": settings.gemini_apiyi_model}
         return result
+
+    async def plan_video_shots(
+        self,
+        theme: str,
+        total_duration: int = 15,
+        product_info: str = "",
+        extra_prompt: str = "",
+        reference_image: bytes | None = None,
+        mime_type: str = "image/jpeg",
+    ) -> list[dict]:
+        """AI 策划分镜视频方案（分镜板块核心方法）
+
+        按总时长（10/15s）规划 2-3 个分镜，每个分镜独立设计 Hook/Detail/Recall 叙事结构。
+
+        Args:
+            theme: 主题/创意描述（如"夏日优雅裙装，巴黎街头漫步感"）
+            total_duration: 总时长（10 或 15 秒）
+            product_info: 商品信息文本（面料/版型/卖点等）
+            extra_prompt: 用户额外要求
+            reference_image: 参考图（可选，帮助 AI 理解服装）
+            mime_type: 参考图 MIME
+        Returns:
+            分镜列表 [{index, start_time, end_time, duration, purpose, action, camera, focus, garment_focus, visual_style}, ...]
+        """
+        parts = [
+            f"主题：{theme}",
+            f"总时长：{total_duration} 秒",
+        ]
+        if product_info:
+            parts.append(f"商品信息：{product_info}")
+        if extra_prompt.strip():
+            parts.append(f"额外要求：{extra_prompt.strip()}")
+        parts.append(
+            f"\n请按 Hook → Detail → Recall 三段式规划分镜，总时长严格等于 {total_duration} 秒。"
+        )
+
+        user_content: list = []
+        if reference_image:
+            user_content.append(self._make_image_content(reference_image, mime_type))
+        user_content.append(self._make_text_content("\n".join(parts)))
+
+        system_prompt = _build_plan_video_shots_system(total_duration)
+        raw = await self._chat(system_prompt, user_content, max_tokens=3072)
+
+        # _parse_json 兼容 dict/list 两种返回
+        result = self._parse_json(raw)
+        if isinstance(result, dict):
+            # 兜底：模型偶发返回 {"shots": [...]}
+            if "shots" in result and isinstance(result["shots"], list):
+                return result["shots"]
+            return [result]
+        if isinstance(result, list):
+            return result
+        raise ValueError(f"分镜策划输出格式异常：{type(result).__name__}")
 
     async def enhance_video_prompt(
         self,

@@ -101,7 +101,7 @@ def _mime_from_ext(ext: str) -> str:
     }.get(ext.lower().lstrip("."), "video/mp4")
 
 
-async def download_tiktok(url: str, max_size_mb: int = 15) -> tuple[bytes, str]:
+async def download_tiktok(url: str, max_size_mb: int = 30) -> tuple[bytes, str]:
     """下载 TikTok / 短视频平台的视频
 
     Args:
