@@ -602,6 +602,24 @@ export async function scrapeOutfit(
   return data
 }
 
+/** 上传视频文件 → 关键帧列表（跳过 yt-dlp 下载，适合本地已有视频） */
+export async function scrapeOutfitUpload(
+  file: File,
+  maxFrames: number = 8,
+  signal?: AbortSignal,
+): Promise<OutfitScrapeResult> {
+  const formData = new FormData()
+  formData.append('video', file)
+  formData.append('max_frames', String(maxFrames))
+
+  const { data } = await api.post('/api/outfit-scrape/extract-upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+    signal,
+  })
+  return data
+}
+
 // ===== 分镜视频生成 =====
 export interface VideoShot {
   index: number

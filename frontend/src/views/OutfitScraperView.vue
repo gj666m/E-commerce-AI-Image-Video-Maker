@@ -13,19 +13,53 @@
       <el-col :span="10">
         <el-card>
           <el-form label-position="top">
-            <el-form-item label="视频链接" required>
-              <el-input
-                v-model="rawInput"
-                type="textarea"
-                :rows="12"
-                placeholder="粘贴视频链接，支持一条或多条&#10;每行一个，或用空格、逗号分隔"
-                :disabled="processing"
-              />
-              <div class="link-count">
-                <el-icon><Link /></el-icon>
-                <span>已识别 <strong>{{ links.length }}</strong> 条链接</span>
-              </div>
-            </el-form-item>
+            <el-tabs v-model="mode" class="input-tabs">
+              <!-- 链接模式 -->
+              <el-tab-pane label="链接模式" name="link">
+                <el-form-item label="视频链接" required>
+                  <el-input
+                    v-model="rawInput"
+                    type="textarea"
+                    :rows="10"
+                    placeholder="粘贴视频链接，支持一条或多条&#10;每行一个，或用空格、逗号分隔"
+                    :disabled="processing"
+                  />
+                  <div class="link-count">
+                    <el-icon><Link /></el-icon>
+                    <span>已识别 <strong>{{ links.length }}</strong> 条链接</span>
+                  </div>
+                </el-form-item>
+              </el-tab-pane>
+
+              <!-- 上传模式 -->
+              <el-tab-pane label="上传模式" name="upload">
+                <el-upload
+                  drag
+                  multiple
+                  :auto-upload="false"
+                  accept="video/*"
+                  :file-list="uploadFileList"
+                  :on-change="handleFileChange"
+                  :on-remove="handleFileRemove"
+                  :disabled="processing"
+                >
+                  <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+                  <div class="el-upload__text">
+                    拖拽视频到此处，或<em>点击选择</em>
+                  </div>
+                  <template #tip>
+                    <div class="upload-tip">
+                      支持 mp4/mov/webm 等，单个 ≤30MB，可多选。
+                      <br />TikTok 链接被风控时，手动下载后用此模式更稳。
+                    </div>
+                  </template>
+                </el-upload>
+                <div class="link-count" v-if="uploadFileList.length > 0">
+                  <el-icon><UploadFilled /></el-icon>
+                  <span>已选 <strong>{{ uploadFileList.length }}</strong> 个视频</span>
+                </div>
+              </el-tab-pane>
+            </el-tabs>
 
             <el-form-item label="每条返回帧数">
               <el-slider v-model="maxFrames" :min="3" :max="12" :step="1" show-input :disabled="processing" />
@@ -36,11 +70,11 @@
                 type="primary"
                 size="large"
                 :loading="processing"
-                :disabled="links.length === 0"
-                @click="handleExtract"
+                :disabled="canStart === false"
+                @click="handleStart"
                 style="width: 100%"
               >
-                {{ processing ? progressText : '抓取' }}
+                {{ processing ? progressText : (mode === 'link' ? '抓取' : '开始抽帧') }}
               </el-button>
             </el-form-item>
 
@@ -53,8 +87,9 @@
             <div class="tips">
               <p><el-icon><InfoFilled /></el-icon> 说明</p>
               <ul>
-                <li>串行处理，每条约 10-30 秒（下载 + ffmpeg 抽帧）</li>
-                <li>TikTok 服务器可能风控，失败卡片显示「请手动下载后上传」</li>
+                <li v-if="mode === 'link'">串行处理，每条约 10-30 秒（下载 + ffmpeg 抽帧）</li>
+                <li v-else>串行处理，每个视频约 5-15 秒（仅 ffmpeg 抽帧，无下载）</li>
+                <li v-if="mode === 'link'">TikTok 服务器可能风控，失败时可切换「上传模式」手动上传</li>
                 <li>ffmpeg 自动按场景变化挑关键帧（跳过相似帧）</li>
                 <li>点击关键帧可放大，勾选后一键送入视频生成</li>
               </ul>
@@ -116,10 +151,14 @@
               <template #header>
                 <div class="item-header">
                   <div class="item-url">
-                    <el-icon><Link /></el-icon>
-                    <a :href="item.url" target="_blank" rel="noopener" :title="item.url">
+                    <el-icon>
+                      <UploadFilled v-if="!item.url.startsWith('http')" />
+                      <Link v-else />
+                    </el-icon>
+                    <a v-if="item.url.startsWith('http')" :href="item.url" target="_blank" rel="noopener" :title="item.url">
                       {{ shortenUrl(item.url) }}
                     </a>
+                    <span v-else :title="item.url">{{ item.url }}</span>
                   </div>
                   <div class="item-status">
                     <el-tag v-if="item.status === 'pending'" size="small" type="info">等待中</el-tag>
@@ -181,7 +220,7 @@
               <!-- 处理中 -->
               <div v-else-if="item.status === 'processing'" class="processing-content">
                 <el-icon :size="20" class="spin"><Loading /></el-icon>
-                <span>下载视频 + ffmpeg 抽帧中（约 10-30 秒）...</span>
+                <span>{{ mode === 'link' ? '下载视频 + ffmpeg 抽帧中（约 10-30 秒）...' : 'ffmpeg 抽帧中（约 5-15 秒）...' }}</span>
               </div>
 
               <!-- 等待 -->
@@ -200,12 +239,13 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import type { UploadFile } from 'element-plus'
 import {
   Link, Close, Loading, RefreshRight, InfoFilled,
-  Download, Check, VideoCamera,
+  Download, Check, VideoCamera, UploadFilled,
 } from '@element-plus/icons-vue'
 import {
-  scrapeOutfit, getErrorMessage, type OutfitScrapeResult,
+  scrapeOutfit, scrapeOutfitUpload, getErrorMessage, type OutfitScrapeResult,
 } from '../api'
 
 type ItemStatus = 'pending' | 'processing' | 'success' | 'failed'
@@ -215,7 +255,9 @@ interface ResultItem extends OutfitScrapeResult {
 }
 
 const router = useRouter()
+const mode = ref<'link' | 'upload'>('link')
 const rawInput = ref('')
+const uploadFileList = ref<UploadFile[]>([])
 const processing = ref(false)
 const results = ref<ResultItem[]>([])
 const maxFrames = ref(8)
@@ -246,18 +288,51 @@ const progressStatus = computed(() => {
   return 'success'
 })
 const progressText = computed(() =>
-  processing.value ? `抓取中（${doneCount.value + 1} / ${links.value.length}）` : '抓取'
+  processing.value
+    ? `处理中（${doneCount.value + 1} / ${results.value.length}）`
+    : (mode.value === 'link' ? '抓取' : '开始抽帧')
 )
 
 const selectedFramesCount = computed(() => selectedFrames.value.size)
 
-// === 主流程 ===
-async function handleExtract() {
-  if (links.value.length === 0 || processing.value) return
-  results.value = links.value.map((url) => ({
-    success: false, url, frames: [], error: null, status: 'pending',
-  }))
+const canStart = computed(() => {
+  if (processing.value) return false
+  return mode.value === 'link' ? links.value.length > 0 : uploadFileList.value.length > 0
+})
+
+// === 文件上传管理 ===
+function handleFileChange(file: UploadFile) {
+  if (file.raw && !file.raw.type.startsWith('video/')) {
+    ElMessage.warning(`${file.name} 不是视频文件，已跳过`)
+    return
+  }
+  if (file.raw && file.raw.size > 30 * 1024 * 1024) {
+    ElMessage.warning(`${file.name} 超过 30MB，已跳过`)
+    return
+  }
+  uploadFileList.value.push(file)
+}
+
+function handleFileRemove(file: UploadFile) {
+  const idx = uploadFileList.value.findIndex((f) => f.uid === file.uid)
+  if (idx >= 0) uploadFileList.value.splice(idx, 1)
+}
+
+// === 主流程（统一入口，根据 mode 分发） ===
+async function handleStart() {
+  if (canStart.value === false) return
   selectedFrames.value.clear()
+
+  if (mode.value === 'link') {
+    results.value = links.value.map((url) => ({
+      success: false, url, frames: [], error: null, status: 'pending',
+    }))
+  } else {
+    results.value = uploadFileList.value.map((f) => ({
+      success: false, url: f.name, frames: [], error: null, status: 'pending',
+    }))
+  }
+
   processing.value = true
   abortController = new AbortController()
 
@@ -283,7 +358,9 @@ async function processOne(idx: number) {
   item.error = null
 
   try {
-    const res = await scrapeOutfit(item.url, maxFrames.value, abortController?.signal)
+    const res = mode.value === 'link'
+      ? await scrapeOutfit(item.url, maxFrames.value, abortController?.signal)
+      : await scrapeOutfitUpload(uploadFileList.value[idx].raw as File, maxFrames.value, abortController?.signal)
     item.success = res.success
     item.frames = res.frames || []
     item.error = res.error
@@ -295,7 +372,7 @@ async function processOne(idx: number) {
       return
     }
     item.success = false
-    item.error = getErrorMessage(e, '抓取失败')
+    item.error = getErrorMessage(e, mode.value === 'link' ? '抓取失败' : '抽帧失败')
     item.status = 'failed'
   }
 }
@@ -432,6 +509,17 @@ function handleClear() {
 
 .main-content {
   align-items: stretch;
+}
+
+.input-tabs {
+  margin-bottom: 8px;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  line-height: 1.6;
+  padding-top: 4px;
 }
 
 .link-count {
