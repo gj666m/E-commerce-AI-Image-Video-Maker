@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { VideoCameraFilled, Avatar, ShoppingBag, View, Picture, Present, MagicStick, TrendCharts, DocumentCopy } from '@element-plus/icons-vue'
+import { VideoCameraFilled, Avatar, ShoppingBag, View, Picture, Present, MagicStick, TrendCharts, DocumentCopy, Film, PictureFilled } from '@element-plus/icons-vue'
 import { markRaw } from 'vue'
 
 const navItems = [
@@ -65,6 +65,13 @@ const navItems = [
     color: 'linear-gradient(135deg, #f56c6c, #fab6b6)',
   },
   {
+    path: '/video-shots',
+    icon: markRaw(Film),
+    title: '分镜视频',
+    desc: 'AI 按 Hook→Detail→Recall 规划分镜，生成 10-15s 叙事视频',
+    color: 'linear-gradient(135deg, #722ed1, #9254de)',
+  },
+  {
     path: '/video-prompt',
     icon: markRaw(MagicStick),
     title: '提示词反推',
@@ -86,11 +93,11 @@ const navItems = [
     color: 'linear-gradient(135deg, #fa8c16, #ffc069)',
   },
   {
-    path: '/seed-grass',
-    icon: markRaw(Picture),
-    title: '种草图生成',
-    desc: '博主人设 + 场景，生成博主生活照',
-    color: 'linear-gradient(135deg, #b37feb, #d3adf7)',
+    path: '/outfit-scrape',
+    icon: markRaw(PictureFilled),
+    title: '穿搭素材抓取',
+    desc: '粘贴 TikTok 链接，自动下载 + ffmpeg 抽关键帧作为视频参考图',
+    color: 'linear-gradient(135deg, #08979c, #36cfc9)',
   },
   {
     path: '/seed-grass',
