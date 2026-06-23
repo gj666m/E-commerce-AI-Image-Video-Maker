@@ -46,10 +46,27 @@
             </el-form-item>
 
             <el-form-item label="总时长">
-              <el-radio-group v-model="form.totalDuration">
-                <el-radio-button :value="10">10 秒</el-radio-button>
-                <el-radio-button :value="15">15 秒</el-radio-button>
-              </el-radio-group>
+              <div class="duration-control">
+                <el-slider
+                  v-model="form.totalDuration"
+                  :min="4"
+                  :max="15"
+                  :step="1"
+                  :show-tooltip="false"
+                  class="duration-slider"
+                  :marks="{ 4: '4s', 10: '10s', 15: '15s' }"
+                />
+                <el-input-number
+                  v-model="form.totalDuration"
+                  :min="4"
+                  :max="15"
+                  :step="1"
+                  size="small"
+                  controls-position="right"
+                  class="duration-input"
+                />
+                <span class="duration-unit">秒</span>
+              </div>
             </el-form-item>
 
             <el-form-item label="额外要求（可选）">
@@ -81,7 +98,7 @@
                 <li>AI 按 Hook → Detail → Recall 三段式规划 2-3 个分镜</li>
                 <li>分镜结果可编辑（动作/运镜/焦点都可改）</li>
                 <li>提交后跳转「视频生成」页查看任务进度</li>
-                <li>10 秒视频约生成 2 个分镜，15 秒约 3 个分镜</li>
+                <li>4-6 秒约 1 个分镜，7-10 秒约 2 个，11-15 秒约 3 个</li>
               </ul>
             </div>
           </el-form>
@@ -438,6 +455,24 @@ function purposeTagType(purpose: string): 'primary' | 'success' | 'warning' | 'i
 .video-shot-view {
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.duration-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.duration-slider {
+  flex: 1;
+  min-width: 120px;
+}
+.duration-input {
+  width: 90px;
+}
+.duration-unit {
+  color: #909399;
+  font-size: 13px;
 }
 
 .page-header {

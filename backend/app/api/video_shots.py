@@ -44,12 +44,12 @@ async def plan_shots(
     """AI 策划分镜方案
 
     流程：
-    1. 参数校验（total_duration ∈ {10, 15}）
-    2. Gemini 按总时长规划 2-3 个分镜（Hook → Detail → Recall）
+    1. 参数校验（total_duration 为 4-15 秒整数）
+    2. Gemini 按总时长规划分镜（Hook → Detail → Recall）
     3. 返回分镜列表（用户可编辑后提交生成）
     """
-    if total_duration not in (10, 15):
-        raise HTTPException(400, "总时长仅支持 10 或 15 秒")
+    if not (4 <= total_duration <= 15):
+        raise HTTPException(400, "总时长仅支持 4-15 秒整数")
     if not theme.strip():
         raise HTTPException(400, "主题不能为空")
 
@@ -121,8 +121,9 @@ async def generate_shot_video(
     cleanup_mock_tasks()
 
     # ========== 1. 参数校验 ==========
-    if duration not in (5, 10, 15, -1):
-        raise HTTPException(400, "视频时长仅支持 5/10/15/-1（自动）秒")
+    # 分镜视频必须具体时长（不能 -1 自动，AI 需要具体总时长分配分镜）
+    if not (4 <= duration <= 15):
+        raise HTTPException(400, "视频时长仅支持 4-15 秒整数")
     valid_video_ratios = {"16:9", "9:16", "1:1"}
     if ratio not in valid_video_ratios:
         raise HTTPException(400, f"视频比例仅支持: {', '.join(sorted(valid_video_ratios))}")

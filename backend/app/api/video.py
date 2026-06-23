@@ -129,9 +129,9 @@ async def generate_video(
     await cleanup_expired_tasks()
     cleanup_mock_tasks()
 
-    # 参数校验
-    if duration not in (5, 10, 15, -1):
-        raise HTTPException(400, "视频时长仅支持 5/10/15/-1（自动）秒")
+    # 参数校验（Seedance 支持 4-15 秒整数 + -1 自动）
+    if duration != -1 and not (4 <= duration <= 15):
+        raise HTTPException(400, "视频时长仅支持 4-15 秒整数或 -1（自动）")
     valid_video_ratios = {"16:9", "9:16", "1:1"}
     if ratio not in valid_video_ratios:
         raise HTTPException(400, f"视频比例仅支持: {', '.join(sorted(valid_video_ratios))}")

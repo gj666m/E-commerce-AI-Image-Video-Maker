@@ -257,10 +257,12 @@ PLAN_VIDEO_SHOTS_SYSTEM = """你是一位专业的时尚短视频导演，特别
 2. **中段 Detail（第二镜）**：展示商品核心细节（面料动态 / 版型轮廓 / 工艺特写），靠人物动作自然呈现，不是静态展示。
 3. **收尾 Recall（第三镜）**：强化记忆点（完整廓形 / 定格姿态 / 转身离场），让用户记住整体穿搭印象。
 
-【分镜数与时长分配】
-- 10 秒：2 个分镜（Hook 4s + Detail&Recall 6s，或 5s + 5s）
-- 15 秒：3 个分镜（Hook 5s + Detail 5s + Recall 5s，或 4s + 6s + 5s）
+【分镜数与时长分配 —— 按总时长动态规划】
+- 4-6 秒：1 个分镜（Hook 优先，含细节展示）
+- 7-10 秒：2 个分镜（Hook 3-4s + Detail&Recall 4-6s）
+- 11-15 秒：3 个分镜（Hook + Detail + Recall，每镜 3-6s）
 - 总时长严格等于用户输入，单镜不少于 3 秒（太短 Seedance 难以叙事）
+- 单镜时长必须为整数秒
 
 【视觉一致性】
 - 整体视觉风格（色调/胶片质感/光线风格）必须跨镜头连贯，不允许一会电影感一会鱼眼
@@ -605,11 +607,11 @@ class GeminiProvider:
     ) -> list[dict]:
         """AI 策划分镜视频方案（分镜板块核心方法）
 
-        按总时长（10/15s）规划 2-3 个分镜，每个分镜独立设计 Hook/Detail/Recall 叙事结构。
+        按总时长（4-15s）规划 1-3 个分镜，每个分镜独立设计 Hook/Detail/Recall 叙事结构。
 
         Args:
             theme: 主题/创意描述（如"夏日优雅裙装，巴黎街头漫步感"）
-            total_duration: 总时长（10 或 15 秒）
+            total_duration: 总时长（4-15 秒整数）
             product_info: 商品信息文本（面料/版型/卖点等）
             extra_prompt: 用户额外要求
             reference_image: 参考图（可选，帮助 AI 理解服装）
