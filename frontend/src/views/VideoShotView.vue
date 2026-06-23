@@ -460,19 +460,21 @@ function purposeTagType(purpose: string): 'primary' | 'success' | 'warning' | 'i
 .duration-control {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 .duration-slider {
-  flex: 1;
-  min-width: 120px;
+  flex: 1 1 200px;
+  min-width: 0;
 }
 .duration-input {
-  width: 90px;
+  width: 110px;
+  flex-shrink: 0;
 }
 .duration-unit {
   color: #909399;
   font-size: 13px;
+  flex-shrink: 0;
 }
 
 .page-header {

@@ -189,9 +189,9 @@
             </template>
 
             <!-- ========== 公共参数 ========== -->
-            <!-- 比例 + 分辨率 + 时长 + 音频 -->
+            <!-- 比例 + 分辨率 + 音频 -->
             <el-row :gutter="12">
-              <el-col :span="5">
+              <el-col :span="6">
                 <el-form-item label="视频比例">
                   <el-select v-model="form.ratio">
                     <el-option label="16:9 横屏" value="16:9" />
@@ -200,7 +200,7 @@
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col :span="5">
+              <el-col :span="6">
                 <el-form-item label="分辨率">
                   <el-select v-model="form.resolution">
                     <el-option label="480p 标清" value="480p" />
@@ -209,38 +209,7 @@
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col :span="9">
-                <el-form-item label="时长">
-                  <div class="duration-control">
-                    <el-slider
-                      v-model="form.duration"
-                      :min="4"
-                      :max="15"
-                      :step="1"
-                      :show-tooltip="false"
-                      :disabled="form.duration === -1"
-                      class="duration-slider"
-                    />
-                    <el-input-number
-                      v-model="form.duration"
-                      :min="4"
-                      :max="15"
-                      :step="1"
-                      :disabled="form.duration === -1"
-                      size="small"
-                      controls-position="right"
-                      class="duration-input"
-                    />
-                    <span class="duration-unit">秒</span>
-                    <el-checkbox
-                      :model-value="form.duration === -1"
-                      @change="(v: boolean) => form.duration = v ? -1 : 5"
-                      class="duration-auto"
-                    >自动</el-checkbox>
-                  </div>
-                </el-form-item>
-              </el-col>
-              <el-col :span="5">
+              <el-col :span="6">
                 <el-form-item label="音频">
                   <el-switch
                     v-model="form.generateAudio"
@@ -250,6 +219,37 @@
                 </el-form-item>
               </el-col>
             </el-row>
+
+            <!-- 时长（单独一行：滑块 + 数字框 + 自动） -->
+            <el-form-item label="时长">
+              <div class="duration-control">
+                <el-slider
+                  v-model="form.duration"
+                  :min="4"
+                  :max="15"
+                  :step="1"
+                  :show-tooltip="false"
+                  :disabled="form.duration === -1"
+                  class="duration-slider"
+                />
+                <el-input-number
+                  v-model="form.duration"
+                  :min="4"
+                  :max="15"
+                  :step="1"
+                  :disabled="form.duration === -1"
+                  size="small"
+                  controls-position="right"
+                  class="duration-input"
+                />
+                <span class="duration-unit">秒</span>
+                <el-checkbox
+                  :model-value="form.duration === -1"
+                  @change="(v: boolean) => form.duration = v ? -1 : 5"
+                  class="duration-auto"
+                >自动</el-checkbox>
+              </div>
+            </el-form-item>
 
             <!-- Prompt 编辑 -->
             <PromptEditor v-model="form.customPrompt" />
@@ -712,22 +712,25 @@ function startPolling() {
 .duration-control {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
 }
 .duration-slider {
-  flex: 1;
-  min-width: 80px;
+  flex: 1 1 200px;
+  min-width: 0;
 }
 .duration-input {
-  width: 90px;
+  width: 110px;
+  flex-shrink: 0;
 }
 .duration-unit {
   color: #909399;
   font-size: 13px;
+  flex-shrink: 0;
 }
 .duration-auto {
   margin-left: 4px;
+  flex-shrink: 0;
 }
 
 .main-content {
