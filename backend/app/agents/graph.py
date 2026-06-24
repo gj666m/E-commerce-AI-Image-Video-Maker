@@ -1,6 +1,7 @@
-# LangGraph 图构建 - StateGraph 编排（Phase 2：orchestrator + tool_executor + quality_check）
+# LangGraph 图构建 - StateGraph 编排（Phase 3：接 AsyncSqliteSaver checkpointer）
 from langgraph.graph import StateGraph, END
 
+from app.agents.checkpoint import get_checkpointer
 from app.agents.nodes import (
     orchestrator_node,
     tool_executor_node,
@@ -14,16 +15,15 @@ from app.agents.state import AgentState
 def build_graph():
     """构建并编译 Agent 图
 
-    Phase 2 结构：
+    Phase 3 起：若 checkpointer 已初始化（lifespan startup 阶段完成），编译时挂载
+    AsyncSqliteSaver，配合 config.configurable.thread_id 实现多轮持久化（刷新/重连
+    可用 aget_state 恢复历史）。未初始化时降级为无持久化（保持 Phase 1/2 行为）。
+
+    结构：
         START → orchestrator ──(tool_calls)──→ tool_executor ──┐
                       │                                        │
                       └──(纯文本)──→ END                       ├──(产图 & retry<max)──→ quality_check ──→ orchestrator
                                                                └──(否则)──→ orchestrator
-
-    quality_check 执行后恒回 orchestrator（Claude 读 qc_feedback：
-      - PASSED → 给用户最终回复
-      - FAIL & retry<max → 调工具重生（反馈指导修正）
-      - FAIL & retry>=max → 放弃重生，告知用户）
     """
     builder = StateGraph(AgentState)
     builder.add_node("orchestrator", orchestrator_node)
@@ -41,8 +41,7 @@ def build_graph():
         route_after_tools,
         {"quality_check": "quality_check", "orchestrator": "orchestrator"},
     )
-    builder.add_edge("quality_check", "orchestrator")  # 质检完回 orchestrator 决策
+    builder.add_edge("quality_check", "orchestrator")
 
-    # Phase 1/2 无 checkpointer（Phase 3 加 AsyncSqliteSaver 做多轮持久化）
-    return builder.compile()
-
+    checkpointer = get_checkpointer()
+    return builder.compile(checkpointer=checkpointer) if checkpointer else builder.compile()

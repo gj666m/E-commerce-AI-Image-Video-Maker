@@ -42,7 +42,7 @@ import { useAgentChat } from '../composables/useAgentChat'
 
 const scrollRef = ref<HTMLElement | null>(null)
 
-const { messages, loading, uploadedRefs, sendMessage, stop, newConversation, uploadImages, removeRef } =
+const { messages, loading, uploadedRefs, sendMessage, stop, newConversation, uploadImages, removeRef, restoreHistory } =
   useAgentChat({ scrollFn: scrollToBottom })
 
 const examples = [
@@ -71,7 +71,8 @@ function scrollToBottom() {
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await restoreHistory()
   scrollToBottom()
 })
 </script>

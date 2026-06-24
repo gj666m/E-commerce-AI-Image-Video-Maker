@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     agent_image_store_ttl: int = 3600      # ImageStore 条目过期秒数（1 小时）
     agent_request_timeout: int = 300       # 单次对话请求超时秒数
     agent_recursion_limit: int = 30        # LangGraph 递归步数上限（防死循环）
+    agent_checkpoint_db: str = "data/agent_checkpoints.db"  # LangGraph checkpoint DB（独立于 app.db）
 
     # 模特库
     model_store_dir: str = "assets/models"

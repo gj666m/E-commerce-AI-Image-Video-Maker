@@ -9,6 +9,8 @@ import type {
   UploadedRef,
 } from '../types/agent'
 
+const THREAD_KEY = 'agent_thread_id'
+
 export interface UseAgentChatOptions {
   scrollFn?: () => void  // 滚动到底部回调
 }
@@ -16,7 +18,10 @@ export interface UseAgentChatOptions {
 export function useAgentChat(options: UseAgentChatOptions = {}) {
   const messages = ref<ChatMessage[]>([])
   const loading = ref(false)
-  const threadId = ref<string>(crypto.randomUUID())
+  // 持久化 threadId 到 localStorage：刷新/重进页面可恢复同一对话
+  const savedThreadId = localStorage.getItem(THREAD_KEY)
+  const threadId = ref<string>(savedThreadId || crypto.randomUUID())
+  if (!savedThreadId) localStorage.setItem(THREAD_KEY, threadId.value)
   const uploadedRefs = ref<UploadedRef[]>([])
   const abortController = ref<AbortController | null>(null)
 
@@ -25,7 +30,35 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
     stop()
     messages.value = []
     threadId.value = crypto.randomUUID()
+    localStorage.setItem(THREAD_KEY, threadId.value)
     uploadedRefs.value = []
+  }
+
+  /** 从后端恢复历史对话（页面加载时调一次） */
+  async function restoreHistory(): Promise<boolean> {
+    const token = localStorage.getItem('ai-zw-token')
+    try {
+      const resp = await fetch(`/api/agent/history/${threadId.value}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!resp.ok) return false
+      const data = await resp.json()
+      if (!data || !data.exists || !Array.isArray(data.messages) || data.messages.length === 0) {
+        return false
+      }
+      // 把后端还原的 plain object 包装成响应式 ChatMessage
+      messages.value = data.messages.map((m: any) => ({
+        id: m.id || crypto.randomUUID(),
+        role: m.role,
+        content: m.content || '',
+        images: Array.isArray(m.images) ? m.images : [],
+        toolSteps: Array.isArray(m.toolSteps) ? m.toolSteps : [],
+        qcHistory: [],
+      }))
+      return true
+    } catch {
+      return false
+    }
   }
 
   function stop() {
@@ -256,5 +289,6 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
     newConversation,
     uploadImages,
     removeRef,
+    restoreHistory,
   }
 }

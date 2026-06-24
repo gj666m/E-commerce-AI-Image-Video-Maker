@@ -1,12 +1,16 @@
 # 对话式 Agent API
 # POST /api/agent/chat        — SSE 流式对话
 # POST /api/agent/upload-images — 上传参考图，返回 image_id 列表
+# GET  /api/agent/history/{thread_id} — 恢复历史对话（Phase 3）
+# GET  /api/agent/image/{image_id}    — 取生成图 bytes（过期恢复/前端 img src 用，Phase 3）
 import logging
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
+from app.agents.history import reconstruct_history, get_image_bytes
 from app.agents.image_store import image_store
 from app.agents.runner import run_agent
 from app.config import settings
@@ -111,3 +115,30 @@ async def upload_images(
         results.append({"image_id": image_id, "filename": f.filename or "reference.jpg"})
 
     return {"success": True, "images": results}
+
+
+@router.get("/history/{thread_id}")
+async def get_history(
+    thread_id: str,
+    current_user=Depends(get_current_user),
+):
+    """恢复指定 thread 的历史对话（从 LangGraph checkpoint 读取）"""
+    if not settings.has_claude:
+        raise HTTPException(503, "Agent 不可用：未配置 Claude API Key")
+    result = await reconstruct_history(thread_id, user_id=current_user["id"])
+    if result is None:
+        return {"thread_id": thread_id, "messages": [], "exists": False}
+    result["exists"] = True
+    return result
+
+
+@router.get("/image/{image_id}")
+async def get_image(
+    image_id: str,
+    current_user=Depends(get_current_user),
+):
+    """取生成图 bytes（供前端 <img src> 直接引用，避免历史 data_url 体积过大）"""
+    img_bytes, mime = await get_image_bytes(image_id)
+    if img_bytes is None:
+        raise HTTPException(404, "图片不存在或已过期")
+    return Response(content=img_bytes, media_type=mime)

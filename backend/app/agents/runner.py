@@ -56,9 +56,11 @@ async def run_agent(
         "user_id": user_id,
         "thread_id": thread_id,
         "uploaded_images": uploaded_refs or [],
-        "generated_images": [],
+        "generated_images": [],  # operator.add reducer：空列表不累加，保留 checkpoint 历史图
+        # 每轮显式重置质检瞬态字段（无 reducer，直接覆写）
         "qc_retry_count": 0,
         "qc_feedback": "",
+        "_produced_image_this_round": False,
     }
 
     # 已推送过 image 事件的 image_id 集合，避免重复

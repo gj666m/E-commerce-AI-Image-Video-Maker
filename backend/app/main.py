@@ -58,10 +58,16 @@ async def lifespan(app: FastAPI):
     from app.agents.image_store import image_store
     image_store.start_cleanup_loop()
     logging.getLogger(__name__).info("Agent ImageStore 后台清理任务已启动")
+    # 初始化 Agent LangGraph checkpoint（AsyncSqliteSaver，独立 agent_checkpoints.db）
+    from app.agents.checkpoint import init_checkpointer, close_checkpointer
+    await init_checkpointer()
     yield
     if _background_task:
         _background_task.cancel()
         logging.getLogger(__name__).info("后台定时清理任务已停止")
+    # 关闭 Agent checkpoint saver
+    await close_checkpointer()
+    logging.getLogger(__name__).info("Agent Checkpoint 已关闭")
     # 关闭全局 httpx 连接池
     from app.services.http_client import close_http_client
     await close_http_client()
