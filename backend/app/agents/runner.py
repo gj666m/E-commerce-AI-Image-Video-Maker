@@ -65,8 +65,20 @@ async def run_agent(
 
     # 已推送过 image 事件的 image_id 集合，避免重复
     pushed_images: set[str] = set()
-    final_generated: list[dict] = []
     qc_pushed_count = 0  # 已推送的质检状态条数
+
+    def _image_sse(meta: dict) -> str:
+        """统一构造 image 事件 SSE 帧"""
+        return _sse({
+            "type": "image",
+            "image_id": meta.get("image_id", ""),
+            "data_url": meta.get("data_url", ""),
+            "prompt_used": meta.get("prompt_used", ""),
+            "model_used": meta.get("model_used", ""),
+            "cost": meta.get("cost", 0.0),
+            "currency": meta.get("currency", "$"),
+            "aspect_ratio": meta.get("aspect_ratio", "1:1"),
+        })
 
     def _flush_qc_events():
         """把 quality_check 节点写入 qc_bus 的新条目转 SSE"""
@@ -142,50 +154,38 @@ async def run_agent(
                     result_text = str(output)
                 yield _sse({"type": "tool_end", "tool": name, "result": result_text[:800]})
 
-            # 4. 节点结束 - 聚合生成图（从 configurable bag 拿，实时推送）
+            # 4. tool_executor 节点结束 - 从 state update 推新生成图
+            #    data.output 是 tool_executor 返回的 state 更新 dict，含 generated_images
+            #    （state.generated_images 是 operator.add 累加的，唯一可信源；
+            #     不再读 config configurable bag — astream_events 下节点与 runner
+            #     不共享同一可变 config 对象，bag 读取不可靠，会导致漏推/重复推）
             elif etype == "on_chain_end" and name == "tools":
-                bag = config["configurable"].get("_generated_images", [])
-                for meta in bag:
+                output = data.get("output")
+                gen_list: list[dict] = []
+                if isinstance(output, dict):
+                    gen_list = output.get("generated_images", []) or []
+                for meta in gen_list:
                     iid = meta.get("image_id")
                     if iid and iid not in pushed_images:
                         pushed_images.add(iid)
-                        yield _sse({
-                            "type": "image",
-                            "image_id": iid,
-                            "data_url": meta.get("data_url", ""),
-                            "prompt_used": meta.get("prompt_used", ""),
-                            "model_used": meta.get("model_used", ""),
-                            "cost": meta.get("cost", 0.0),
-                            "currency": meta.get("currency", "$"),
-                            "aspect_ratio": meta.get("aspect_ratio", "1:1"),
-                        })
+                        yield _image_sse(meta)
 
-            # 5. 整个图执行结束 - 兜底补推未推送的图
+            # 5. 整个图执行结束 - 兜底补推未推送的图（理论上 4 已推过）
             elif etype == "on_chain_end" and name == "LangGraph":
                 final_state = data.get("output", {})
-                final_generated = final_state.get("generated_images", []) if isinstance(final_state, dict) else []
+                if isinstance(final_state, dict):
+                    for meta in final_state.get("generated_images", []) or []:
+                        iid = meta.get("image_id")
+                        if iid and iid not in pushed_images:
+                            pushed_images.add(iid)
+                            yield _image_sse(meta)
 
             # 6. 每个事件后都尝试刷出质检状态（_flush_qc_events 有计数器，幂等安全；
             #    LangGraph 节点事件的 name 不稳定，按节点名匹配易漏，改无条件刷）
             for sse_evt in _flush_qc_events():
                 yield sse_evt
 
-        # 兜底：图结束后若还有未推送的生成图（理论上 4 已推过），补推
-        for meta in final_generated:
-            iid = meta.get("image_id")
-            if iid and iid not in pushed_images:
-                pushed_images.add(iid)
-                yield _sse({
-                    "type": "image",
-                    "image_id": iid,
-                    "data_url": meta.get("data_url", ""),
-                    "prompt_used": meta.get("prompt_used", ""),
-                    "model_used": meta.get("model_used", ""),
-                    "cost": meta.get("cost", 0.0),
-                    "currency": meta.get("currency", "$"),
-                    "aspect_ratio": meta.get("aspect_ratio", "1:1"),
-                })
-
+        # 兜底已合并到 on_chain_end name=="LangGraph" 分支，此处仅发结束信号
         yield _sse({"type": "done"})
     except Exception as e:
         logger.error(f"[agent] run_agent 异常: {e}", exc_info=True)

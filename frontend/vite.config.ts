@@ -6,6 +6,18 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // SSE 流式接口单独配置：剥掉 Accept-Encoding 避免 upstream gzip 缓冲，
+      // 否则 vite proxy 会把整条 event-stream 攒到请求结束才一次性吐给浏览器
+      '/api/agent': {
+        target: 'http://127.0.0.1:8001',
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('Accept-Encoding', 'identity')
+            proxyReq.setHeader('Accept', 'text/event-stream')
+          })
+        },
+      },
       '/api': {
         target: 'http://127.0.0.1:8001',
         changeOrigin: true,

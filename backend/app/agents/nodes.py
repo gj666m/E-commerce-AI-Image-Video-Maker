@@ -37,11 +37,23 @@ async def orchestrator_node(state: AgentState, config: RunnableConfig) -> dict:
     system_text = build_system_prompt(uploaded_refs)
     messages = [SystemMessage(content=system_text)] + list(state["messages"])
 
-    # 质检反馈注入（Phase 2 用，Phase 1 基本不触发）
+    # 质检反馈注入：
+    # - PASSED：质检已通过，注入终止信号，Claude 转为向用户汇报，不再调生图工具
+    # - 非空且非 PASSED：FAIL 反馈，提示 Claude 改 prompt 重生
+    # - 空：首次或纯文本对话，不注入
     qc_feedback = state.get("qc_feedback", "")
-    if qc_feedback and qc_feedback != "PASSED":
+    if qc_feedback == "PASSED":
         messages = [SystemMessage(content=system_text), SystemMessage(
-            content=f"【质检反馈】上一轮生成的图片未通过质检：{qc_feedback}。请根据反馈调整 prompt 或参数后重新生成。"
+            content=(
+                "【质检结果】上一轮生成的图片已通过视觉质检，无明显 AI 缺陷。"
+                "请直接向用户汇报生成结果（简要描述图片特点、使用的模型、比例、费用），"
+                "**不要再调用 generate_quick_image 或任何生图工具**，也不要重复生成。"
+                "如果用户未明确要求多张，默认一张即可。"
+            )
+        )] + list(state["messages"])
+    elif qc_feedback:
+        messages = [SystemMessage(content=system_text), SystemMessage(
+            content=f"【质检反馈】上一轮生成的图片未通过质检：{qc_feedback}。请根据反馈调整 prompt 或参数后重新生成，不要原样重试。"
         )] + list(state["messages"])
 
     ai_msg: AIMessage = await bound.ainvoke(messages)
@@ -217,11 +229,15 @@ def route_after_orchestrator(state: AgentState) -> str:
 
 def route_after_tools(state: AgentState) -> str:
     """tool_executor 后的路由：
-    - 本轮产出了图片 且 质检次数未达上限 → quality_check
+    - 本轮产出了图片 且 质检次数未达上限 且 之前未通过 → quality_check
     - 否则 → orchestrator（让 Claude 看到工具结果后继续/收尾）
+
+    防御：若上一轮已 PASSED（qc_feedback 仍为 "PASSED"），即使 Claude 忽略
+    终止信号再次调生图工具，也不再触发质检（避免无限循环直到 retry 上限）。
     """
     produced = state.get("_produced_image_this_round", False)
     retry = state.get("qc_retry_count", 0)
-    if produced and retry < settings.agent_max_qc_retries:
+    qc_passed = state.get("qc_feedback", "") == "PASSED"
+    if produced and retry < settings.agent_max_qc_retries and not qc_passed:
         return "quality_check"
     return "orchestrator"
