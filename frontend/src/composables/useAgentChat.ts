@@ -31,6 +31,10 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
     messages.value = []
     threadId.value = crypto.randomUUID()
     localStorage.setItem(THREAD_KEY, threadId.value)
+    // 释放本地缩略图 objectURL，避免内存泄漏
+    uploadedRefs.value.forEach((r) => {
+      if (r.thumb_url) URL.revokeObjectURL(r.thumb_url)
+    })
     uploadedRefs.value = []
   }
 
@@ -84,12 +88,19 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
       throw new Error(detail.detail || `上传失败 ${resp.status}`)
     }
     const data = await resp.json()
-    const refs: UploadedRef[] = data.images || []
+    const remoteRefs: UploadedRef[] = data.images || []
+    // 后端按入参顺序返回，本地 File → objectURL 配对（供 ChatInput 显示缩略图）
+    const refs: UploadedRef[] = remoteRefs.map((r, i) => ({
+      ...r,
+      thumb_url: files[i] ? URL.createObjectURL(files[i]) : undefined,
+    }))
     uploadedRefs.value.push(...refs)
     return refs
   }
 
   function removeRef(imageId: string) {
+    const target = uploadedRefs.value.find((r) => r.image_id === imageId)
+    if (target?.thumb_url) URL.revokeObjectURL(target.thumb_url)
     uploadedRefs.value = uploadedRefs.value.filter((r) => r.image_id !== imageId)
   }
 
@@ -202,6 +213,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
           tool: ev.tool as string,
           args: (ev.args as Record<string, unknown>) || {},
           status: 'running',
+          started_at: Date.now(),
         }
         aiMsg.toolSteps.push(step)
         break

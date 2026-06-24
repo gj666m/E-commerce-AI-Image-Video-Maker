@@ -82,6 +82,7 @@ export interface ToolStep {
   args: Record<string, unknown>
   status: 'running' | 'done' | 'error'
   result?: string
+  started_at?: number  // ms 时间戳，用于 running 时显示已等待时长
 }
 
 // 质检状态
@@ -121,4 +122,5 @@ export interface ChatMessage {
 export interface UploadedRef {
   image_id: string
   filename: string
+  thumb_url?: string  // 本地 createObjectURL 预览，无需后端
 }

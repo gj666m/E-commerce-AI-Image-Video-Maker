@@ -2,6 +2,7 @@
 # Phase 1 只实现：generate_quick_image + list_available_models
 # 后续 Phase 4 补全 outfit/model/seed_grass/product_main/aplus + analyze_product
 import logging
+import time
 from typing import Optional
 
 from langchain_core.tools import tool
@@ -87,7 +88,9 @@ async def generate_quick_image(
         gen_kwargs = {}
         if ref_images:
             gen_kwargs["images"] = ref_images
+        t_gen = time.perf_counter()
         result = await provider.generate(prompt, params={"size": size, "aspect_ratio": aspect_ratio}, **gen_kwargs)
+        logger.info(f"[agent] generate_quick_image 完成 model={provider.name} ratio={aspect_ratio} refs={len(ref_images)} cost={time.perf_counter() - t_gen:.2f}s")
     except Exception as e:
         logger.error(f"[agent] 生图异常: {e}", exc_info=True)
         return f"❌ 生图失败：{e}"

@@ -1,6 +1,7 @@
 # LangGraph 节点：orchestrator（Claude 决策）+ tool_executor（执行工具）+ quality_check（Gemini 质检）
 import json
 import logging
+import time
 import uuid
 
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
@@ -28,6 +29,7 @@ _IMAGE_PRODUCTION_TOOLS = {"generate_quick_image"}
 
 async def orchestrator_node(state: AgentState, config: RunnableConfig) -> dict:
     """Claude 决策节点：读消息历史，决定调工具还是直接回复"""
+    t0 = time.perf_counter()
     llm = get_llm()
     bound = llm.bind_tools(ALL_TOOLS)
 
@@ -57,7 +59,7 @@ async def orchestrator_node(state: AgentState, config: RunnableConfig) -> dict:
         )] + list(state["messages"])
 
     ai_msg: AIMessage = await bound.ainvoke(messages)
-    logger.info(f"[agent] orchestrator: tool_calls={len(ai_msg.tool_calls or [])}")
+    logger.info(f"[agent] orchestrator: tool_calls={len(ai_msg.tool_calls or [])} decision_cost={time.perf_counter() - t0:.2f}s")
     return {"messages": [ai_msg]}
 
 
@@ -122,6 +124,7 @@ async def quality_check_node(state: AgentState, config: RunnableConfig) -> dict:
     """
     from app.providers.gemini_provider import GeminiProvider
 
+    t0 = time.perf_counter()
     generated = state.get("generated_images", [])
     if not generated:
         return {"qc_feedback": "PASSED"}  # 无图可检，跳过
@@ -170,7 +173,7 @@ async def quality_check_node(state: AgentState, config: RunnableConfig) -> dict:
 
     if passed:
         qc_status_bag.append({"phase": "passed", "score": score, "retry": retry_count})
-        logger.info(f"[agent] 质检通过 score={score} retry={retry_count}")
+        logger.info(f"[agent] 质检通过 score={score} retry={retry_count} cost={time.perf_counter() - t0:.2f}s")
         return {"qc_feedback": "PASSED", "qc_retry_count": retry_count}
 
     # FAIL：把 issues + suggestions 拼成反馈，供 orchestrator 据此重生
@@ -187,7 +190,7 @@ async def quality_check_node(state: AgentState, config: RunnableConfig) -> dict:
         "suggestions": suggestions,
         "retry": retry_count,
     })
-    logger.info(f"[agent] 质检未通过 score={score} retry={retry_count}，反馈：{feedback}")
+    logger.info(f"[agent] 质检未通过 score={score} retry={retry_count} cost={time.perf_counter() - t0:.2f}s，反馈：{feedback}")
     return {"qc_feedback": feedback, "qc_retry_count": retry_count}
 
 

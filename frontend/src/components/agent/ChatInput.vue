@@ -3,7 +3,8 @@
     <!-- 已上传参考图预览 -->
     <div v-if="refs.length" class="refs-row">
       <div v-for="r in refs" :key="r.image_id" class="ref-chip">
-        <el-icon><Picture /></el-icon>
+        <img v-if="r.thumb_url" :src="r.thumb_url" class="ref-thumb" :alt="r.filename" />
+        <el-icon v-else><Picture /></el-icon>
         <span class="ref-name" :title="r.filename">{{ r.filename }}</span>
         <el-icon class="ref-remove" @click="$emit('remove-ref', r.image_id)"><Close /></el-icon>
       </div>
@@ -109,7 +110,14 @@ async function handleUpload(opt: UploadRequestOptions) {
   border-radius: 12px;
   padding: 2px 8px;
   font-size: 12px;
-  max-width: 160px;
+  max-width: 200px;
+}
+.ref-thumb {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
 }
 .ref-name {
   overflow: hidden;

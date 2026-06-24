@@ -17,7 +17,7 @@
             <CircleCloseFilled v-else />
           </el-icon>
           <span class="tool-name">{{ toolLabel(step.tool) }}</span>
-          <span v-if="step.status === 'running'" class="tool-status">执行中…</span>
+          <span v-if="step.status === 'running'" class="tool-status">{{ runningHint(step) }}</span>
           <el-icon class="toggle"><ArrowDown :class="{ open: openSet.has(step.id) }" /></el-icon>
         </div>
         <div v-if="openSet.has(step.id)" class="tool-body">
@@ -86,16 +86,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import {
   User, ChatDotSquare, Loading, CircleCheckFilled, CircleCloseFilled,
   ArrowDown, Download, WarningFilled,
 } from '@element-plus/icons-vue'
-import type { ChatMessage } from '../../types/agent'
+import type { ChatMessage, ToolStep } from '../../types/agent'
 
-defineProps<{ msg: ChatMessage }>()
+const props = defineProps<{ msg: ChatMessage }>()
 
 const openSet = ref<Set<string>>(new Set())
+
+// 本消息存在 running 工具步骤时，每秒 tick 一次刷新"已等待 Xs"
+const now = ref(Date.now())
+let timer: ReturnType<typeof setInterval> | null = null
+const hasRunning = computed(() => props.msg.toolSteps.some((s) => s.status === 'running'))
+watch(hasRunning, (v) => { v ? startTimer() : stopTimer() }, { immediate: true })
+onUnmounted(() => stopTimer())
+function startTimer() {
+  if (timer) return
+  timer = setInterval(() => { now.value = Date.now() }, 1000)
+}
+function stopTimer() {
+  if (timer) { clearInterval(timer); timer = null }
+}
 
 function toggle(id: string) {
   if (openSet.value.has(id)) openSet.value.delete(id)
@@ -110,6 +124,17 @@ const TOOL_LABELS: Record<string, string> = {
 
 function toolLabel(tool: string) {
   return TOOL_LABELS[tool] || tool
+}
+
+function runningHint(step: ToolStep): string {
+  const elapsed = step.started_at ? Math.max(0, Math.floor((now.value - step.started_at) / 1000)) : 0
+  if (step.tool === 'generate_quick_image') {
+    return `正在生成图片… 通常 30-60s（已等待 ${elapsed}s）`
+  }
+  if (step.tool === 'list_available_models') {
+    return `正在查询可用模型…（已等待 ${elapsed}s）`
+  }
+  return `执行中…（已等待 ${elapsed}s）`
 }
 
 function formatArgs(args: Record<string, unknown>): string {
