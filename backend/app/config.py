@@ -69,6 +69,17 @@ class Settings(BaseSettings):
     gemini_apiyi_base_url: str = "https://api.apiyi.com/v1"
     gemini_apiyi_model: str = "gemini-3.5-flash"
 
+    # Claude Sonnet 4.6（API易中转站，Anthropic 原生端点，用于对话式 Agent）
+    claude_apiyi_api_key: str = ""
+    claude_apiyi_base_url: str = "https://api.apiyi.com"
+    claude_apiyi_model: str = "claude-sonnet-4-6"
+
+    # 对话式 Agent 配置
+    agent_max_qc_retries: int = 3          # 质检重试上限
+    agent_image_store_ttl: int = 3600      # ImageStore 条目过期秒数（1 小时）
+    agent_request_timeout: int = 300       # 单次对话请求超时秒数
+    agent_recursion_limit: int = 30        # LangGraph 递归步数上限（防死循环）
+
     # 模特库
     model_store_dir: str = "assets/models"
 
@@ -144,6 +155,10 @@ class Settings(BaseSettings):
     @property
     def has_gemini(self) -> bool:
         return bool(self.gemini_apiyi_api_key)
+
+    @property
+    def has_claude(self) -> bool:
+        return bool(self.claude_apiyi_api_key)
 
     @property
     def has_any_provider(self) -> bool:

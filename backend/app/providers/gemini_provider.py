@@ -508,19 +508,25 @@ class GeminiProvider:
         image: bytes,
         prompt: str,
         mime_type: str = "image/jpeg",
+        system_prompt: str | None = None,
+        max_tokens: int = 2048,
     ) -> str:
         """自由文本查询：图片 + 提示词 → 纯文本回复
 
-        用于 AI 优化描述（视频描述优化 / 场景描述优化 / 模特描述优化）。
+        用于 AI 优化描述（视频描述优化 / 场景描述优化 / 模特描述优化）以及
+        Agent 的视觉质检（通过 system_prompt 传入严格 JSON 输出指令）。
         """
         user_content = [
             self._make_image_content(image, mime_type),
             self._make_text_content(prompt),
         ]
+        effective_system = system_prompt or (
+            "你是一个专业的 AI 视觉助手，请根据用户的请求和图片内容，直接输出文本回复。"
+        )
         return await self._chat(
-            "你是一个专业的 AI 视觉助手，请根据用户的请求和图片内容，直接输出文本回复。",
+            effective_system,
             user_content,
-            max_tokens=2048,
+            max_tokens=max_tokens,
         )
 
     async def plan_shots(

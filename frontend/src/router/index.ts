@@ -15,6 +15,11 @@ const router = createRouter({
       component: () => import('../views/HomeView.vue'),
     },
     {
+      path: '/agent',
+      name: 'agent',
+      component: () => import('../views/AiAgentView.vue'),
+    },
+    {
       path: '/quick-image',
       name: 'quick-image',
       component: () => import('../views/QuickImageView.vue'),

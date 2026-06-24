@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import generate, models, model, video, analysis, auth, history, balance, video_history, video_prompt, replicate, tiktok_script, outfit_scraper, video_shots
+from app.api import generate, models, model, video, analysis, auth, history, balance, video_history, video_prompt, replicate, tiktok_script, outfit_scraper, video_shots, agent
 from app.config import settings
 
 # 配置日志
@@ -54,6 +54,10 @@ async def lifespan(app: FastAPI):
     from app.database import init_db
     await init_db()
     logging.getLogger(__name__).info("SQLite 数据库初始化完成")
+    # 启动 Agent ImageStore 后台清理
+    from app.agents.image_store import image_store
+    image_store.start_cleanup_loop()
+    logging.getLogger(__name__).info("Agent ImageStore 后台清理任务已启动")
     yield
     if _background_task:
         _background_task.cancel()
@@ -122,6 +126,7 @@ app.include_router(video_shots.router)
 app.include_router(history.router)
 app.include_router(video_history.router)
 app.include_router(balance.router)
+app.include_router(agent.router)
 
 # 挂载临时视频文件静态目录
 temp_dir = Path(settings.video_temp_dir)

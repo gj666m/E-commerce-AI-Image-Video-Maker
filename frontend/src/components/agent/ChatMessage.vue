@@ -1,0 +1,274 @@
+<template>
+  <div class="chat-message" :class="msg.role">
+    <div class="avatar">
+      <el-icon v-if="msg.role === 'user'"><User /></el-icon>
+      <el-icon v-else><ChatDotSquare /></el-icon>
+    </div>
+    <div class="bubble">
+      <!-- 文本内容 -->
+      <div v-if="msg.content" class="content">{{ msg.content }}</div>
+
+      <!-- 工具步骤 -->
+      <div v-for="step in msg.toolSteps" :key="step.id" class="tool-step">
+        <div class="tool-head" @click="toggle(step.id)">
+          <el-icon class="tool-icon" :class="step.status">
+            <Loading v-if="step.status === 'running'" />
+            <CircleCheckFilled v-else-if="step.status === 'done'" />
+            <CircleCloseFilled v-else />
+          </el-icon>
+          <span class="tool-name">{{ toolLabel(step.tool) }}</span>
+          <span v-if="step.status === 'running'" class="tool-status">执行中…</span>
+          <el-icon class="toggle"><ArrowDown :class="{ open: openSet.has(step.id) }" /></el-icon>
+        </div>
+        <div v-if="openSet.has(step.id)" class="tool-body">
+          <div v-if="Object.keys(step.args).length" class="tool-args">
+            <span class="lbl">参数：</span>
+            <code>{{ formatArgs(step.args) }}</code>
+          </div>
+          <div v-if="step.result" class="tool-result">
+            <span class="lbl">结果：</span>
+            <span class="result-text">{{ step.result }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 生成图 -->
+      <div v-if="msg.images.length" class="images">
+        <div v-for="img in msg.images" :key="img.image_id" class="img-card">
+          <img :src="img.data_url" :alt="img.prompt_used" loading="lazy" />
+          <div class="img-meta">
+            <span class="model-tag">{{ img.model_used }}</span>
+            <span class="cost">{{ img.cost.toFixed(4) }} {{ img.currency }}/张</span>
+          </div>
+          <div class="img-actions">
+            <el-button size="small" :icon="Download" @click="download(img)" title="下载">下载</el-button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 质检状态 -->
+      <div v-if="msg.qcStatus" class="qc-status" :class="msg.qcStatus.state">
+        <template v-if="msg.qcStatus.state === 'checking'">
+          <el-icon class="qc-spin"><Loading /></el-icon>
+          <span>视觉质检中…（第 {{ msg.qcStatus.retry + 1 }} 次）</span>
+        </template>
+        <template v-else-if="msg.qcStatus.state === 'passed'">
+          <el-icon class="qc-pass"><CircleCheckFilled /></el-icon>
+          <span>质检通过 · {{ msg.qcStatus.score }} 分</span>
+        </template>
+        <template v-else-if="msg.qcStatus.state === 'retry'">
+          <el-icon class="qc-retry"><WarningFilled /></el-icon>
+          <span>质检未通过 · {{ msg.qcStatus.score }} 分（第 {{ msg.qcStatus.retry }} 次重试中）</span>
+          <div v-if="msg.qcStatus.issues?.length" class="qc-issues">
+            <span v-for="(iss, i) in msg.qcStatus.issues" :key="i" class="qc-issue">· {{ iss }}</span>
+          </div>
+          <div v-if="msg.qcStatus.suggestions" class="qc-sugg">修正：{{ msg.qcStatus.suggestions }}</div>
+        </template>
+        <template v-else-if="msg.qcStatus.state === 'error'">
+          <el-icon class="qc-retry"><WarningFilled /></el-icon>
+          <span>质检服务异常（已跳过）：{{ msg.qcStatus.message }}</span>
+        </template>
+      </div>
+
+      <!-- loading 占位（有 token 但内容为空时不显示） -->
+      <div v-if="msg.pending && !msg.content && !msg.toolSteps.length && !msg.images.length" class="thinking">
+        <el-icon class="thinking-dot"><Loading /></el-icon>
+        <span>思考中…</span>
+      </div>
+
+      <!-- 错误 -->
+      <div v-if="msg.error" class="error">
+        <el-icon><WarningFilled /></el-icon>
+        <span>{{ msg.error }}</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import {
+  User, ChatDotSquare, Loading, CircleCheckFilled, CircleCloseFilled,
+  ArrowDown, Download, WarningFilled,
+} from '@element-plus/icons-vue'
+import type { ChatMessage } from '../../types/agent'
+
+defineProps<{ msg: ChatMessage }>()
+
+const openSet = ref<Set<string>>(new Set())
+
+function toggle(id: string) {
+  if (openSet.value.has(id)) openSet.value.delete(id)
+  else openSet.value.add(id)
+  openSet.value = new Set(openSet.value)
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  generate_quick_image: '生成图片',
+  list_available_models: '查询可用模型',
+}
+
+function toolLabel(tool: string) {
+  return TOOL_LABELS[tool] || tool
+}
+
+function formatArgs(args: Record<string, unknown>): string {
+  const parts: string[] = []
+  if (args.description) parts.push(`描述: ${args.description}`)
+  if (args.aspect_ratio) parts.push(`比例: ${args.aspect_ratio}`)
+  if (args.model_name) parts.push(`模型: ${args.model_name}`)
+  if (args.reference_image_ids && (args.reference_image_ids as string[]).length) parts.push(`参考图: ${(args.reference_image_ids as string[]).length} 张`)
+  return parts.join('；') || JSON.stringify(args)
+}
+
+function download(img: { data_url: string; model_used: string }) {
+  const a = document.createElement('a')
+  a.href = img.data_url
+  a.download = `agent_${img.model_used}_${Date.now()}.jpg`
+  a.click()
+}
+</script>
+
+<style scoped>
+.chat-message {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+}
+.chat-message.user {
+  flex-direction: row-reverse;
+}
+.avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--el-color-primary-light-8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--el-color-primary);
+  font-size: 18px;
+}
+.chat-message.user .avatar {
+  background: var(--el-color-success-light-8);
+  color: var(--el-color-success);
+}
+.bubble {
+  max-width: 78%;
+  background: var(--el-bg-color-page);
+  border-radius: 12px;
+  padding: 10px 14px;
+  word-break: break-word;
+}
+.chat-message.user .bubble {
+  background: var(--el-color-primary-light-9);
+}
+.content {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.tool-step {
+  margin: 8px 0;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--el-bg-color);
+}
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  user-select: none;
+}
+.tool-icon.running { color: var(--el-color-primary); animation: spin 1s linear infinite; }
+.tool-icon.done { color: var(--el-color-success); }
+.tool-icon.error { color: var(--el-color-danger); }
+.tool-name { font-weight: 500; }
+.tool-status { color: var(--el-text-color-secondary); font-size: 12px; }
+.toggle { margin-left: auto; transition: transform 0.2s; }
+.toggle .open, .toggle :deep(.open) { transform: rotate(180deg); }
+.tool-body {
+  padding: 8px 10px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+}
+.tool-args, .tool-result { margin: 2px 0; }
+.lbl { color: var(--el-text-color-secondary); margin-right: 4px; }
+.tool-args code { background: var(--el-fill-color-light); padding: 1px 4px; border-radius: 3px; }
+.result-text { word-break: break-word; }
+.images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.img-card {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--el-bg-color);
+  width: 220px;
+}
+.img-card img {
+  width: 100%;
+  display: block;
+  cursor: zoom-in;
+}
+.img-meta {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.model-tag {
+  background: var(--el-color-primary-light-8);
+  color: var(--el-color-primary);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.cost { color: var(--el-text-color-secondary); }
+.img-actions { padding: 0 8px 8px; }
+.thinking {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+.thinking-dot { animation: spin 1s linear infinite; }
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--el-color-danger);
+  font-size: 13px;
+  margin-top: 6px;
+}
+.qc-status {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+}
+.qc-status.checking { background: var(--el-color-primary-light-9); color: var(--el-color-primary); }
+.qc-status.passed { background: var(--el-color-success-light-9); color: var(--el-color-success); }
+.qc-status.retry { background: var(--el-color-warning-light-9); color: var(--el-color-warning); flex-direction: column; align-items: flex-start; }
+.qc-status.error { background: var(--el-fill-color-light); color: var(--el-text-color-secondary); }
+.qc-spin { animation: spin 1s linear infinite; }
+.qc-issues { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.qc-issue { color: var(--el-color-danger); }
+.qc-sugg { color: var(--el-text-color-regular); }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>

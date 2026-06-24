@@ -66,6 +66,10 @@
             <el-icon><HomeFilled /></el-icon>
             <template #title>首页</template>
           </el-menu-item>
+          <el-menu-item index="/agent">
+            <el-icon><ChatDotSquare /></el-icon>
+            <template #title>AI 对话助手</template>
+          </el-menu-item>
           <el-menu-item index="/quick-image">
             <el-icon><MagicStick /></el-icon>
             <template #title>快速生图</template>
@@ -172,6 +176,7 @@ import {
   Wallet,
   Film,
   PictureFilled,
+  ChatDotSquare,
 } from '@element-plus/icons-vue'
 import { useTheme } from '../composables/useTheme'
 import { useAuth } from '../composables/useAuth'
