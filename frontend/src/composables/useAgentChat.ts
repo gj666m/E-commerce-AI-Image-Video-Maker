@@ -8,6 +8,7 @@ import type {
   QcStatus,
   UploadedRef,
 } from '../types/agent'
+import { genId } from '../utils/genId'
 
 const THREAD_KEY = 'agent_thread_id'
 
@@ -20,7 +21,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
   const loading = ref(false)
   // 持久化 threadId 到 localStorage：刷新/重进页面可恢复同一对话
   const savedThreadId = localStorage.getItem(THREAD_KEY)
-  const threadId = ref<string>(savedThreadId || crypto.randomUUID())
+  const threadId = ref<string>(savedThreadId || genId())
   if (!savedThreadId) localStorage.setItem(THREAD_KEY, threadId.value)
   const uploadedRefs = ref<UploadedRef[]>([])
   const abortController = ref<AbortController | null>(null)
@@ -29,7 +30,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
     // 停止当前请求
     stop()
     messages.value = []
-    threadId.value = crypto.randomUUID()
+    threadId.value = genId()
     localStorage.setItem(THREAD_KEY, threadId.value)
     // 释放本地缩略图 objectURL，避免内存泄漏
     uploadedRefs.value.forEach((r) => {
@@ -52,7 +53,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
       }
       // 把后端还原的 plain object 包装成响应式 ChatMessage
       messages.value = data.messages.map((m: any) => ({
-        id: m.id || crypto.randomUUID(),
+        id: m.id || genId(),
         role: m.role,
         content: m.content || '',
         images: Array.isArray(m.images) ? m.images : [],
@@ -110,7 +111,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
 
     // 用户消息
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: genId(),
       role: 'user',
       content,
       images: [],
@@ -122,7 +123,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
     // 后续 aiMsg.content += token 的修改才能触发模板重渲染
     // （若用裸对象，闭包持有 raw 引用，改 raw 不会触发 Vue 更新 — 表现为"必须刷新才看到内容"）
     const aiMsg: ChatMessage = reactive({
-      id: crypto.randomUUID(),
+      id: genId(),
       role: 'assistant',
       content: '',
       images: [],
@@ -213,7 +214,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
       }
       case 'tool_start': {
         const step: ToolStep = {
-          id: crypto.randomUUID(),
+          id: genId(),
           tool: ev.tool as string,
           args: (ev.args as Record<string, unknown>) || {},
           status: 'running',
