@@ -272,6 +272,23 @@ html.dark .el-collapse-item__wrap {
   font-size: 12px;
 }
 
+/* ========================================
+   使用手册跳转图标（各模块视图共用）
+   ======================================== */
+
+.help-icon {
+  margin-left: 8px;
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: color 0.2s, transform 0.2s;
+}
+
+.help-icon:hover {
+  color: var(--el-color-primary);
+  transform: scale(1.15);
+}
+
 /* 缩略图基础 */
 .thumb-item {
   position: relative;

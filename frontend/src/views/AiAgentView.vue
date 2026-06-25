@@ -4,6 +4,9 @@
       <div class="title">
         <el-icon><ChatDotSquare /></el-icon>
         <h2>AI 对话助手</h2>
+        <el-tooltip content="查看使用说明" placement="top">
+          <el-icon class="help-icon" @click="goGuide('agent')"><QuestionFilled /></el-icon>
+        </el-tooltip>
       </div>
       <el-button :icon="Plus" @click="newConversation" size="small">新对话</el-button>
     </header>
@@ -34,11 +37,17 @@
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted } from 'vue'
-import { ChatDotSquare, Plus } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { ChatDotSquare, Plus, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import ChatMessage from '../components/agent/ChatMessage.vue'
 import ChatInput from '../components/agent/ChatInput.vue'
 import { useAgentChat } from '../composables/useAgentChat'
+
+const router = useRouter()
+function goGuide(anchor: string) {
+  router.push({ path: '/user-guide', hash: `#${anchor}` })
+}
 
 const scrollRef = ref<HTMLElement | null>(null)
 

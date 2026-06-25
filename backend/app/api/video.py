@@ -376,10 +376,17 @@ async def video_models():
         })
 
     default = "mock_video"
-    for name in providers:
-        if name != "mock_video":
-            default = name
-            break
+    # 优先级与 _get_video_provider 保持一致：API易中转 > 官方直连
+    # 官方 Seedance 额度易耗尽，中转通道更稳定
+    if "seedance_apiyi" in providers:
+        default = "seedance_apiyi"
+    elif "seedance" in providers:
+        default = "seedance"
+    else:
+        for name in providers:
+            if name != "mock_video":
+                default = name
+                break
 
     return {
         "models": models,

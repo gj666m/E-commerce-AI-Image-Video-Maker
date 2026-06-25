@@ -1,12 +1,12 @@
 <template>
   <div class="chat-message" :class="msg.role">
-    <div class="avatar">
+    <div class="avatar" :class="msg.role">
       <el-icon v-if="msg.role === 'user'"><User /></el-icon>
-      <el-icon v-else><ChatDotSquare /></el-icon>
+      <span v-else class="brand-mark">AI</span>
     </div>
     <div class="bubble">
-      <!-- 文本内容 -->
-      <div v-if="msg.content" class="content">{{ msg.content }}</div>
+      <!-- 文本内容（markdown 渲染） -->
+      <div v-if="msg.content" class="content markdown-body" v-html="renderedContent"></div>
 
       <!-- 工具步骤 -->
       <div v-for="step in msg.toolSteps" :key="step.id" class="tool-step">
@@ -88,12 +88,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import {
-  User, ChatDotSquare, Loading, CircleCheckFilled, CircleCloseFilled,
+  User, Loading, CircleCheckFilled, CircleCloseFilled,
   ArrowDown, Download, WarningFilled,
 } from '@element-plus/icons-vue'
 import type { ChatMessage, ToolStep } from '../../types/agent'
+import { renderMarkdown } from '../../utils/markdown'
 
 const props = defineProps<{ msg: ChatMessage }>()
+
+const renderedContent = computed(() => renderMarkdown(props.msg.content || ''))
 
 const openSet = ref<Set<string>>(new Set())
 
@@ -165,33 +168,46 @@ function download(img: { data_url: string; model_used: string }) {
 }
 .avatar {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--el-color-primary-light-8);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--el-color-primary);
   font-size: 18px;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
-.chat-message.user .avatar {
-  background: var(--el-color-success-light-8);
-  color: var(--el-color-success);
+.avatar.user {
+  background: linear-gradient(135deg, #67c23a, #4e9f2e);
+}
+.avatar.assistant {
+  background: linear-gradient(135deg, #6c5ce7, #8e7bff);
+}
+.avatar .brand-mark {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 .bubble {
   max-width: 78%;
-  background: var(--el-bg-color-page);
-  border-radius: 12px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 14px;
   padding: 10px 14px;
   word-break: break-word;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 .chat-message.user .bubble {
-  background: var(--el-color-primary-light-9);
+  background: linear-gradient(135deg, #ecf5ff, #e0efff);
+  border-color: #c6e2ff;
+}
+.chat-message.assistant .bubble {
+  background: var(--el-bg-color);
 }
 .content {
-  white-space: pre-wrap;
-  line-height: 1.6;
+  line-height: 1.65;
+  font-size: 14px;
 }
 .tool-step {
   margin: 8px 0;
@@ -295,5 +311,79 @@ function download(img: { data_url: string; model_used: string }) {
 .qc-sugg { color: var(--el-text-color-regular); }
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* markdown 渲染排版（v-html 内容需用 :deep 穿透 scoped） */
+.content.markdown-body :deep(p) {
+  margin: 6px 0;
+}
+.content.markdown-body :deep(p:first-child) { margin-top: 0; }
+.content.markdown-body :deep(p:last-child) { margin-bottom: 0; }
+.content.markdown-body :deep(h1),
+.content.markdown-body :deep(h2),
+.content.markdown-body :deep(h3),
+.content.markdown-body :deep(h4) {
+  margin: 12px 0 6px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.content.markdown-body :deep(h1) { font-size: 18px; }
+.content.markdown-body :deep(h2) { font-size: 16px; }
+.content.markdown-body :deep(h3) { font-size: 15px; }
+.content.markdown-body :deep(h4) { font-size: 14px; }
+.content.markdown-body :deep(ul),
+.content.markdown-body :deep(ol) {
+  margin: 6px 0;
+  padding-left: 22px;
+}
+.content.markdown-body :deep(li) { margin: 2px 0; }
+.content.markdown-body :deep(strong) { font-weight: 600; }
+.content.markdown-body :deep(em) { font-style: italic; }
+.content.markdown-body :deep(blockquote) {
+  margin: 6px 0;
+  padding: 4px 12px;
+  border-left: 3px solid var(--el-color-primary-light-5);
+  color: var(--el-text-color-secondary);
+  background: var(--el-fill-color-light);
+  border-radius: 0 6px 6px 0;
+}
+.content.markdown-body :deep(a) {
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
+.content.markdown-body :deep(a:hover) { text-decoration: underline; }
+.content.markdown-body :deep(.code-block) {
+  margin: 6px 0;
+  padding: 10px 12px;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+}
+.content.markdown-body :deep(code:not(.hljs)) {
+  background: var(--el-fill-color-dark);
+  color: var(--el-color-danger);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+.content.markdown-body :deep(table) {
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 13px;
+}
+.content.markdown-body :deep(th),
+.content.markdown-body :deep(td) {
+  border: 1px solid var(--el-border-color);
+  padding: 4px 8px;
+}
+.content.markdown-body :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--el-border-color-lighter);
+  margin: 10px 0;
 }
 </style>

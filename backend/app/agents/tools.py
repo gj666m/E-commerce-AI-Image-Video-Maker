@@ -43,10 +43,13 @@ async def generate_quick_image(
     reference_image_ids: Optional[list[str]] = None,
     config: RunnableConfig = None,
 ) -> str:
-    """快速生成一张电商图片。用户描述原样透传为生图 prompt，不走任何模板。
+    """快速生成一张电商图片。description 由你按 system prompt 中的「生图 prompt 撰写指引」加工后传入，
+    不走任何后端模板（后端只前置比例描述）。工具内不会再次改写 description 内容。
 
     Args:
-        description: 用户对要生成图片的画面描述（中文或英文均可，尽量具体）。
+        description: 你加工后的高质量生图 prompt（中文或英文均可，英文模型理解更精准）。
+                     必须包含：主体描述 + 场景/背景 + 光线/氛围 + 质量底线约束（防手指/文字/五官畸变）。
+                     详见 system prompt 中的「生图 prompt 撰写指引」。
         aspect_ratio: 宽高比。可选值：1:1 / 3:4 / 4:3 / 4:5 / 9:16 / 16:9 / 61:25。默认 1:1。
         model_name: 指定生图模型，可选：seedream5 / volcengine / gptimage / gptimage_vip / nanobanana。
                     不确定时留空（null），走自动路由。用户指定时优先用用户指定的。

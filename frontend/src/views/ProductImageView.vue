@@ -1,5 +1,14 @@
 <template>
   <div class="product-image">
+    <div class="page-header">
+      <h2 class="page-title">
+        商品主图 / A+ 图
+        <el-tooltip content="查看使用说明" placement="top">
+          <el-icon class="help-icon" @click="goGuide('aplus')"><QuestionFilled /></el-icon>
+        </el-tooltip>
+      </h2>
+      <p class="page-desc">白底商品主图（1:1）+ A+ 图文混排图（61:25），手动模式 / AI 策划批量生成</p>
+    </div>
     <!-- ====== 顶部 Tab 切换 ====== -->
     <el-tabs v-model="activeTab" class="main-tabs">
       <!-- ====== Tab 1: 商品主图 ====== -->
@@ -327,8 +336,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Close, Plus, Loading, ArrowLeft } from '@element-plus/icons-vue'
+import { Close, Plus, Loading, ArrowLeft, QuestionFilled } from '@element-plus/icons-vue'
 import { generateImage, planAplus, getErrorMessage } from '../api'
 import type { ResultCard, AplusPlan } from '../types'
 import ResultCardManager from '../components/ResultCardManager.vue'
@@ -343,6 +353,11 @@ const activeTab = ref<'main' | 'aplus'>('main')
 // ====== 模型选择 ======
 const modelList = ref<ModelInfo[]>([])
 const selectedModel = ref('')
+
+const router = useRouter()
+function goGuide(anchor: string) {
+  router.push({ path: '/user-guide', hash: `#${anchor}` })
+}
 
 getModels().then(data => {
   modelList.value = data.models
@@ -887,6 +902,28 @@ function handleAplusPlanRetryWithPrompt(idx: number, extraPrompt: string) {
 <style scoped>
 .product-image {
   max-width: 1400px;
+}
+
+.page-header {
+  margin-bottom: 16px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, var(--el-color-primary), var(--el-color-primary-light-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  margin: 0;
+  line-height: 1.6;
 }
 
 .main-tabs {

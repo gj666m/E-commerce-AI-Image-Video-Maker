@@ -1,5 +1,14 @@
 <template>
   <div class="video-gen">
+    <div class="page-header">
+      <h2 class="page-title">
+        视频生成
+        <el-tooltip content="查看使用说明" placement="top">
+          <el-icon class="help-icon" @click="goGuide('video-gen')"><QuestionFilled /></el-icon>
+        </el-tooltip>
+      </h2>
+      <p class="page-desc">Seedance 视频生成：电商模式（商品图+模特图分双区） / 自由创作（参考图+创意描述）</p>
+    </div>
     <el-row :gutter="20" class="main-content">
       <!-- 左侧：输入区 -->
       <el-col :span="12">
@@ -42,9 +51,9 @@
               <!-- 创意描述 -->
               <el-form-item label="创意描述" required>
                 <div class="description-row">
-                  <el-input
+                  <MentionTextarea
                     v-model="form.description"
-                    type="textarea"
+                    :refs-source="refsSource"
                     :rows="4"
                     placeholder="描述你想要的视频效果，如：一个穿白裙的女孩在海边奔跑，夕阳逆光..."
                     style="flex: 1"
@@ -115,21 +124,19 @@
 
               <!-- 视频描述 -->
               <el-form-item label="视频描述" required>
-                <div class="description-row">
-                  <el-input
-                    v-model="form.description"
-                    type="textarea"
-                    :rows="3"
-                    placeholder="描述你想要的视频效果，如：模特穿着连衣裙在花园中优雅转身..."
-                    style="flex: 1"
-                  />
+                <MentionTextarea
+                  v-model="form.description"
+                  :refs-source="refsSource"
+                  :rows="5"
+                  placeholder="描述你想要的视频效果，如：模特穿着连衣裙在花园中优雅转身..."
+                />
+                <div class="desc-actions">
                   <el-button
                     type="success"
                     plain
                     :loading="optimizing"
                     :disabled="!analyzableImage"
                     @click="optimizeDescription"
-                    style="margin-left: 8px; align-self: flex-start;"
                   >
                     <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
                     AI 优化
@@ -140,23 +147,10 @@
                     :loading="enhancing"
                     :disabled="!form.description.trim()"
                     @click="enhanceDescription"
-                    style="margin-left: 8px; align-self: flex-start;"
                   >
                     <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
                     智能扩写
                   </el-button>
-                </div>
-                <div class="preset-tags">
-                  <el-tag
-                    v-for="tag in motionPresets"
-                    :key="tag"
-                    size="small"
-                    effect="plain"
-                    class="preset-tag"
-                    @click="appendDescription(tag)"
-                  >
-                    {{ tag }}
-                  </el-tag>
                 </div>
               </el-form-item>
 
@@ -352,13 +346,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Loading, Close, MagicStick, Promotion } from '@element-plus/icons-vue'
+import { Loading, Close, MagicStick, Promotion, QuestionFilled } from '@element-plus/icons-vue'
 import ImageUploader from '../components/ImageUploader.vue'
 import ModelSelector from '../components/ModelSelector.vue'
 import PromptEditor from '../components/PromptEditor.vue'
 import VideoPreview from '../components/VideoPreview.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
+import MentionTextarea from '../components/MentionTextarea.vue'
 import { submitVideo, getVideoStatus, getVideoModels, getVideoTasks, analyzeFree, enhanceVideoPrompt, getErrorMessage } from '../api'
 import type { ModelInfo } from '../types'
 
@@ -366,6 +362,11 @@ const submitting = ref(false)
 const taskId = ref<string | null>(null)
 const taskStatus = ref<string>('pending')
 const progress = ref(0)
+
+const router = useRouter()
+function goGuide(anchor: string) {
+  router.push({ path: '/user-guide', hash: `#${anchor}` })
+}
 const videoUrl = ref<string | null>(null)
 const modelUsed = ref('')
 const promptUsed = ref('')
@@ -393,21 +394,6 @@ const form = ref({
 
 const videoModels = ref<ModelInfo[]>([])
 
-// 运动描述预设标签
-const motionPresets = [
-  '优雅转身', '走猫步', '捋头发', '眼看镜头',
-  '展示服装细节', '从左走到右', '自然走动', '对着镜头微笑',
-  '提裙摆', '整理衣领', '侧身回眸',
-]
-
-function appendDescription(tag: string) {
-  if (form.value.description) {
-    form.value.description += '，' + tag
-  } else {
-    form.value.description = tag
-  }
-}
-
 // 电商模式图片
 const productImages = ref<string[]>([])
 const modelImages = ref<string[]>([])
@@ -417,6 +403,27 @@ const productInfo = ref('')
 // 自由创作模式图片
 const freeImages = ref<string[]>([])
 const freeFaceProcess = ref(false)
+
+// @ 引用数据源：自由创作=freeImages，电商模式=商品图(1-N)+模特图(N+1-M) 合并全局序号
+const refsSource = computed(() => {
+  if (mode.value === 'free') {
+    return freeImages.value.map((b64, i) => ({
+      preview_url: 'data:image/png;base64,' + b64,
+      filename: `参考图${i + 1}`,
+    }))
+  }
+  // 电商模式：商品图 1-N，模特图 N+1-M（全局序号）
+  return [
+    ...productImages.value.map((b64, i) => ({
+      preview_url: 'data:image/png;base64,' + b64,
+      filename: `商品图${i + 1}`,
+    })),
+    ...modelImages.value.map((b64, i) => ({
+      preview_url: 'data:image/png;base64,' + b64,
+      filename: `模特图${i + 1}`,
+    })),
+  ]
+})
 
 const canGenerate = computed(() => {
   if (!form.value.description.trim()) return false
@@ -709,6 +716,28 @@ function startPolling() {
   max-width: 1200px;
 }
 
+.page-header {
+  margin-bottom: 16px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, var(--el-color-primary), var(--el-color-primary-light-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
 .duration-control {
   display: flex;
   align-items: center;
@@ -808,22 +837,11 @@ function startPolling() {
   margin-top: 10px;
 }
 
-.preset-tags {
-  margin-top: 10px;
+/* 视频描述下方操作按钮行 */
+.desc-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
-}
-
-.preset-tag {
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.preset-tag:hover {
-  color: #409eff;
-  border-color: #409eff;
-  transform: translateY(-1px);
+  margin-top: 8px;
 }
 
 .description-row {

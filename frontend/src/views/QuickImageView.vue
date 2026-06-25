@@ -7,7 +7,12 @@
           <div class="page-header">
             <span class="section-icon gradient-purple"><el-icon :size="20"><MagicStick /></el-icon></span>
             <div>
-              <h2 class="page-title">快速生图</h2>
+              <h2 class="page-title">
+                快速生图
+                <el-tooltip content="查看使用说明" placement="top">
+                  <el-icon class="help-icon" @click="goGuide('quick-image')"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </h2>
               <p class="page-sub">上传参考图（可选）+ 一句话描述 + 选模型 → 出图</p>
             </div>
           </div>
@@ -53,9 +58,9 @@
                   描述 / Prompt
                 </div>
               </template>
-              <el-input
+              <MentionTextarea
                 v-model="form.description"
-                type="textarea"
+                :refs-source="refsSource"
                 :rows="5"
                 placeholder="描述你想要的画面，例如：一位欧美女性穿着红色连衣裙站在海边，日落光线，全身照，真实摄影风格"
               />
@@ -135,13 +140,20 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Close, Upload, EditPen, MagicStick, Promotion } from '@element-plus/icons-vue'
+import { Plus, Close, Upload, EditPen, MagicStick, Promotion, QuestionFilled } from '@element-plus/icons-vue'
 import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import { generateImage, getModels, getErrorMessage } from '../api'
 import type { ModelInfo, ResultCard } from '../types'
 import { useImageList } from '../composables/useImageList'
+import MentionTextarea from '../components/MentionTextarea.vue'
+
+const router = useRouter()
+function goGuide(anchor: string) {
+  router.push({ path: '/user-guide', hash: `#${anchor}` })
+}
 
 const loading = ref(false)
 const modelList = ref<ModelInfo[]>([])
@@ -161,6 +173,14 @@ const form = ref({
   modelName: 'volcengine',
   count: 1,
 })
+
+// @ 引用数据源：参考图按上传顺序映射为 RefItem[]
+const refsSource = computed(() =>
+  refPreviews.value.map((url, i) => ({
+    preview_url: url,
+    filename: refImages.value[i]?.name || `参考图${i + 1}`,
+  })),
+)
 
 const canGenerate = computed(() => form.value.description.trim().length > 0)
 

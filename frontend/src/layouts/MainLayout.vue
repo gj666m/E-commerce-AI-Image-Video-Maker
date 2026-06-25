@@ -131,6 +131,10 @@
             <el-icon><User /></el-icon>
             <template #title>用户管理</template>
           </el-menu-item>
+          <el-menu-item index="/user-guide">
+            <el-icon><QuestionFilled /></el-icon>
+            <template #title>使用手册</template>
+          </el-menu-item>
         </el-menu>
 
         <!-- 折叠按钮 -->
@@ -177,6 +181,7 @@ import {
   Film,
   PictureFilled,
   ChatDotSquare,
+  QuestionFilled,
 } from '@element-plus/icons-vue'
 import { useTheme } from '../composables/useTheme'
 import { useAuth } from '../composables/useAuth'

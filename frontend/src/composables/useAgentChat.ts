@@ -115,6 +115,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
       content,
       images: [],
       toolSteps: [],
+      qcHistory: [],
     }
     // AI 消息（流式追加）
     // 用 reactive() 包裹：push 进 messages.value 后，闭包里持有的就是响应式 proxy，

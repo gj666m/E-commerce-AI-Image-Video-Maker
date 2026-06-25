@@ -95,6 +95,11 @@ const router = createRouter({
       component: () => import('../views/AdminUsersView.vue'),
       meta: { admin: true },
     },
+    {
+      path: '/user-guide',
+      name: 'user-guide',
+      component: () => import('../views/UserGuideView.vue'),
+    },
   ],
 })
 

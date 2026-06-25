@@ -1,7 +1,12 @@
 <template>
   <div class="video-shot-view">
     <div class="page-header">
-      <h1 class="page-title">分镜视频</h1>
+      <h1 class="page-title">
+        分镜视频
+        <el-tooltip content="查看使用说明" placement="top">
+          <el-icon class="help-icon" @click="goGuide('video-shot')"><QuestionFilled /></el-icon>
+        </el-tooltip>
+      </h1>
       <p class="page-desc">
         AI 策划视频分镜（Hook → Detail → Recall 三段式叙事结构），
         每个分镜独立设计动作+运镜+视觉焦点，拼装后提交到 Seedance。比单段 prompt 叙事更有层次
@@ -154,11 +159,12 @@
 
                 <el-form label-position="top" class="shot-form">
                   <el-form-item label="动作">
-                    <el-input
+                    <MentionTextarea
                       v-model="shot.action"
-                      type="textarea"
+                      :refs-source="refsSource"
                       :rows="3"
                       :disabled="submitting"
+                      placeholder="动作描述"
                     />
                   </el-form-item>
                   <el-form-item label="镜头语言">
@@ -273,18 +279,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Plus, MagicStick, InfoFilled, Loading, Delete,
+  Plus, MagicStick, InfoFilled, Loading, Delete, QuestionFilled,
 } from '@element-plus/icons-vue'
 import {
   planVideoShots, submitShotVideo, getErrorMessage,
   type VideoShot,
 } from '../api'
+import MentionTextarea from '../components/MentionTextarea.vue'
+import type { RefItem } from '../composables/useReferenceMention'
 
 const router = useRouter()
+function goGuide(anchor: string) {
+  router.push({ path: '/user-guide', hash: `#${anchor}` })
+}
 
 const form = reactive({
   theme: '',
@@ -310,6 +321,37 @@ const productFileList = ref<any[]>([])
 const modelFileList = ref<any[]>([])
 const productFiles = ref<File[]>([])
 const modelFiles = ref<File[]>([])
+
+// 参考图预览（用于 @ 引用浮层显示）：productFiles + modelFiles 合并全局序号
+// 用 watch 同步创建/释放 objectURL，避免内存泄漏
+const productPreviews = ref<{ preview_url: string; filename: string }[]>([])
+const modelPreviews = ref<{ preview_url: string; filename: string }[]>([])
+
+function syncPreviews() {
+  productPreviews.value.forEach((p) => URL.revokeObjectURL(p.preview_url))
+  modelPreviews.value.forEach((p) => URL.revokeObjectURL(p.preview_url))
+  productPreviews.value = productFiles.value.map((f, i) => ({
+    preview_url: URL.createObjectURL(f),
+    filename: `商品图${i + 1}`,
+  }))
+  modelPreviews.value = modelFiles.value.map((f, i) => ({
+    preview_url: URL.createObjectURL(f),
+    filename: `模特图${i + 1}`,
+  }))
+}
+
+watch([productFiles, modelFiles], syncPreviews, { deep: true, immediate: true })
+
+onUnmounted(() => {
+  productPreviews.value.forEach((p) => URL.revokeObjectURL(p.preview_url))
+  modelPreviews.value.forEach((p) => URL.revokeObjectURL(p.preview_url))
+})
+
+// @ 引用数据源：商品图 1-N + 模特图 N+1-M（全局序号）
+const refsSource = computed<RefItem[]>(() => [
+  ...productPreviews.value,
+  ...modelPreviews.value,
+])
 
 const totalDurationSum = computed(() =>
   shots.value.reduce((sum, s) => sum + (Number(s.duration) || 0), 0)

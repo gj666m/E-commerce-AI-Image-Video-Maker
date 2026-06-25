@@ -1,5 +1,14 @@
 <template>
   <div class="seed-grass">
+    <div class="page-header">
+      <h2 class="page-title">
+        种草图
+        <el-tooltip content="查看使用说明" placement="top">
+          <el-icon class="help-icon" @click="goGuide('seed-grass')"><QuestionFilled /></el-icon>
+        </el-tooltip>
+      </h2>
+      <p class="page-desc">博主人设 + AI 策划方案 + 按方案选择张数批量生成，产出种草风格图</p>
+    </div>
     <!-- ====== 正常态：表单视图（手动模式 + AI策划入口） ====== -->
     <div v-if="planPhase === ''" class="main-content">
       <el-row :gutter="20">
@@ -370,8 +379,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Close, Refresh, Loading, ArrowLeft } from '@element-plus/icons-vue'
+import { Plus, Close, Refresh, Loading, ArrowLeft, QuestionFilled } from '@element-plus/icons-vue'
 import type { UploadFile } from 'element-plus'
 import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
@@ -385,6 +395,11 @@ const loading = ref(false)
 const planning = ref(false)
 const generating = ref(false)
 const modelList = ref<ModelInfo[]>([])
+
+const router = useRouter()
+function goGuide(anchor: string) {
+  router.push({ path: '/user-guide', hash: `#${anchor}` })
+}
 
 // ====== 策划视图状态 ======
 const planPhase = ref<'' | 'loading' | 'ready'>('')
@@ -898,6 +913,28 @@ function handleRemove(index: number) {
 <style scoped>
 .seed-grass {
   max-width: 1200px;
+}
+
+.page-header {
+  margin-bottom: 16px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, var(--el-color-primary), var(--el-color-primary-light-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  margin: 0;
+  line-height: 1.6;
 }
 
 .main-content {
