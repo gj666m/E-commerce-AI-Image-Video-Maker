@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import ReferenceMentionPopover from './ReferenceMentionPopover.vue'
 import { useReferenceMention, type RefItem } from '../composables/useReferenceMention'
 
@@ -92,14 +92,106 @@ function onUpdate(v: string) {
   emit('update:modelValue', v)
 }
 
-/** textarea 滚动时同步背景 mirror 层 */
-function onScroll(e: Event) {
-  const ta = e.target as HTMLTextAreaElement
-  if (mirrorRef.value) {
+/** 从 inputRef 拿原生 textarea（el-input ref.$el.querySelector 或裸 textarea） */
+function getTa(): HTMLTextAreaElement | null {
+  const r = inputRef.value
+  if (!r) return null
+  if (r.$el && typeof r.$el.querySelector === 'function') {
+    return r.$el.querySelector('textarea') as HTMLTextAreaElement | null
+  }
+  if (r instanceof HTMLTextAreaElement) return r
+  return null
+}
+
+/**
+ * 动态读 textarea 真实 computed style apply 给 mirror
+ * 修"开局光标偏上/偏下"——硬编码 padding/font 和 Element Plus 实际值不一致的根因
+ */
+function applyTaStyle() {
+  const ta = getTa()
+  if (!ta || !mirrorRef.value) return
+  const cs = window.getComputedStyle(ta)
+  const m = mirrorRef.value.style
+  m.padding = cs.padding
+  m.fontFamily = cs.fontFamily
+  m.fontSize = cs.fontSize
+  m.lineHeight = cs.lineHeight
+  m.letterSpacing = cs.letterSpacing
+  m.wordSpacing = cs.wordSpacing
+  m.fontWeight = cs.fontWeight
+  m.textIndent = cs.textIndent
+  m.whiteSpace = cs.whiteSpace
+  m.wordBreak = cs.wordBreak
+}
+
+/**
+ * 同步 textarea 的 scroll 位置到 mirror
+ * 必须靠 RAF 循环调用——scroll 事件只捕获"用户手动拖滚动条"，
+ * 不捕获 setSelectionRange/光标自动滚动/IME 确认触发的程序滚动
+ */
+function syncMirrorScroll() {
+  const ta = getTa()
+  if (!ta || !mirrorRef.value) return
+  if (Math.abs(mirrorRef.value.scrollTop - ta.scrollTop) > 0.5) {
     mirrorRef.value.scrollTop = ta.scrollTop
+  }
+  if (Math.abs(mirrorRef.value.scrollLeft - ta.scrollLeft) > 0.5) {
     mirrorRef.value.scrollLeft = ta.scrollLeft
   }
 }
+
+/** RAF 循环：60Hz 持续同步 scroll，肉眼看不出延迟 */
+let rafId: number | null = null
+function startRafLoop() {
+  if (rafId !== null) return
+  const tick = () => {
+    syncMirrorScroll()
+    rafId = requestAnimationFrame(tick)
+  }
+  rafId = requestAnimationFrame(tick)
+}
+function stopRafLoop() {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+}
+
+/** textarea 尺寸变化（窗口 resize / 父容器伸缩）→ 重新 apply 样式 */
+let resizeObserver: ResizeObserver | null = null
+
+/** @scroll 用户手动拉滚动条也同步（双保险，RAF 万一被节流时兜底） */
+function onScroll(_e: Event) {
+  syncMirrorScroll()
+}
+
+onMounted(() => {
+  // 立刻 apply 一次（虽然 el-input 内部 textarea 可能还未完全挂载，但先试）
+  applyTaStyle()
+  // nextTick 后再次 apply（el-input 内部 textarea 真正挂载到 DOM 后）
+  nextTick(() => {
+    applyTaStyle()
+    startRafLoop()
+    // 监听 textarea 尺寸变化，自动重新 apply 样式
+    const ta = getTa()
+    if (ta && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => applyTaStyle())
+      resizeObserver.observe(ta)
+    }
+  })
+  // 再保险：100ms 后最后 apply 一次（应对极端情况下 el-input 延迟挂载）
+  setTimeout(applyTaStyle, 100)
+})
+
+onBeforeUnmount(() => {
+  stopRafLoop()
+  resizeObserver?.disconnect()
+})
+
+/** modelValue 变化（输入 / @插入 / 删除 / 粘贴）→ DOM 更新后立刻同步 scroll，不等下一帧 */
+watch(() => props.modelValue, () => {
+  nextTick(syncMirrorScroll)
+})
 
 /** 把 @图片N 渲染成蓝色高亮（其他文字原样保留，不加 padding/缩略图，保持光标对齐） */
 const renderedHtml = computed(() => {
