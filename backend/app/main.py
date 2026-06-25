@@ -8,7 +8,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api import generate, models, model, video, analysis, auth, history, balance, video_history, video_prompt, replicate, tiktok_script, outfit_scraper, video_shots, agent
 from app.config import settings
@@ -96,14 +95,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 安全响应头中间件
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        return response
+# 安全响应头中间件（纯 ASGI 实现，不能用 BaseHTTPMiddleware——后者会缓冲
+# 整个响应体，直接破坏 /api/agent/chat 的 SSE 流式输出）
+class SecurityHeadersMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = message.get("headers", [])
+                headers.append((b"x-content-type-options", b"nosniff"))
+                headers.append((b"x-frame-options", b"DENY"))
+                headers.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
 
 app.add_middleware(SecurityHeadersMiddleware)
 

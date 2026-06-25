@@ -1,6 +1,6 @@
 // Agent 对话 composable - SSE 消费 + 消息管理
 // 用 fetch + ReadableStream（非 EventSource，因需 POST + Authorization header）
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import type {
   ChatMessage,
   AgentImage,
@@ -117,7 +117,10 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
       toolSteps: [],
     }
     // AI 消息（流式追加）
-    const aiMsg: ChatMessage = {
+    // 用 reactive() 包裹：push 进 messages.value 后，闭包里持有的就是响应式 proxy，
+    // 后续 aiMsg.content += token 的修改才能触发模板重渲染
+    // （若用裸对象，闭包持有 raw 引用，改 raw 不会触发 Vue 更新 — 表现为"必须刷新才看到内容"）
+    const aiMsg: ChatMessage = reactive({
       id: crypto.randomUUID(),
       role: 'assistant',
       content: '',
@@ -125,7 +128,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}) {
       toolSteps: [],
       qcHistory: [],
       pending: true,
-    }
+    })
     messages.value.push(userMsg, aiMsg)
 
     loading.value = true
