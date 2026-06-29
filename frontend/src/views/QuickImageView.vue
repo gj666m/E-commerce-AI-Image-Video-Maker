@@ -56,6 +56,9 @@
                 <div class="section-title">
                   <span class="section-icon gradient-green"><el-icon><EditPen /></el-icon></span>
                   描述 / Prompt
+                  <el-button text size="small" @click="showPromptPicker = true">
+                    <el-icon><Collection /></el-icon>从 Prompt 库选用
+                  </el-button>
                 </div>
               </template>
               <MentionTextarea
@@ -135,6 +138,9 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- Prompt 库选用弹窗 -->
+    <PromptLibraryPicker v-model="showPromptPicker" task-type="quick" @pick="handlePickPrompt" />
   </div>
 </template>
 
@@ -142,11 +148,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, Close, Upload, EditPen, MagicStick, Promotion, QuestionFilled } from '@element-plus/icons-vue'
+import { Plus, Close, Upload, EditPen, MagicStick, Promotion, QuestionFilled, Collection } from '@element-plus/icons-vue'
 import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
+import PromptLibraryPicker from '../components/PromptLibraryPicker.vue'
 import { generateImage, getModels, getErrorMessage } from '../api'
-import type { ModelInfo, ResultCard } from '../types'
+import type { ModelInfo, ResultCard, PromptLibraryItem } from '../types'
 import { useImageList } from '../composables/useImageList'
 import MentionTextarea from '../components/MentionTextarea.vue'
 
@@ -183,6 +190,15 @@ const refsSource = computed(() =>
 )
 
 const canGenerate = computed(() => form.value.description.trim().length > 0)
+
+// 从 Prompt 库选用
+const showPromptPicker = ref(false)
+
+function handlePickPrompt(item: PromptLibraryItem) {
+  form.value.description = item.full_prompt
+  if (item.model_used) form.value.modelName = item.model_used
+  if (item.aspect_ratio) form.value.aspectRatio = item.aspect_ratio
+}
 
 // 上一次生成参数（用于重试）
 let lastGenParams: {

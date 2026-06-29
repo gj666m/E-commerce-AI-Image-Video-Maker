@@ -4,6 +4,7 @@ export interface UserInfo {
   id: number
   username: string
   role: 'admin' | 'user'
+  display_name?: string | null
 }
 
 export interface LoginResponse {
@@ -16,7 +17,55 @@ export interface UserItem {
   id: number
   username: string
   role: string
+  display_name?: string | null
   created_at: string
+}
+
+// Prompt 复用库
+export type PromptTaskType =
+  | 'quick' | 'outfit' | 'model_gen' | 'seed_grass' | 'product_main' | 'aplus'
+  | 'video' | 'video_shots'
+
+export interface PromptLibraryItem {
+  id: string
+  user_id: number
+  task_type: PromptTaskType
+  title: string
+  description?: string | null
+  full_prompt: string
+  model_used?: string | null
+  aspect_ratio?: string | null
+  sample_image?: string | null
+  sample_kind?: 'image' | 'video'
+  tags: string[]
+  is_shared: boolean
+  use_count: number
+  created_at: string
+  owner_name?: string
+  is_owner?: boolean
+}
+
+export interface CreatePromptPayload {
+  task_type: PromptTaskType
+  title: string
+  description?: string
+  full_prompt: string
+  model_used?: string
+  aspect_ratio?: string
+  sample_image?: string
+  sample_kind?: 'image' | 'video'
+  tags?: string[]
+  is_shared?: boolean
+}
+
+export interface UpdatePromptPayload {
+  title?: string
+  description?: string
+  full_prompt?: string
+  model_used?: string
+  aspect_ratio?: string
+  tags?: string[]
+  is_shared?: boolean
 }
 
 // 生成请求参数

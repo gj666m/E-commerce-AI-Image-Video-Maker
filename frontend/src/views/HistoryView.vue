@@ -127,6 +127,7 @@
                 :disabled="item.file_expired"
                 @click="download(item)"
               >下载</el-button>
+              <el-button size="small" :icon="StarFilled" @click="openSaveToLibrary(item)">收藏</el-button>
               <el-button v-if="isAdmin" size="small" type="danger" plain :icon="Delete" @click="handleDelete(item)">删除</el-button>
             </div>
           </div>
@@ -155,16 +156,20 @@
         <p v-if="previewItem.prompt"><b>Prompt：</b><span class="prompt-text">{{ previewItem.prompt }}</span></p>
       </div>
     </el-dialog>
+
+    <!-- 收藏到 Prompt 库 -->
+    <SaveToPromptLibraryDialog v-model="showSaveDialog" :initial="saveInitial || undefined" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Clock, Refresh, Delete, Download, Picture, ZoomIn, PictureFilled } from '@element-plus/icons-vue'
+import { Clock, Refresh, Delete, Download, Picture, ZoomIn, PictureFilled, StarFilled } from '@element-plus/icons-vue'
 import { listHistory, deleteHistory, clearHistory } from '../api'
 import { useAuth } from '../composables/useAuth'
-import type { HistoryItem } from '../types'
+import type { HistoryItem, PromptTaskType } from '../types'
+import SaveToPromptLibraryDialog from '../components/SaveToPromptLibraryDialog.vue'
 
 const { isAdmin } = useAuth()
 
@@ -178,6 +183,19 @@ const recordExpireDays = 90
 const previewVisible = ref(false)
 const previewItem = ref<HistoryItem | null>(null)
 const imgLoadFailed = ref(false)
+
+// 收藏到 Prompt 库
+const showSaveDialog = ref(false)
+const saveInitial = ref<{
+  task_type: PromptTaskType
+  title?: string
+  description?: string
+  full_prompt: string
+  model_used?: string | null
+  aspect_ratio?: string | null
+  sample_image?: string | null
+  sample_kind?: 'image' | 'video'
+} | null>(null)
 
 // admin 视角：从所有记录中提取去重的用户名列表
 const userOptions = computed(() => {
@@ -268,6 +286,29 @@ async function download(item: HistoryItem) {
     ElMessage.error('下载失败')
     console.error(e)
   }
+}
+
+// 把生成历史记录映射成 Prompt 库可接受的 task_type
+function toPromptTaskType(t: string): PromptTaskType {
+  if (['quick', 'outfit', 'model_gen', 'seed_grass', 'product_main', 'aplus'].includes(t)) {
+    return t as PromptTaskType
+  }
+  return 'quick'
+}
+
+function openSaveToLibrary(item: HistoryItem) {
+  const params = item.params || {}
+  saveInitial.value = {
+    task_type: toPromptTaskType(item.task_type),
+    title: item.prompt?.slice(0, 40) || '未命名 Prompt',
+    description: typeof params.description === 'string' ? params.description : '',
+    full_prompt: item.prompt || '',
+    model_used: item.model_used || '',
+    aspect_ratio: typeof params.aspect_ratio === 'string' ? params.aspect_ratio : '',
+    sample_image: item.thumbnail ? `/gen-files/${item.thumbnail}` : '',
+    sample_kind: 'image',
+  }
+  showSaveDialog.value = true
 }
 
 async function handleDelete(item: HistoryItem) {

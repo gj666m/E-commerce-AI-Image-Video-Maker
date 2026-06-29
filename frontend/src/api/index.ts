@@ -1,6 +1,6 @@
 // 后端 API 封装
 import axios from 'axios'
-import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem } from '../types'
+import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem, PromptLibraryItem, CreatePromptPayload, UpdatePromptPayload, PromptTaskType } from '../types'
 
 const api = axios.create({
   baseURL: '',
@@ -348,7 +348,7 @@ export async function login(username: string, password: string): Promise<LoginRe
 }
 
 // 获取当前用户信息
-export async function getMe(): Promise<{ success: boolean; user: { id: number; username: string; role: string } }> {
+export async function getMe(): Promise<{ success: boolean; user: { id: number; username: string; role: string; display_name?: string | null } }> {
   const { data } = await api.get('/api/auth/me')
   return data
 }
@@ -362,8 +362,18 @@ export async function getUsers(): Promise<{ success: boolean; users: UserItem[] 
 }
 
 // 创建用户
-export async function createUser(username: string, password: string, role: string): Promise<{ success: boolean; message: string }> {
-  const { data } = await api.post('/api/auth/users', { username, password, role })
+export async function createUser(
+  username: string,
+  password: string,
+  role: string,
+  displayName?: string,
+): Promise<{ success: boolean; message: string }> {
+  const { data } = await api.post('/api/auth/users', {
+    username,
+    password,
+    role,
+    display_name: displayName || undefined,
+  })
   return data
 }
 
@@ -374,7 +384,10 @@ export async function deleteUser(userId: number): Promise<{ success: boolean; me
 }
 
 // 更新用户
-export async function updateUser(userId: number, payload: { password?: string; role?: string }): Promise<{ success: boolean; message: string }> {
+export async function updateUser(
+  userId: number,
+  payload: { password?: string; role?: string; display_name?: string },
+): Promise<{ success: boolean; message: string }> {
   const { data } = await api.put(`/api/auth/users/${userId}`, payload)
   return data
 }
@@ -713,5 +726,34 @@ export async function submitShotVideo(
     timeout: 360000, // 视频提交 6 分钟（参考 video.py）
     signal,
   })
+  return data
+}
+
+// ====== Prompt 复用库 ======
+
+export async function listPrompts(taskType?: PromptTaskType): Promise<{ success: boolean; items: PromptLibraryItem[]; count: number }> {
+  const params: Record<string, string> = {}
+  if (taskType) params.task_type = taskType
+  const { data } = await api.get('/api/prompt-library', { params })
+  return data
+}
+
+export async function createPrompt(payload: CreatePromptPayload): Promise<{ success: boolean; item: PromptLibraryItem }> {
+  const { data } = await api.post('/api/prompt-library', payload)
+  return data
+}
+
+export async function updatePrompt(promptId: string, payload: UpdatePromptPayload): Promise<{ success: boolean; item: PromptLibraryItem }> {
+  const { data } = await api.put(`/api/prompt-library/${promptId}`, payload)
+  return data
+}
+
+export async function deletePrompt(promptId: string): Promise<{ success: boolean }> {
+  const { data } = await api.delete(`/api/prompt-library/${promptId}`)
+  return data
+}
+
+export async function markPromptUsed(promptId: string): Promise<{ success: boolean }> {
+  const { data } = await api.post(`/api/prompt-library/${promptId}/use`)
   return data
 }

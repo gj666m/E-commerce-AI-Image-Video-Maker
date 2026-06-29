@@ -29,7 +29,7 @@
         />
         <div class="user-info">
           <el-icon><UserFilled /></el-icon>
-          <span class="username">{{ username }}</span>
+          <span class="username">{{ displayName }}</span>
           <el-tag v-if="isAdmin" type="danger" size="small" class="role-tag">管理员</el-tag>
         </div>
         <el-dropdown trigger="click">
@@ -55,6 +55,7 @@
       <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
         <el-menu
           :default-active="currentRoute"
+          :default-openeds="defaultOpenGroups"
           :collapse="sidebarCollapsed"
           :collapse-transition="true"
           background-color="var(--sidebar-bg)"
@@ -66,66 +67,78 @@
             <el-icon><HomeFilled /></el-icon>
             <template #title>首页</template>
           </el-menu-item>
+          <!-- AI 助手置顶（入口级，不归类） -->
           <el-menu-item index="/agent">
             <el-icon><ChatDotSquare /></el-icon>
             <template #title>AI 对话助手</template>
           </el-menu-item>
-          <el-menu-item index="/quick-image">
-            <el-icon><MagicStick /></el-icon>
-            <template #title>快速生图</template>
-          </el-menu-item>
-          <el-menu-item index="/outfit">
-            <el-icon><ShoppingBag /></el-icon>
-            <template #title>一键穿搭</template>
-          </el-menu-item>
-          <el-menu-item index="/analysis">
-            <el-icon><View /></el-icon>
-            <template #title>AI 商品分析</template>
-          </el-menu-item>
-          <el-menu-item index="/model-gen">
-            <el-icon><Avatar /></el-icon>
-            <template #title>AI 生成模特</template>
-          </el-menu-item>
-          <el-menu-item index="/video">
-            <el-icon><VideoCameraFilled /></el-icon>
-            <template #title>视频生成</template>
-          </el-menu-item>
-          <el-menu-item index="/video-shots">
-            <el-icon><Film /></el-icon>
-            <template #title>分镜视频</template>
-          </el-menu-item>
-          <el-menu-item index="/video-prompt">
-            <el-icon><MagicStick /></el-icon>
-            <template #title>提示词反推</template>
-          </el-menu-item>
-          <el-menu-item index="/replicate">
-            <el-icon><TrendCharts /></el-icon>
-            <template #title>爆品复刻</template>
-          </el-menu-item>
-          <el-menu-item index="/tiktok-script">
-            <el-icon><DocumentCopy /></el-icon>
-            <template #title>TikTok 脚本提取</template>
-          </el-menu-item>
-          <el-menu-item index="/outfit-scrape">
-            <el-icon><PictureFilled /></el-icon>
-            <template #title>穿搭素材抓取</template>
-          </el-menu-item>
-          <el-menu-item index="/seed-grass">
-            <el-icon><Picture /></el-icon>
-            <template #title>种草图</template>
-          </el-menu-item>
-          <el-menu-item index="/product-image">
-            <el-icon><Present /></el-icon>
-            <template #title>商品主图/A+</template>
-          </el-menu-item>
-          <el-menu-item index="/history">
-            <el-icon><Clock /></el-icon>
-            <template #title>生成历史</template>
-          </el-menu-item>
-          <el-menu-item index="/video-history">
-            <el-icon><VideoCamera /></el-icon>
-            <template #title>视频历史</template>
-          </el-menu-item>
+
+          <!-- 分组：图片 -->
+          <el-sub-menu index="grp-image">
+            <template #title>
+              <el-icon><Picture /></el-icon>
+              <span>图片</span>
+            </template>
+            <el-menu-item v-for="it in groups.image" :key="it.path" :index="it.path">
+              <el-icon><component :is="it.icon" /></el-icon>
+              <template #title>{{ it.title }}</template>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- 分组：视频 -->
+          <el-sub-menu index="grp-video">
+            <template #title>
+              <el-icon><VideoCameraFilled /></el-icon>
+              <span>视频</span>
+            </template>
+            <el-menu-item v-for="it in groups.video" :key="it.path" :index="it.path">
+              <el-icon><component :is="it.icon" /></el-icon>
+              <template #title>{{ it.title }}</template>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- 分组：产品/市场调研 -->
+          <el-sub-menu index="grp-research">
+            <template #title>
+              <el-icon><TrendCharts /></el-icon>
+              <span>产品/市场调研</span>
+            </template>
+            <el-menu-item v-for="it in groups.research" :key="it.path" :index="it.path">
+              <el-icon><component :is="it.icon" /></el-icon>
+              <template #title>{{ it.title }}</template>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- 分组：历史记录 -->
+          <el-sub-menu index="grp-history">
+            <template #title>
+              <el-icon><Clock /></el-icon>
+              <span>历史记录</span>
+            </template>
+            <el-menu-item v-for="it in groups.history" :key="it.path" :index="it.path">
+              <el-icon><component :is="it.icon" /></el-icon>
+              <template #title>{{ it.title }}</template>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- 分组：素材资产库（即将上线） -->
+          <el-sub-menu index="grp-asset" disabled>
+            <template #title>
+              <el-icon><Files /></el-icon>
+              <span>素材资产库</span>
+              <el-tag size="small" type="info" class="soon-tag">即将上线</el-tag>
+            </template>
+          </el-sub-menu>
+
+          <!-- 分组：素材应用及数据跟踪（即将上线） -->
+          <el-sub-menu index="grp-tracking" disabled>
+            <template #title>
+              <el-icon><DataAnalysis /></el-icon>
+              <span>素材应用及数据跟踪</span>
+              <el-tag size="small" type="info" class="soon-tag">即将上线</el-tag>
+            </template>
+          </el-sub-menu>
+
           <!-- 管理员专属 -->
           <el-menu-item v-if="isAdmin" index="/admin/users">
             <el-icon><User /></el-icon>
@@ -182,17 +195,59 @@ import {
   PictureFilled,
   ChatDotSquare,
   QuestionFilled,
+  Files,
+  DataAnalysis,
 } from '@element-plus/icons-vue'
+import { markRaw } from 'vue'
 import { useTheme } from '../composables/useTheme'
 import { useAuth } from '../composables/useAuth'
 import { getBalance, type BalanceResponse } from '../api'
 
 const route = useRoute()
 const { isDark, toggleTheme } = useTheme()
-const { username, isAdmin, logout } = useAuth()
+const { displayName, isAdmin, logout, refreshMe } = useAuth()
 
 const sidebarCollapsed = ref(false)
 const currentRoute = computed(() => route.path)
+
+// 侧边栏分组定义（按需求方拍板的 6 板块归类）
+const groups = {
+  image: [
+    { path: '/quick-image', title: '快速生图', icon: markRaw(MagicStick) },
+    { path: '/outfit', title: '一键穿搭', icon: markRaw(ShoppingBag) },
+    { path: '/model-gen', title: 'AI 生成模特', icon: markRaw(Avatar) },
+    { path: '/seed-grass', title: '种草图', icon: markRaw(Picture) },
+    { path: '/product-image', title: '商品主图 / A+', icon: markRaw(Present) },
+  ],
+  video: [
+    { path: '/video', title: '视频生成', icon: markRaw(VideoCameraFilled) },
+    { path: '/video-shots', title: '分镜视频', icon: markRaw(Film) },
+  ],
+  research: [
+    { path: '/analysis', title: 'AI 商品分析', icon: markRaw(View) },
+    { path: '/video-prompt', title: '提示词反推', icon: markRaw(MagicStick) },
+    { path: '/replicate', title: '爆品复刻', icon: markRaw(TrendCharts) },
+    { path: '/tiktok-script', title: 'TikTok 脚本提取', icon: markRaw(DocumentCopy) },
+    { path: '/outfit-scrape', title: '穿搭素材抓取', icon: markRaw(PictureFilled) },
+  ],
+  history: [
+    { path: '/history', title: '生成历史', icon: markRaw(Clock) },
+    { path: '/video-history', title: '视频历史', icon: markRaw(VideoCamera) },
+    { path: '/prompt-library', title: 'Prompt 复用库', icon: markRaw(Files) },
+  ],
+}
+
+// 根据当前路由自动展开所在分组
+const defaultOpenGroups = computed(() => {
+  const path = route.path
+  const result: string[] = []
+  for (const [key, items] of Object.entries(groups)) {
+    if (items.some((it) => it.path === path)) {
+      result.push(`grp-${key}`)
+    }
+  }
+  return result
+})
 
 // API易 余额展示（全员可见，5 分钟自动刷新）
 const balance = reactive<BalanceResponse>({
@@ -233,6 +288,8 @@ onMounted(() => {
   balanceTimer = setInterval(loadBalance, 15 * 1000) // 15 秒（与后端缓存对齐）
   // 监听全局事件（如视频完成强制刷新余额）
   window.addEventListener('balance:refresh', refreshBalanceFresh as EventListener)
+  // 拉取最新用户信息（display_name 等）
+  refreshMe()
 })
 
 onBeforeUnmount(() => {
@@ -399,6 +456,17 @@ onBeforeUnmount(() => {
 .sidebar-toggle:hover {
   background: var(--sidebar-hover-bg);
   color: var(--sidebar-active-text);
+}
+
+/* "即将上线" 占位分组样式 */
+.soon-tag {
+  margin-left: 6px;
+  opacity: 0.7;
+}
+
+.sidebar .el-sub-menu.is-disabled .el-sub-menu__title {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* 内容区 */

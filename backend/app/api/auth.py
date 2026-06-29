@@ -23,10 +23,12 @@ class CreateUserRequest(BaseModel):
     username: str
     password: str
     role: str = "user"
+    display_name: Optional[str] = None
 
 class UpdateUserRequest(BaseModel):
     password: Optional[str] = None
     role: Optional[str] = None
+    display_name: Optional[str] = None
 
 
 # ====== 登录 ======
@@ -37,7 +39,7 @@ async def login(req: LoginRequest):
     db = await get_db()
     try:
         cursor = await db.execute(
-            "SELECT id, username, password_hash, role FROM users WHERE username = ?",
+            "SELECT id, username, password_hash, role, display_name FROM users WHERE username = ?",
             (req.username,),
         )
         user = await cursor.fetchone()
@@ -52,6 +54,7 @@ async def login(req: LoginRequest):
                 "id": user["id"],
                 "username": user["username"],
                 "role": user["role"],
+                "display_name": user["display_name"],
             },
         }
     finally:
@@ -60,15 +63,26 @@ async def login(req: LoginRequest):
 
 @router.get("/me")
 async def get_me(current_user=Depends(get_current_user)):
-    """获取当前用户信息"""
-    return {
-        "success": True,
-        "user": {
-            "id": current_user["id"],
-            "username": current_user["username"],
-            "role": current_user["role"],
-        },
-    }
+    """获取当前用户信息（查 DB 拿最新 display_name）"""
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT display_name FROM users WHERE id = ?",
+            (current_user["id"],),
+        )
+        row = await cursor.fetchone()
+        display_name = row["display_name"] if row else None
+        return {
+            "success": True,
+            "user": {
+                "id": current_user["id"],
+                "username": current_user["username"],
+                "role": current_user["role"],
+                "display_name": display_name,
+            },
+        }
+    finally:
+        await db.close()
 
 
 # ====== 管理员：用户管理 ======
@@ -79,7 +93,7 @@ async def list_users(_admin=Depends(require_admin)):
     db = await get_db()
     try:
         cursor = await db.execute(
-            "SELECT id, username, role, created_at FROM users ORDER BY id"
+            "SELECT id, username, role, display_name, created_at FROM users ORDER BY id"
         )
         rows = await cursor.fetchall()
         return {
@@ -108,8 +122,8 @@ async def create_user(req: CreateUserRequest, _admin=Depends(require_admin)):
             raise HTTPException(400, "用户名已存在")
 
         await db.execute(
-            "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-            (req.username, hash_password(req.password), req.role),
+            "INSERT INTO users (username, password_hash, role, display_name) VALUES (?, ?, ?, ?)",
+            (req.username, hash_password(req.password), req.role, req.display_name or None),
         )
         await db.commit()
         logger.info(f"管理员创建用户: {req.username} ({req.role})")
@@ -170,11 +184,17 @@ async def update_user(user_id: int, req: UpdateUserRequest, _admin=Depends(requi
                 raise HTTPException(400, "角色只能是 admin 或 user")
             updates.append("role = ?")
             params.append(req.role)
+        if req.display_name is not None:
+            # 真实姓名：允许清空（空字符串转 None），上限 50 字符
+            name = req.display_name.strip()[:50] if req.display_name else None
+            updates.append("display_name = ?")
+            params.append(name)
 
         if not updates:
             raise HTTPException(400, "没有需要更新的字段")
 
         params.append(user_id)
+        # 字段名为代码内白名单追加（非用户输入），SQL 注入风险已防
         await db.execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", params)
         await db.commit()
         logger.info(f"管理员更新用户: user_id={user_id}")

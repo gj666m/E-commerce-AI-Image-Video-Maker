@@ -90,6 +90,11 @@ const router = createRouter({
       component: () => import('../views/VideoHistoryView.vue'),
     },
     {
+      path: '/prompt-library',
+      name: 'prompt-library',
+      component: () => import('../views/PromptLibraryView.vue'),
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/AdminUsersView.vue'),

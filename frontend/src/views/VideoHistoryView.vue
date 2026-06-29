@@ -117,6 +117,7 @@
                 :disabled="item.file_expired"
                 @click="download(item)"
               >下载</el-button>
+              <el-button size="small" :icon="StarFilled" @click="openSaveToLibrary(item)">收藏</el-button>
               <el-button v-if="isAdmin" size="small" type="danger" plain :icon="Delete" @click="handleDelete(item)">删除</el-button>
             </div>
           </div>
@@ -148,16 +149,20 @@
         <p v-if="previewItem.prompt"><b>Prompt：</b><span class="prompt-text">{{ previewItem.prompt }}</span></p>
       </div>
     </el-dialog>
+
+    <!-- 收藏到 Prompt 库 -->
+    <SaveToPromptLibraryDialog v-model="showSaveDialog" :initial="saveInitial || undefined" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { VideoCamera, Refresh, Delete, Download, VideoPlay, VideoPause } from '@element-plus/icons-vue'
+import { VideoCamera, Refresh, Delete, Download, VideoPlay, VideoPause, StarFilled } from '@element-plus/icons-vue'
 import { listVideoHistory, deleteVideoHistory, clearVideoHistory } from '../api'
 import { useAuth } from '../composables/useAuth'
 import type { VideoHistoryItem } from '../types'
+import SaveToPromptLibraryDialog from '../components/SaveToPromptLibraryDialog.vue'
 
 const { isAdmin } = useAuth()
 
@@ -165,6 +170,20 @@ const items = ref<VideoHistoryItem[]>([])
 const loading = ref(false)
 const filterUser = ref<string>('')
 const showDeleted = ref(false)
+
+// 收藏到 Prompt 库
+const showSaveDialog = ref(false)
+const saveInitial = ref<{
+  task_type: 'video' | 'video_shots'
+  title?: string
+  description?: string
+  full_prompt: string
+  model_used?: string | null
+  aspect_ratio?: string | null
+  sample_image?: string | null
+  sample_kind?: 'image' | 'video'
+} | null>(null)
+
 const fileExpireDays = 3
 const recordExpireDays = 90
 const previewVisible = ref(false)
@@ -240,6 +259,21 @@ async function download(item: VideoHistoryItem) {
     ElMessage.error('下载失败')
     console.error(e)
   }
+}
+
+function openSaveToLibrary(item: VideoHistoryItem) {
+  // 视频历史的 task_type 暂统一为 'video'
+  saveInitial.value = {
+    task_type: 'video',
+    title: item.prompt?.slice(0, 40) || '未命名视频 Prompt',
+    description: '',
+    full_prompt: item.prompt || '',
+    model_used: item.provider_name || '',
+    aspect_ratio: item.resolution || '',
+    sample_image: item.video_url || '',
+    sample_kind: 'video',
+  }
+  showSaveDialog.value = true
 }
 
 async function handleDelete(item: VideoHistoryItem) {

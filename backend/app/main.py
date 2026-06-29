@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
-from app.api import generate, models, model, video, analysis, auth, history, balance, video_history, video_prompt, replicate, tiktok_script, outfit_scraper, video_shots, agent
+from app.api import generate, models, model, video, analysis, auth, history, balance, video_history, video_prompt, replicate, tiktok_script, outfit_scraper, video_shots, agent, prompt_library
 from app.config import settings
 
 # 配置日志
@@ -145,6 +145,7 @@ app.include_router(history.router)
 app.include_router(video_history.router)
 app.include_router(balance.router)
 app.include_router(agent.router)
+app.include_router(prompt_library.router)
 
 # 挂载临时视频文件静态目录
 temp_dir = Path(settings.video_temp_dir)

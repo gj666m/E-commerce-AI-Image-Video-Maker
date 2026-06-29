@@ -12,6 +12,12 @@
     <el-table :data="users" stripe style="width: 100%">
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="username" label="用户名" width="150" />
+      <el-table-column prop="display_name" label="真实姓名" width="150">
+        <template #default="{ row }">
+          <span v-if="row.display_name">{{ row.display_name }}</span>
+          <span v-else class="empty-name">—</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="role" label="角色" width="100">
         <template #default="{ row }">
           <el-tag :type="row.role === 'admin' ? 'danger' : 'info'" size="small">
@@ -20,9 +26,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="created_at" label="创建时间" />
-      <el-table-column label="操作" width="200">
+      <el-table-column label="操作" width="240">
         <template #default="{ row }">
-          <el-button size="small" @click="openResetDialog(row)">重置密码</el-button>
+          <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
           <el-button size="small" type="danger" @click="handleDelete(row)" :disabled="row.username === 'admin'">
             删除
           </el-button>
@@ -35,6 +41,9 @@
       <el-form label-width="80px">
         <el-form-item label="用户名">
           <el-input v-model="newUsername" placeholder="2-20 字符" />
+        </el-form-item>
+        <el-form-item label="真实姓名">
+          <el-input v-model="newDisplayName" placeholder="可选，便于运营跟进" maxlength="50" />
         </el-form-item>
         <el-form-item label="密码">
           <el-input v-model="newPassword" type="password" show-password placeholder="至少 4 位" />
@@ -52,19 +61,22 @@
       </template>
     </el-dialog>
 
-    <!-- 重置密码弹窗 -->
-    <el-dialog v-model="showResetDialog" title="重置密码" width="400px">
+    <!-- 编辑用户弹窗 -->
+    <el-dialog v-model="showEditDialog" title="编辑用户" width="400px">
       <el-form label-width="80px">
         <el-form-item label="用户">
-          <el-input :model-value="resetUser?.username" disabled />
+          <el-input :model-value="editUser?.username" disabled />
+        </el-form-item>
+        <el-form-item label="真实姓名">
+          <el-input v-model="editDisplayName" placeholder="可选，便于运营跟进" maxlength="50" clearable />
         </el-form-item>
         <el-form-item label="新密码">
-          <el-input v-model="resetPassword" type="password" show-password placeholder="至少 4 位" />
+          <el-input v-model="editPassword" type="password" show-password placeholder="留空则不修改" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showResetDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleReset" :loading="resetting">确认</el-button>
+        <el-button @click="showEditDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleEdit" :loading="editing">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -83,15 +95,17 @@ const loading = ref(false)
 // 创建
 const showCreateDialog = ref(false)
 const newUsername = ref('')
+const newDisplayName = ref('')
 const newPassword = ref('')
 const newRole = ref('user')
 const creating = ref(false)
 
-// 重置密码
-const showResetDialog = ref(false)
-const resetUser = ref<UserItem | null>(null)
-const resetPassword = ref('')
-const resetting = ref(false)
+// 编辑用户（真实姓名 / 密码）
+const showEditDialog = ref(false)
+const editUser = ref<UserItem | null>(null)
+const editDisplayName = ref('')
+const editPassword = ref('')
+const editing = ref(false)
 
 async function fetchUsers() {
   loading.value = true
@@ -112,10 +126,11 @@ async function handleCreate() {
   }
   creating.value = true
   try {
-    await createUser(newUsername.value, newPassword.value, newRole.value)
+    await createUser(newUsername.value, newPassword.value, newRole.value, newDisplayName.value)
     ElMessage.success('用户创建成功')
     showCreateDialog.value = false
     newUsername.value = ''
+    newDisplayName.value = ''
     newPassword.value = ''
     newRole.value = 'user'
     await fetchUsers()
@@ -139,26 +154,33 @@ async function handleDelete(user: UserItem) {
   }
 }
 
-function openResetDialog(user: UserItem) {
-  resetUser.value = user
-  resetPassword.value = ''
-  showResetDialog.value = true
+function openEditDialog(user: UserItem) {
+  editUser.value = user
+  editDisplayName.value = user.display_name || ''
+  editPassword.value = ''
+  showEditDialog.value = true
 }
 
-async function handleReset() {
-  if (!resetPassword.value) {
-    ElMessage.warning('请输入新密码')
+async function handleEdit() {
+  if (!editPassword.value && editDisplayName.value === (editUser.value?.display_name || '')) {
+    ElMessage.warning('没有需要更新的字段')
     return
   }
-  resetting.value = true
+  editing.value = true
   try {
-    await updateUser(resetUser.value!.id, { password: resetPassword.value })
-    ElMessage.success('密码已重置')
-    showResetDialog.value = false
+    const payload: { password?: string; display_name?: string } = {}
+    if (editPassword.value) payload.password = editPassword.value
+    if (editDisplayName.value !== (editUser.value?.display_name || '')) {
+      payload.display_name = editDisplayName.value
+    }
+    await updateUser(editUser.value!.id, payload)
+    ElMessage.success('已保存')
+    showEditDialog.value = false
+    await fetchUsers()
   } catch (e) {
-    ElMessage.error(getErrorMessage(e, '重置失败'))
+    ElMessage.error(getErrorMessage(e, '保存失败'))
   } finally {
-    resetting.value = false
+    editing.value = false
   }
 }
 
@@ -180,5 +202,9 @@ onMounted(fetchUsers)
 .page-header h2 {
   margin: 0;
   font-size: 18px;
+}
+
+.empty-name {
+  color: var(--el-text-color-placeholder);
 }
 </style>

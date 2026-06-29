@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
+    display_name TEXT,                          -- 真实使用人名（便于运营跟进）
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
@@ -69,10 +70,30 @@ CREATE TABLE IF NOT EXISTS generation_history (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS prompt_library (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    task_type TEXT NOT NULL,                       -- quick/outfit/model_gen/seed_grass/product_main/aplus/video/video_shots
+    title TEXT NOT NULL,
+    description TEXT,                              -- 用户原始描述（可空）
+    full_prompt TEXT NOT NULL,                     -- 完整 prompt（含比例/风格等元数据，实际发给模型的）
+    model_used TEXT,                               -- 模型名
+    aspect_ratio TEXT,                             -- 比例
+    sample_image TEXT,                             -- 效果图缩略图相对路径（如 user_id/xxx_thumb.jpeg）
+    sample_kind TEXT DEFAULT 'image',              -- 'image' 或 'video'
+    tags TEXT NOT NULL DEFAULT '[]',               -- JSON 数组
+    is_shared BOOLEAN NOT NULL DEFAULT 0,          -- 是否共享给全员
+    use_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_model_library_user ON model_library(user_id);
 CREATE INDEX IF NOT EXISTS idx_video_tasks_user ON video_tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_history_user ON generation_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_history_created ON generation_history(created_at);
+CREATE INDEX IF NOT EXISTS idx_prompt_library_user ON prompt_library(user_id);
+CREATE INDEX IF NOT EXISTS idx_prompt_library_task_type ON prompt_library(task_type);
 """
 
 
@@ -148,6 +169,14 @@ async def init_db():
             await db.execute("ALTER TABLE video_tasks ADD COLUMN user_deleted_at TEXT")
             await db.commit()
             logger.info("已为 video_tasks 添加 user_deleted_at 列")
+
+        # 兼容迁移：users 旧表无 display_name 列时补上
+        cursor = await db.execute("PRAGMA table_info(users)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "display_name" not in columns:
+            await db.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
+            await db.commit()
+            logger.info("已为 users 添加 display_name 列")
 
         # 检查是否已有管理员
         cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")
