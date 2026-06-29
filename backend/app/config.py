@@ -1,5 +1,9 @@
 # 配置管理 - Pydantic Settings 加载 .env
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+
+# 先把 .env 加载进 os.environ，供其他模块（如 auth.py 的 JWT_SECRET）直接读取
+load_dotenv()
 
 
 class Settings(BaseSettings):

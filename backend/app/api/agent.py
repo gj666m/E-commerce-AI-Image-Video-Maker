@@ -48,12 +48,14 @@ async def agent_chat(
             uploaded_refs.append({"image_id": iid, "filename": meta.get("filename", "")})
 
     user_id = current_user["id"]
+    # thread_id 绑定 user_id（防越权 + 统一归属校验）：前端随机串 → u{uid}_{串}
+    real_thread_id = f"u{user_id}_{req.thread_id}"
 
     async def event_stream():
         async for sse_data in run_agent(
             user_message=req.message,
             user_id=user_id,
-            thread_id=req.thread_id,
+            thread_id=real_thread_id,
             uploaded_refs=uploaded_refs,
         ):
             if sse_data:
@@ -125,7 +127,9 @@ async def get_history(
     """恢复指定 thread 的历史对话（从 LangGraph checkpoint 读取）"""
     if not settings.has_claude:
         raise HTTPException(503, "Agent 不可用：未配置 Claude API Key")
-    result = await reconstruct_history(thread_id, user_id=current_user["id"])
+    # 与 /chat 保持一致：前端随机串 → u{uid}_{串}
+    real_thread_id = f"u{current_user['id']}_{thread_id}"
+    result = await reconstruct_history(real_thread_id, user_id=current_user["id"])
     if result is None:
         return {"thread_id": thread_id, "messages": [], "exists": False}
     result["exists"] = True
@@ -138,7 +142,15 @@ async def get_image(
     current_user=Depends(get_current_user),
 ):
     """取生成图 bytes（供前端 <img src> 直接引用，避免历史 data_url 体积过大）"""
-    img_bytes, mime = await get_image_bytes(image_id)
+    # 归属校验：图必须属于当前用户（thread_id 以 u{uid}_ 开头）
+    meta = await image_store.get_meta(image_id)
+    if meta is None:
+        raise HTTPException(404, "图片不存在或已过期")
+    user_prefix = f"u{current_user['id']}_"
+    if not meta.get("thread_id", "").startswith(user_prefix):
+        # 非本人图 → 统一返回 404 避免泄露存在性
+        raise HTTPException(404, "图片不存在或已过期")
+    img_bytes = await image_store.get(image_id)
     if img_bytes is None:
         raise HTTPException(404, "图片不存在或已过期")
-    return Response(content=img_bytes, media_type=mime)
+    return Response(content=img_bytes, media_type=meta.get("mime", "image/jpeg"))

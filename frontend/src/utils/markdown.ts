@@ -21,11 +21,20 @@ const md = new MarkdownIt({
   },
 })
 
-// 链接强制 target=_blank + rel=noopener
+// 链接安全：拦截危险协议（javascript:/data:/vbscript:/file:）+ 强制 target=_blank
+const DANGEROUS_HREF = /^(javascript:|data:|vbscript:|file:)/i
 const defaultLinkOpen = md.renderer.rules.link_open || function (tokens, idx, options, _env, self) {
   return self.renderToken(tokens, idx, options)
 }
 md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+  // XSS 防护：危险协议的 href 改写为 #
+  const hrefIndex = tokens[idx].attrIndex('href')
+  if (hrefIndex >= 0) {
+    const href = tokens[idx].attrs![hrefIndex][1] || ''
+    if (DANGEROUS_HREF.test(href)) {
+      tokens[idx].attrs![hrefIndex][1] = '#'
+    }
+  }
   const aIndex = tokens[idx].attrIndex('target')
   if (aIndex < 0) {
     tokens[idx].attrPush(['target', '_blank'])
