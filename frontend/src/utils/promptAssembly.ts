@@ -3,9 +3,9 @@
 import type { PromptElements } from '../types'
 import type { VideoShot } from '../api'
 
-// 质量底线尾巴（与后端 gemini_provider.py ENHANCE_IMAGE_PROMPT_SYSTEM line 157 一致）
+// 质量底线尾巴（中文，与后端 ENHANCE_STRUCTURED_SYSTEM 一致）
 export const QUALITY_TAIL =
-  'photorealistic, sharp focus, natural skin texture, no deformed hands, no extra fingers, no text artifacts, high detail'
+  '写实，细节清晰，皮肤质感自然，手指数量正确，无文字伪影，高画质'
 
 // 字段顺序与后端 ENHANCE_STRUCTURED_FIELD_ORDER 对齐
 // 顺序影响 Seedream 出图风格，改动需 e2e 验证
@@ -20,22 +20,22 @@ const FIELD_ORDER: Array<{ key: keyof PromptElements; label: string }> = [
   { key: 'style_keywords', label: '风格' },
 ]
 
-// 比例 → 英文描述后缀
+// 比例 → 中文描述后缀
 const RATIO_DESC: Record<string, string> = {
-  '1:1': '1:1 square composition',
-  '3:4': 'vertical 3:4 portrait composition',
-  '4:3': 'horizontal 4:3 composition',
-  '4:5': 'vertical 4:5 portrait composition',
-  '9:16': 'vertical 9:16 composition',
-  '16:9': 'horizontal 16:9 cinematic composition',
+  '1:1': '1:1 正方形构图',
+  '3:4': '3:4 竖版人像构图',
+  '4:3': '4:3 横版构图',
+  '4:5': '4:5 竖版人像构图',
+  '9:16': '9:16 竖版构图',
+  '16:9': '16:9 横版电影感构图',
 }
 
 // 用 label 顺序导出（供 ElementCardsGrid 渲染）
 export const ELEMENT_FIELDS = FIELD_ORDER.slice()
 
 /**
- * 把 8 要素本地拼装为完整 prompt（图片类用）。
- * 规则：按 FIELD_ORDER 顺序拼接非空字段 + 质量底线尾巴 + 比例后缀。
+ * 把 8 要素本地拼装为完整中文 prompt（图片类用）。
+ * 规则：按 FIELD_ORDER 顺序拼接非空字段 + 质量底线尾巴 + 比例后缀，用中文逗号连接。
  * 注：与 AI 拼装结果可能有差异，AI 拼装是「自然连贯散文」，本地拼装是「机械拼接」。
  * 用户改字段后用本地拼装覆盖 form.prompt，AI 拼装结果仅作起点。
  */
@@ -50,7 +50,7 @@ export function assembleImagePrompt(elements: PromptElements, aspectRatio?: stri
     const desc = RATIO_DESC[aspectRatio]
     if (desc) parts.push(desc)
   }
-  return parts.join(', ')
+  return parts.join('，')
 }
 
 /**

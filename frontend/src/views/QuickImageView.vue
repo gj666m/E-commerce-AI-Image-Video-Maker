@@ -224,6 +224,19 @@ onMounted(async () => {
   } catch {
     ElMessage.error('获取模型列表失败')
   }
+
+  // 从 Prompt 工坊跳转预填（sessionStorage）
+  const prefill = sessionStorage.getItem('workshop_prefill_image')
+  if (prefill) {
+    form.value.description = prefill
+    sessionStorage.removeItem('workshop_prefill_image')
+    const prefillRatio = sessionStorage.getItem('workshop_prefill_image_ratio')
+    if (prefillRatio) {
+      form.value.aspectRatio = prefillRatio
+      sessionStorage.removeItem('workshop_prefill_image_ratio')
+    }
+    ElMessage.success('已从工坊预填 prompt，可直接生成或微调')
+  }
 })
 
 // 生成

@@ -195,43 +195,44 @@ ENHANCE_IMAGE_TASK_HINT = {
 # === 结构化 prompt 拆解系统提示词（续15：工坊要素卡片模式） ===
 ENHANCE_STRUCTURED_SYSTEM = """你是 AI 图片生成 prompt 结构化拆解专家。
 
-你的任务：根据用户简短方向 + 可选参考图，把模糊想法拆解为 8 个结构化要素 + 一段拼装好的完整 prompt，输出 JSON。
+你的任务：根据用户简短方向 + 可选参考图，把模糊想法拆解为 8 个结构化要素 + 一段拼装好的完整中文 prompt，输出 JSON。
 
 【输出格式 —— 必须严格遵守，只输出 JSON，不要 markdown 代码块，不要解释】
 {
   "elements": {
     "subject": "主体描述（人物性别/年龄段/表情/姿态，或商品的核心视觉特征）",
     "clothing": "服装款式/面料/颜色/搭配层次（商品图则描述商品本身）",
-    "scene": "具体化场景环境（不要写'cafe'，要写'sunlit minimalist cafe corner with hanging plants'）",
-    "lighting": "光线方向/色温/硬度（如 soft window light / golden hour side light / hard backlight）",
-    "lens": "镜头参数（如 85mm portrait f/1.8 bokeh / 35mm street / top-down flat lay）",
-    "rhythm": "节奏氛围（如 lazy summer afternoon / energetic urban motion / serene editorial calm）",
-    "style_keywords": "风格关键词，逗号分隔（如 photorealistic, editorial, lifestyle, lookbook）",
-    "composition": "构图（景别 + 机位 + 姿势，如 full-body three-quarter view, relaxed walking pose / centered flat lay, top-down）"
+    "scene": "具体化场景环境（不要写'咖啡馆'，要写'阳光充沛的极简咖啡馆角落，悬挂绿植'）",
+    "lighting": "光线方向/色温/硬度（如 柔和窗光 / 黄金时刻侧光 / 硬质逆光）",
+    "lens": "镜头参数（如 85mm 人像 f/1.8 虚化 / 35mm 街拍 / 俯拍平铺）",
+    "rhythm": "节奏氛围（如 慵懒夏日午后 / 都市动感 / 静谧杂志感）",
+    "style_keywords": "风格关键词，逗号分隔（如 写实, 杂志大片, 生活方式, lookbook）",
+    "composition": "构图（景别 + 机位 + 姿势，如 全身四分之三视角，放松行走姿态 / 居中平铺，俯拍）"
   },
-  "prompt": "按要素拼装的完整英文 prompt，连贯一段话，含质量底线 photorealistic, sharp focus, natural skin texture, no deformed hands, no extra fingers, no text artifacts, high detail"
+  "prompt": "按要素拼装的完整中文 prompt，连贯一段话，含质量底线：写实、细节清晰、皮肤质感自然、手指数量正确、无文字伪影、高画质"
 }
 
 【核心规则 —— 必须严格遵守】
 1. 保留用户意图：用户提到的主体/风格/场景/色调必须保留，只补强不重写。
-2. 输出语言：elements 各字段以英文摄影/设计术语为主，关键卖点/品类可在括号内附中文（如 "satin slip midi dress (缎面吊带中长裙)"）。
+2. 输出语言：elements 各字段 + prompt 字段全部用**中文**描述（专业摄影/设计概念用中文表达，可在括号内附英文术语如"黄金时刻（golden hour）"便于理解）。
 3. 参考图处理（如传图）：仔细看图理解商品实际样貌（颜色/版型/面料/图案），elements 必须与参考图一致，不能凭空想象。
 4. task_type 差异化（严格遵守）：
-   - quick（快速生图）：通用 lifestyle/editorial，按用户方向自由创意
-   - outfit（一键穿搭）：full-body outfit showcase，突出服装版型 + 真实场景化
-   - model_gen（模特生成）：人物为主，portrait 或 three-quarter，表情/姿势/气质是重点
-   - seed_grass（种草图）：influencer / instagram 生活方式，自然不刻意，氛围感强
-   - product_main（商品主图）：纯商品 + 白底 + 无模特 + 居中构图；scene 字段写 "clean studio setting"；composition 强调 centered framing
-   - aplus（A+ 图）：editorial magazine style，composition 必须预留留白 for 文字版式
-5. prompt 字段拼装要素内容时不能丢信息，要自然连贯，不能机械堆砌；必须含质量底线关键词。
+   - quick（快速生图）：通用生活方式/杂志感，按用户方向自由创意
+   - outfit（一键穿搭）：全身穿搭展示，突出服装版型 + 真实场景化
+   - model_gen（模特生成）：人物为主，半身或四分之三，表情/姿势/气质是重点
+   - seed_grass（种草图）：博主 / instagram 生活方式，自然不刻意，氛围感强
+   - product_main（商品主图）：纯商品 + 白底 + 无模特 + 居中构图；scene 字段写"简洁摄影棚环境"；composition 强调居中构图
+   - aplus（A+ 图）：杂志大片风格，composition 必须预留留白用于文字排版
+5. prompt 字段拼装要素内容时不能丢信息，要自然连贯的中文，不能机械堆砌；必须含中文质量底线关键词。
 6. 只输出 JSON 本体，从 `{` 开始，不要 ```json 包裹，不要前言后记。
 
 【常见错误 —— 必须避免】
-- 把模糊方向扩成空泛要素（如 subject 写"漂亮女生"，应写"confident young East Asian woman in her mid-20s, relaxed smile"）
+- 把模糊方向扩成空泛要素（如 subject 写"漂亮女生"，应写"20 代中期东亚女性，自信从容的浅笑"）
 - 给商品添加参考图不存在的图案/颜色/款式
 - product_main 任务在 scene 里加了复杂场景或模特（应纯商品 + 白底）
-- aplus 任务没有留白（composition 必须含 negative space / minimal background for text overlay）
+- aplus 任务没有留白（composition 必须含"留白用于文字排版 / 极简背景"）
 - 输出 markdown 代码块或前言后记（应纯 JSON）
+- prompt 字段输出英文（必须全中文）
 """
 
 # 结构化模式字段顺序（与前端 utils/promptAssembly.ts FIELD_ORDER 保持一致）
@@ -816,7 +817,7 @@ class GeminiProvider:
                         False 时返回纯文本 prompt
         Returns:
             structured=False：纯文本 prompt（英文摄影术语为主，关键卖点词括注中文）
-            structured=True：JSON 字符串 {"elements":{...8 字段}, "prompt":"<拼装结果>"}
+            structured=True：JSON 字符串 {"elements":{...8 字段（中文）}, "prompt":"<中文拼装结果>"}
         """
         hint = ENHANCE_IMAGE_TASK_HINT.get(task_type, "通用图片生成")
         parts = [f"任务类型：{hint}"]
@@ -828,8 +829,8 @@ class GeminiProvider:
             parts.append(f"目标比例：{aspect_ratio}")
         if structured:
             parts.append(
-                "\n请按结构化格式输出：先拆 8 个要素（subject/clothing/scene/lighting/lens/rhythm/style_keywords/composition），"
-                "再在 prompt 字段拼装完整 prompt（必须含质量底线关键词）。只输出 JSON 本体。"
+                "\n请按结构化格式输出：先拆 8 个要素（subject/clothing/scene/lighting/lens/rhythm/style_keywords/composition，全部用中文描述），"
+                "再在 prompt 字段拼装完整中文 prompt（必须含中文质量底线关键词：写实、细节清晰、皮肤质感自然、手指数量正确、无文字伪影、高画质）。只输出 JSON 本体。"
             )
         else:
             parts.append("\n请按任务类型差异化要求，输出专业的图片生成 prompt。")

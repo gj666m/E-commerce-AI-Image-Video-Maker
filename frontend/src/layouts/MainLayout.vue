@@ -72,6 +72,11 @@
             <el-icon><ChatDotSquare /></el-icon>
             <template #title>AI 对话助手</template>
           </el-menu-item>
+          <!-- Prompt 工坊置顶（入口级，AI 帮你写专业 prompt） -->
+          <el-menu-item index="/prompt-workshop">
+            <el-icon><MagicStick /></el-icon>
+            <template #title>Prompt 工坊</template>
+          </el-menu-item>
 
           <!-- 分组：图片 -->
           <el-sub-menu index="grp-image">
@@ -234,7 +239,6 @@ const groups = {
     { path: '/history', title: '生成历史', icon: markRaw(Clock) },
     { path: '/video-history', title: '视频历史', icon: markRaw(VideoCamera) },
     { path: '/prompt-library', title: 'Prompt 复用库', icon: markRaw(Files) },
-    { path: '/prompt-workshop', title: 'Prompt 工坊', icon: markRaw(MagicStick) },
   ],
 }
 
