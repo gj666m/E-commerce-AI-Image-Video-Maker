@@ -259,8 +259,15 @@ const sections: Section[] = [
     desc: '店铺 / 链接 / 状态 / 效果追踪，量化素材价值',
     icon: markRaw(DataAnalysis),
     color: '#52c41a',
-    soon: true,
-    items: [],
+    items: [
+      {
+        path: '/asset-tracking',
+        title: '数据跟踪',
+        desc: '汇总已应用素材的播放 / 转化 / GMV，按店铺和素材维度追踪价值',
+        icon: markRaw(DataAnalysis),
+        color: 'linear-gradient(135deg, #52c41a, #95de64)',
+      },
+    ],
   },
 ]
 </script>

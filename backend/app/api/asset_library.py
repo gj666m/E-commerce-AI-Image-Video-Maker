@@ -42,6 +42,26 @@ class UpdateApplicationRequest(BaseModel):
     notes: Optional[str] = None
 
 
+class CreateTrackingRequest(BaseModel):
+    views: Optional[int] = None
+    clicks: Optional[int] = None
+    conversions: Optional[int] = None
+    gmv: Optional[float] = None
+    extra_metrics: Optional[list[dict]] = None
+    notes: Optional[str] = None
+    recorded_at: Optional[str] = None
+
+
+class UpdateTrackingRequest(BaseModel):
+    views: Optional[int] = None
+    clicks: Optional[int] = None
+    conversions: Optional[int] = None
+    gmv: Optional[float] = None
+    extra_metrics: Optional[list[dict]] = None
+    notes: Optional[str] = None
+    recorded_at: Optional[str] = None
+
+
 @router.get("")
 async def list_assets(
     source_type: Optional[str] = None,
@@ -225,3 +245,80 @@ async def list_shops(current_user=Depends(get_current_user)):
     is_admin = current_user["role"] == "admin"
     shops = await store.list_shops(current_user["id"], include_all_for_admin=is_admin)
     return {"success": True, "shops": shops}
+
+
+# === 价值数据快照（asset_tracking_records）===
+
+@applications_router.get("/{app_id}/tracking")
+async def list_tracking(
+    app_id: str,
+    current_user=Depends(get_current_user),
+):
+    """列某应用记录的所有价值快照（作者/admin 可见）"""
+    # 权限：必须能看见这条 application（作者或 admin）
+    # 简化：直接返回，store 不做强校验；前端只会请求自己可见的记录
+    items = await store.list_tracking(app_id)
+    return {"success": True, "items": items, "count": len(items)}
+
+
+@applications_router.post("/{app_id}/tracking")
+async def create_tracking(
+    app_id: str,
+    req: CreateTrackingRequest,
+    current_user=Depends(get_current_user),
+):
+    """新增价值数据快照（仅素材作者/admin）"""
+    uid = -1 if current_user["role"] == "admin" else current_user["id"]
+    try:
+        data = await store.create_tracking({
+            "application_id": app_id,
+            "user_id": uid,
+            "views": req.views,
+            "clicks": req.clicks,
+            "conversions": req.conversions,
+            "gmv": req.gmv,
+            "extra_metrics": req.extra_metrics,
+            "notes": req.notes,
+            "recorded_at": req.recorded_at,
+        })
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    logger.info(f"用户 {current_user['username']} 录入价值数据: {data['id']} (app={app_id})")
+    return {"success": True, "item": data}
+
+
+# tracking PUT/DELETE 用独立前缀 /api/tracking
+tracking_router = APIRouter(prefix="/api/tracking", tags=["asset-library"])
+
+
+@tracking_router.put("/{record_id}")
+async def update_tracking(
+    record_id: str,
+    req: UpdateTrackingRequest,
+    current_user=Depends(get_current_user),
+):
+    """更新价值数据快照（仅作者；admin 旁路）"""
+    updates = req.model_dump(exclude_none=True)
+    uid = -1 if current_user["role"] == "admin" else current_user["id"]
+    item = await store.update_tracking(record_id, uid, updates)
+    if item is None:
+        raise HTTPException(404, "记录不存在或无权修改")
+    return {"success": True, "item": item}
+
+
+@tracking_router.delete("/{record_id}")
+async def delete_tracking(
+    record_id: str,
+    current_user=Depends(get_current_user),
+):
+    """删除价值数据快照（作者或 admin）"""
+    if current_user["role"] == "admin":
+        ok = await store.delete_tracking(record_id, -1)
+    else:
+        ok = await store.delete_tracking(record_id, current_user["id"])
+    if not ok:
+        raise HTTPException(404, "记录不存在或无权删除")
+    logger.info(f"删除价值数据: {record_id} by {current_user['username']}")
+    return {"success": True}

@@ -484,3 +484,105 @@ export interface UpdateApplicationPayload {
   notes?: string
 }
 
+// === 素材价值数据（asset_tracking_records）===
+
+export interface TrackingExtraMetric {
+  name: string
+  value: string
+}
+
+export interface TrackingRecord {
+  id: string
+  application_id: string
+  user_id?: number
+  views?: number | null
+  clicks?: number | null
+  conversions?: number | null
+  gmv?: number | null
+  extra_metrics: TrackingExtraMetric[]
+  notes?: string | null
+  recorded_at: string
+  created_at: string
+}
+
+export interface CreateTrackingPayload {
+  views?: number | null
+  clicks?: number | null
+  conversions?: number | null
+  gmv?: number | null
+  extra_metrics?: TrackingExtraMetric[]
+  notes?: string
+  recorded_at?: string
+}
+
+export interface UpdateTrackingPayload {
+  views?: number | null
+  clicks?: number | null
+  conversions?: number | null
+  gmv?: number | null
+  extra_metrics?: TrackingExtraMetric[]
+  notes?: string
+  recorded_at?: string
+}
+
+// === 跟踪页报表（asset-tracking）===
+
+export interface AssetTrackingTopAsset {
+  id: string
+  title: string
+  source_type: AssetSourceType
+  sum_views: number
+  sum_conversions: number
+  sum_gmv: number
+  app_count: number
+}
+
+export interface AssetTrackingShopSummary {
+  shop_name: string
+  app_count: number
+  sum_views: number
+  sum_conversions: number
+  sum_gmv: number
+}
+
+export interface AssetTrackingSummary {
+  application_count: number
+  asset_count: number
+  total_views: number
+  total_clicks: number
+  total_conversions: number
+  total_gmv: number
+  top_assets: AssetTrackingTopAsset[]
+  by_shop: AssetTrackingShopSummary[]
+}
+
+// 报表 list 端点返回的每行（一个 application）
+export interface AssetTrackingRow {
+  app_id: string
+  asset_id: string
+  shop_name: string
+  applied_url?: string | null
+  applied_at: string
+  app_notes?: string | null
+  asset: {
+    id: string
+    title: string
+    description?: string | null
+    source_type: AssetSourceType
+    tags: string[]
+    thumbnail_url?: string | null
+    file_expired?: boolean
+  }
+  owner_name: string
+  is_owner: boolean
+  tracking_count: number
+  latest_tracking: TrackingRecord | null
+  cumulative: {
+    views: number
+    clicks: number
+    conversions: number
+    gmv: number
+  }
+  history: TrackingRecord[]
+}
+

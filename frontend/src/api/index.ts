@@ -1,6 +1,6 @@
 // 后端 API 封装
 import axios from 'axios'
-import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem, PromptLibraryItem, CreatePromptPayload, UpdatePromptPayload, PromptTaskType, PromptElements, AssetLibraryItem, AssetTag, CreateAssetPayload, UpdateAssetPayload, AssetSourceType, AssetApplication, CreateApplicationPayload, UpdateApplicationPayload } from '../types'
+import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem, PromptLibraryItem, CreatePromptPayload, UpdatePromptPayload, PromptTaskType, PromptElements, AssetLibraryItem, AssetTag, CreateAssetPayload, UpdateAssetPayload, AssetSourceType, AssetApplication, CreateApplicationPayload, UpdateApplicationPayload, TrackingRecord, CreateTrackingPayload, UpdateTrackingPayload, AssetTrackingSummary, AssetTrackingRow } from '../types'
 
 const api = axios.create({
   baseURL: '',
@@ -867,5 +867,56 @@ export async function deleteApplication(appId: string): Promise<{ success: boole
 
 export async function listApplicationShops(): Promise<{ success: boolean; shops: string[] }> {
   const { data } = await api.get('/api/applications/shops')
+  return data
+}
+
+// === 价值数据快照（asset_tracking_records）===
+
+export async function listTracking(appId: string): Promise<{ success: boolean; items: TrackingRecord[]; count: number }> {
+  const { data } = await api.get(`/api/applications/${appId}/tracking`)
+  return data
+}
+
+export async function createTracking(appId: string, payload: CreateTrackingPayload): Promise<{ success: boolean; item: TrackingRecord }> {
+  const { data } = await api.post(`/api/applications/${appId}/tracking`, payload)
+  return data
+}
+
+export async function updateTracking(recordId: string, payload: UpdateTrackingPayload): Promise<{ success: boolean; item: TrackingRecord }> {
+  const { data } = await api.put(`/api/tracking/${recordId}`, payload)
+  return data
+}
+
+export async function deleteTracking(recordId: string): Promise<{ success: boolean }> {
+  const { data } = await api.delete(`/api/tracking/${recordId}`)
+  return data
+}
+
+// === 跟踪页报表 ===
+
+export async function getAssetTrackingSummary(params?: {
+  shop?: string
+  tag?: string
+  from_date?: string
+  to_date?: string
+  user_id?: number
+}): Promise<{ success: boolean; summary: AssetTrackingSummary }> {
+  const { data } = await api.get('/api/asset-tracking/summary', { params })
+  return data
+}
+
+export async function getAssetTrackingList(params?: {
+  shop?: string
+  tag?: string
+  from_date?: string
+  to_date?: string
+  user_id?: number
+}): Promise<{ success: boolean; items: AssetTrackingRow[]; count: number }> {
+  const { data } = await api.get('/api/asset-tracking/list', { params })
+  return data
+}
+
+export async function listTrackingShops(): Promise<{ success: boolean; shops: string[] }> {
+  const { data } = await api.get('/api/asset-tracking/shops')
   return data
 }

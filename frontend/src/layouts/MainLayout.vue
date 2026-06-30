@@ -245,6 +245,7 @@ const groups = {
   ],
   asset: [
     { path: '/asset-library', title: '素材资产库', icon: markRaw(Files) },
+    { path: '/asset-tracking', title: '数据跟踪', icon: markRaw(DataAnalysis) },
   ],
 }
 

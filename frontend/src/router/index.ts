@@ -105,6 +105,11 @@ const router = createRouter({
       component: () => import('../views/AssetLibraryView.vue'),
     },
     {
+      path: '/asset-tracking',
+      name: 'asset-tracking',
+      component: () => import('../views/AssetTrackingView.vue'),
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/AdminUsersView.vue'),
