@@ -18,7 +18,13 @@
       <el-col :span="10">
         <el-card>
           <el-form label-position="top">
-            <el-form-item label="主题/创意描述" required>
+            <el-form-item required>
+              <template #label>
+                <span>主题/创意描述</span>
+                <el-button text size="small" @click="showPromptPicker = true" style="margin-left: 8px;">
+                  <el-icon><Collection /></el-icon>从 Prompt 库选用
+                </el-button>
+              </template>
               <el-input
                 v-model="form.theme"
                 type="textarea"
@@ -275,6 +281,9 @@
         </div>
       </el-col>
     </el-row>
+
+    <!-- Prompt 库选用弹窗 -->
+    <PromptLibraryPicker v-model="showPromptPicker" task-type="video_shots" @pick="handlePickPrompt" />
   </div>
 </template>
 
@@ -283,14 +292,16 @@ import { ref, computed, reactive, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Plus, MagicStick, InfoFilled, Loading, Delete, QuestionFilled,
+  Plus, MagicStick, InfoFilled, Loading, Delete, QuestionFilled, Collection,
 } from '@element-plus/icons-vue'
 import {
   planVideoShots, submitShotVideo, getErrorMessage,
   type VideoShot,
 } from '../api'
 import MentionTextarea from '../components/MentionTextarea.vue'
+import PromptLibraryPicker from '../components/PromptLibraryPicker.vue'
 import type { RefItem } from '../composables/useReferenceMention'
+import type { PromptLibraryItem } from '../types'
 
 const router = useRouter()
 function goGuide(anchor: string) {
@@ -311,6 +322,15 @@ const planning = ref(false)
 const submitting = ref(false)
 const shots = ref<VideoShot[]>([])
 const visualStyle = ref('')
+
+// 从 Prompt 库选用
+const showPromptPicker = ref(false)
+function handlePickPrompt(item: PromptLibraryItem) {
+  form.theme = item.full_prompt
+  if (item.aspect_ratio === '16:9' || item.aspect_ratio === '9:16' || item.aspect_ratio === '1:1') {
+    form.ratio = item.aspect_ratio
+  }
+}
 
 // 参考图（用于 AI 策划）
 const refFileList = ref<any[]>([])

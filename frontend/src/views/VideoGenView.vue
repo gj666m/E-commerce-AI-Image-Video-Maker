@@ -49,7 +49,13 @@
               </el-form-item>
 
               <!-- 创意描述 -->
-              <el-form-item label="创意描述" required>
+              <el-form-item required>
+                <template #label>
+                  <span>创意描述</span>
+                  <el-button text size="small" @click="showPromptPicker = true" style="margin-left: 8px;">
+                    <el-icon><Collection /></el-icon>从 Prompt 库选用
+                  </el-button>
+                </template>
                 <div class="description-row">
                   <MentionTextarea
                     v-model="form.description"
@@ -123,7 +129,13 @@
               <ProductInfoForm v-model="productInfo" :image="analyzableImage" />
 
               <!-- 视频描述 -->
-              <el-form-item label="视频描述" required>
+              <el-form-item required>
+                <template #label>
+                  <span>视频描述</span>
+                  <el-button text size="small" @click="showPromptPicker = true" style="margin-left: 8px;">
+                    <el-icon><Collection /></el-icon>从 Prompt 库选用
+                  </el-button>
+                </template>
                 <MentionTextarea
                   v-model="form.description"
                   :refs-source="refsSource"
@@ -341,6 +353,9 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- Prompt 库选用弹窗 -->
+    <PromptLibraryPicker v-model="showPromptPicker" task-type="video" @pick="handlePickPrompt" />
   </div>
 </template>
 
@@ -348,15 +363,16 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Loading, Close, MagicStick, Promotion, QuestionFilled } from '@element-plus/icons-vue'
+import { Loading, Close, MagicStick, Promotion, QuestionFilled, Collection } from '@element-plus/icons-vue'
 import ImageUploader from '../components/ImageUploader.vue'
 import ModelSelector from '../components/ModelSelector.vue'
 import PromptEditor from '../components/PromptEditor.vue'
 import VideoPreview from '../components/VideoPreview.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
 import MentionTextarea from '../components/MentionTextarea.vue'
+import PromptLibraryPicker from '../components/PromptLibraryPicker.vue'
 import { submitVideo, getVideoStatus, getVideoModels, getVideoTasks, analyzeFree, enhanceVideoPrompt, getErrorMessage } from '../api'
-import type { ModelInfo } from '../types'
+import type { ModelInfo, PromptLibraryItem } from '../types'
 
 const submitting = ref(false)
 const taskId = ref<string | null>(null)
@@ -393,6 +409,14 @@ const form = ref({
 })
 
 const videoModels = ref<ModelInfo[]>([])
+
+// 从 Prompt 库选用
+const showPromptPicker = ref(false)
+function handlePickPrompt(item: PromptLibraryItem) {
+  form.value.description = item.full_prompt
+  if (item.model_used) form.value.modelName = item.model_used
+  if (item.aspect_ratio) form.value.ratio = item.aspect_ratio
+}
 
 // 电商模式图片
 const productImages = ref<string[]>([])
