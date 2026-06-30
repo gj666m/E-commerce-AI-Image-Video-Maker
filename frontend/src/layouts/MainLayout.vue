@@ -234,6 +234,7 @@ const groups = {
     { path: '/history', title: '生成历史', icon: markRaw(Clock) },
     { path: '/video-history', title: '视频历史', icon: markRaw(VideoCamera) },
     { path: '/prompt-library', title: 'Prompt 复用库', icon: markRaw(Files) },
+    { path: '/prompt-workshop', title: 'Prompt 工坊', icon: markRaw(MagicStick) },
   ],
 }
 

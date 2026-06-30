@@ -59,6 +59,13 @@
                   <el-button text size="small" @click="showPromptPicker = true">
                     <el-icon><Collection /></el-icon>从 Prompt 库选用
                   </el-button>
+                  <EnhancePromptButton
+                    task-type="quick"
+                    :user-text="form.description"
+                    :aspect-ratio="form.aspectRatio"
+                    size="small"
+                    @enhanced="form.description = $event"
+                  />
                 </div>
               </template>
               <MentionTextarea
@@ -152,6 +159,7 @@ import { Plus, Close, Upload, EditPen, MagicStick, Promotion, QuestionFilled, Co
 import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import PromptLibraryPicker from '../components/PromptLibraryPicker.vue'
+import EnhancePromptButton from '../components/EnhancePromptButton.vue'
 import { generateImage, getModels, getErrorMessage } from '../api'
 import type { ModelInfo, ResultCard, PromptLibraryItem } from '../types'
 import { useImageList } from '../composables/useImageList'

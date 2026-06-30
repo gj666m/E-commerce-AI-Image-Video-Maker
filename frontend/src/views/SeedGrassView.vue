@@ -179,7 +179,17 @@
               <!-- ====== 手动模式专属 ====== -->
               <template v-if="mode === 'manual'">
                 <!-- 场景选择 -->
-                <el-form-item label="场景">
+                <el-form-item>
+                  <template #label>
+                    <span>场景</span>
+                    <EnhancePromptButton
+                      task-type="seed_grass"
+                      :user-text="form.scene"
+                      :aspect-ratio="form.aspectRatio"
+                      size="small"
+                      @enhanced="form.scene = $event"
+                    />
+                  </template>
                   <div class="scene-area">
                     <div class="preset-tags">
                       <el-tag
@@ -385,6 +395,7 @@ import { Plus, Close, Refresh, Loading, ArrowLeft, QuestionFilled } from '@eleme
 import type { UploadFile } from 'element-plus'
 import ModelSelector from '../components/ModelSelector.vue'
 import ResultCardManager from '../components/ResultCardManager.vue'
+import EnhancePromptButton from '../components/EnhancePromptButton.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
 import { generateImage, getModels, analyzePersona, planShots, getErrorMessage } from '../api'
 import type { ModelInfo, ResultCard, PersonaAnalysis, ShotPlan } from '../types'

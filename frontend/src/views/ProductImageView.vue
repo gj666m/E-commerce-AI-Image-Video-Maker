@@ -62,7 +62,17 @@
                 </el-form-item>
 
                 <!-- 额外描述 -->
-                <el-form-item label="补充描述（可选）">
+                <el-form-item>
+                  <template #label>
+                    <span>补充描述（可选）</span>
+                    <EnhancePromptButton
+                      task-type="product_main"
+                      :user-text="mainCustomPrompt"
+                      aspect-ratio="1:1"
+                      size="small"
+                      @enhanced="mainCustomPrompt = $event"
+                    />
+                  </template>
                   <el-input
                     v-model="mainCustomPrompt"
                     type="textarea"
@@ -187,7 +197,17 @@
                       </el-select>
                     </el-form-item>
 
-                    <el-form-item label="场景/背景描述">
+                    <el-form-item>
+                      <template #label>
+                        <span>场景/背景描述</span>
+                        <EnhancePromptButton
+                          task-type="aplus"
+                          :user-text="aplusForm.scene"
+                          :aspect-ratio="aplusForm.aspectRatio"
+                          size="small"
+                          @enhanced="aplusForm.scene = $event"
+                        />
+                      </template>
                       <el-input
                         v-model="aplusForm.scene"
                         type="textarea"
@@ -344,6 +364,7 @@ import type { ResultCard, AplusPlan } from '../types'
 import ResultCardManager from '../components/ResultCardManager.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
 import ModelSelector from '../components/ModelSelector.vue'
+import EnhancePromptButton from '../components/EnhancePromptButton.vue'
 import { getModels } from '../api'
 import type { ModelInfo } from '../types'
 

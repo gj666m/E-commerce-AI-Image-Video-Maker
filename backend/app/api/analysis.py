@@ -290,3 +290,53 @@ async def enhance_video_prompt(
         "success": True,
         "prompt": prompt,
     }
+
+
+# 图片类任务白名单（视频类走 /enhance-video-prompt，不在此）
+_IMAGE_TASK_TYPES = {"quick", "outfit", "model_gen", "seed_grass", "product_main", "aplus"}
+
+
+@router.post("/enhance-prompt")
+async def enhance_prompt(
+    current_user=Depends(get_current_user),
+    user_text: str = Form("", description="用户的简短方向（可空，完全由 AI 创意）"),
+    task_type: str = Form(..., description="任务类型：quick/outfit/model_gen/seed_grass/product_main/aplus"),
+    aspect_ratio: str | None = Form(None, description="比例（可选，如 9:16）"),
+    image: UploadFile | None = File(None, description="参考图（可选，有图时 AI 看图理解商品样貌）"),
+):
+    """图片 Prompt 智能创意接口
+
+    简短方向（可选）+ 参考图（可选）→ Gemini 创意出专业级图片生成 prompt。
+    用于 QuickImage / 一键穿搭 / 模特生成 / 种草图 / 商品主图 / A+ 图 的"智能创意"按钮。
+    视频类任务请走 /enhance-video-prompt。
+    """
+    if task_type not in _IMAGE_TASK_TYPES:
+        raise HTTPException(400, f"不支持的 task_type: {task_type}，图片类允许值：{sorted(_IMAGE_TASK_TYPES)}")
+
+    image_bytes = None
+    mime_type = "image/jpeg"
+    if image:
+        raw = await image.read()
+        if len(raw) > 20 * 1024 * 1024:
+            raise HTTPException(400, "图片大小不能超过 20MB")
+        image_bytes = compress_image(raw, max_long_edge=1280, format="JPEG")
+        mime_type = "image/jpeg"
+
+    logger.info(f"图片 prompt 智能创意: task={task_type} user_text={user_text[:50]!r} has_image={image is not None}")
+
+    try:
+        text = await _gemini.enhance_image_prompt(
+            user_text=user_text,
+            task_type=task_type,
+            image=image_bytes,
+            mime_type=mime_type,
+            aspect_ratio=aspect_ratio,
+        )
+    except RuntimeError as e:
+        logger.error(f"图片 prompt 智能创意失败: {e}")
+        raise HTTPException(500, str(e))
+
+    return {
+        "success": True,
+        "text": text,
+    }

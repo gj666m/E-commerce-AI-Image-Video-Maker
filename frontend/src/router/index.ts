@@ -95,6 +95,11 @@ const router = createRouter({
       component: () => import('../views/PromptLibraryView.vue'),
     },
     {
+      path: '/prompt-workshop',
+      name: 'prompt-workshop',
+      component: () => import('../views/PromptWorkshopView.vue'),
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/AdminUsersView.vue'),

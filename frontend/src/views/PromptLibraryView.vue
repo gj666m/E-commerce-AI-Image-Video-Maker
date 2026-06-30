@@ -69,6 +69,9 @@
           <div class="meta-footer">
             <span class="owner">{{ item.is_owner ? '我' : item.owner_name }} · {{ formatTime(item.created_at) }}</span>
             <div class="actions">
+              <el-button size="small" text @click="openInWorkshop(item)" v-if="!isVideoTask(item.task_type)">
+                <el-icon><MagicStick /></el-icon>在工坊打开
+              </el-button>
               <el-button size="small" text @click="copyPrompt(item)">
                 <el-icon><CopyDocument /></el-icon>复制
               </el-button>
@@ -135,15 +138,25 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Refresh, Picture, CopyDocument, Edit, Delete,
+  Refresh, Picture, CopyDocument, Edit, Delete, MagicStick,
 } from '@element-plus/icons-vue'
 import { listPrompts, updatePrompt, deletePrompt, getErrorMessage } from '../api'
 import type { PromptLibraryItem, PromptTaskType, UpdatePromptPayload } from '../types'
 import { useAuth } from '../composables/useAuth'
 
 const { isAdmin } = useAuth()
+const router = useRouter()
+
+// 视频类不能在工坊打开（工坊只做图片）
+function isVideoTask(t: PromptTaskType): boolean {
+  return t === 'video' || t === 'video_shots'
+}
+function openInWorkshop(item: PromptLibraryItem) {
+  router.push({ path: '/prompt-workshop', query: { prompt_id: item.id } })
+}
 
 const items = ref<PromptLibraryItem[]>([])
 const loading = ref(false)

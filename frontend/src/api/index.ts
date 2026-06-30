@@ -272,6 +272,27 @@ export async function enhanceVideoPrompt(
   return data
 }
 
+// 图片 Prompt 智能创意（简短方向 + 可选参考图 → 专业级图片生成 prompt）
+// 用于 QuickImage / 一键穿搭 / 模特生成 / 种草图 / 商品主图 / A+ 图 的"智能创意"按钮
+export async function enhanceImagePrompt(
+  userText: string,
+  taskType: PromptTaskType,
+  aspectRatio?: string,
+  image?: File,
+): Promise<{ success: boolean; text: string }> {
+  const formData = new FormData()
+  formData.append('user_text', userText)
+  formData.append('task_type', taskType)
+  if (aspectRatio) formData.append('aspect_ratio', aspectRatio)
+  if (image) formData.append('image', image)
+
+  const { data } = await api.post('/api/enhance-prompt', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  })
+  return data
+}
+
 // AI 种草图策划
 export async function planShots(
   images: File[],

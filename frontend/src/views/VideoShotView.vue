@@ -24,6 +24,13 @@
                 <el-button text size="small" @click="showPromptPicker = true" style="margin-left: 8px;">
                   <el-icon><Collection /></el-icon>从 Prompt 库选用
                 </el-button>
+                <EnhancePromptButton
+                  task-type="video_shots"
+                  :user-text="form.theme"
+                  :duration="form.totalDuration"
+                  size="small"
+                  @enhanced="form.theme = $event"
+                />
               </template>
               <el-input
                 v-model="form.theme"
@@ -300,6 +307,7 @@ import {
 } from '../api'
 import MentionTextarea from '../components/MentionTextarea.vue'
 import PromptLibraryPicker from '../components/PromptLibraryPicker.vue'
+import EnhancePromptButton from '../components/EnhancePromptButton.vue'
 import type { RefItem } from '../composables/useReferenceMention'
 import type { PromptLibraryItem } from '../types'
 
