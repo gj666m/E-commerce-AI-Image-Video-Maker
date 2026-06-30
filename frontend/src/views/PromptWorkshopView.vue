@@ -53,7 +53,7 @@
                     @click="runStructuredEnhance"
                   >
                     <el-icon style="margin-right: 4px"><MagicStick /></el-icon>
-                    智能创意（拆要素）
+                    {{ elements ? '基于要素再优化' : '智能创意（拆要素）' }}
                   </el-button>
                 </span>
               </template>
@@ -61,7 +61,7 @@
                 v-model="imageUserText"
                 type="textarea"
                 :rows="3"
-                placeholder="如：夏日海边度假裙装，阳光、海风、慢走。留空则 AI 完全自由创意"
+                :placeholder="imagePlaceholder"
               />
             </el-form-item>
 
@@ -212,7 +212,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus, Close, Position, QuestionFilled, StarFilled, MagicStick, CopyDocument } from '@element-plus/icons-vue'
@@ -255,6 +255,17 @@ const IMAGE_TASK_SET = new Set<string>(IMAGE_TASK_TYPES.map((t) => t.value))
 function isImageTask(t: PromptTaskType): boolean {
   return IMAGE_TASK_SET.has(t)
 }
+
+// === #6 按 task_type 给描述框示例 placeholder ===
+const PLACEHOLDER_MAP: Record<string, string> = {
+  quick: '如：夏日海边度假裙装，阳光、海风、慢走。留空则 AI 完全自由创意',
+  outfit: '如：秋季通勤穿搭，针织衫 + 阔腿裤，街头随拍',
+  model_gen: '如：25 岁东亚女性模特，温柔知性，半身肖像',
+  seed_grass: '如：博主街拍，手拿咖啡，自然行走，ins 氛围感',
+  product_main: '如：纯棉白色圆领 T 恤（可上传商品图让 AI 看图写）',
+  aplus: '如：杂志大片风，预留文字排版空间，视觉冲击强',
+}
+const imagePlaceholder = computed(() => PLACEHOLDER_MAP[form.taskType] || '描述你的想法，留空则 AI 自由创意')
 
 // === 表单状态 ===
 const form = reactive({
@@ -309,8 +320,66 @@ const jumpLabel = computed(() => {
 // === 改 elements/比例 → 自动重拼装（finalPrompt computed 自动响应，无需手动同步） ===
 // 改比例仅影响图片类拼装，finalPrompt 已依赖 form.aspectRatio，自动响应
 
+// === #3 草稿持久化（localStorage，避免误关页面丢失加工成果） ===
+const DRAFT_KEY = 'workshop_draft_v1'
+function saveDraft() {
+  try {
+    const payload = {
+      taskType: form.taskType,
+      aspectRatio: form.aspectRatio,
+      imageUserText: imageUserText.value,
+      elements: elements.value,
+      videoPrompt: form.prompt,            // video 单段
+      videoShotsTheme: videoShotsTheme.value,
+      videoShotsTotalDuration: videoShotsTotalDuration.value,
+      shots: shots.value,
+      ts: Date.now(),
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(payload))
+  } catch { /* localStorage 满或禁用，忽略 */ }
+}
+function loadDraft(): boolean {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return false
+    const d = JSON.parse(raw)
+    // 超过 7 天的草稿丢弃
+    if (!d.ts || Date.now() - d.ts > 7 * 24 * 3600 * 1000) {
+      localStorage.removeItem(DRAFT_KEY)
+      return false
+    }
+    form.taskType = d.taskType || 'quick'
+    form.aspectRatio = d.aspectRatio || '9:16'
+    imageUserText.value = d.imageUserText || ''
+    elements.value = d.elements || null
+    form.prompt = d.videoPrompt || ''
+    videoShotsTheme.value = d.videoShotsTheme || ''
+    videoShotsTotalDuration.value = d.videoShotsTotalDuration || 10
+    shots.value = Array.isArray(d.shots) ? d.shots : []
+    return true
+  } catch { return false }
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY) } catch { /* 忽略 */ }
+}
+
+// 跳转生成页后清草稿（已经用上了，不再需要）
+function clearDraftOnJump() {
+  clearDraft()
+}
+
+// 自动保存（节流：500ms 内只存一次）
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+function saveDraftDebounced() {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = setTimeout(saveDraft, 500)
+}
+watch([() => form.taskType, () => form.aspectRatio, () => form.prompt,
+       imageUserText, elements, videoShotsTheme, () => videoShotsTotalDuration.value, shots],
+      saveDraftDebounced, { deep: true })
+
 onMounted(() => {
-  // 从 query.prompt_id 加载 Prompt 库中的某条（预填）
+  // 优先级：query.prompt_id（Prompt 库打开）> 草稿恢复
   const pid = route.query.prompt_id
   if (typeof pid === 'string' && pid) {
     listPrompts()
@@ -319,6 +388,8 @@ onMounted(() => {
         if (item) loadFromLibrary(item)
       })
       .catch(() => { /* 忽略 */ })
+  } else if (loadDraft()) {
+    ElMessage.info('已恢复上次未完成的工坊草稿')
   }
 })
 
@@ -373,11 +444,36 @@ function removeRef(idx: number) {
 }
 
 // === 图片类「智能创意」（结构化模式） ===
+// 首次：用 imageUserText 作方向
+// 多轮（elements 已存在）：把当前要素拼成上下文，让 AI 基于现状优化
 async function runStructuredEnhance() {
   if (!isImageTask(form.taskType)) return
   enhancing.value = true
   try {
-    const userText = imageUserText.value.trim() || elements.value?.subject || ''
+    let userText: string
+    if (elements.value) {
+      // 多轮优化：拼当前要素为上下文
+      const fields: Array<[string, string]> = [
+        ['主体', elements.value.subject],
+        ['服装', elements.value.clothing],
+        ['场景', elements.value.scene],
+        ['光影', elements.value.lighting],
+        ['镜头', elements.value.lens],
+        ['节奏', elements.value.rhythm],
+        ['构图', elements.value.composition],
+        ['风格', elements.value.style_keywords],
+      ]
+      const ctx = fields
+        .filter(([, v]) => (v || '').trim())
+        .map(([k, v]) => `${k}：${v.trim()}`)
+        .join('\n')
+      userText = `以下是当前已拆解的要素，请在保留用户意图基础上进一步优化、补强细节、修正不协调处：\n${ctx}`
+      if (imageUserText.value.trim()) {
+        userText += `\n\n用户新补充方向：${imageUserText.value.trim()}`
+      }
+    } else {
+      userText = imageUserText.value.trim() || ''
+    }
     const result = await enhanceImagePromptStructured(
       userText,
       form.taskType,
@@ -389,7 +485,7 @@ async function runStructuredEnhance() {
       return
     }
     elements.value = result.structured.elements
-    ElMessage.success('已拆解 8 要素，可在右侧卡片编辑')
+    ElMessage.success(elements.value ? '要素已优化，可在右侧卡片编辑' : '已拆解 8 要素，可在右侧卡片编辑')
   } catch (e) {
     ElMessage.error('智能创意失败：' + getErrorMessage(e, '请重试'))
   } finally {
@@ -430,6 +526,7 @@ function jumpToGenerate() {
   if (isImageTask(form.taskType)) {
     sessionStorage.setItem('workshop_prefill_image', finalPrompt.value)
     if (form.aspectRatio) sessionStorage.setItem('workshop_prefill_image_ratio', form.aspectRatio)
+    clearDraftOnJump()
     ElMessage.success('已准备预填，跳转 QuickImage')
     router.push('/quick-image')
     return
@@ -439,12 +536,14 @@ function jumpToGenerate() {
     if (videoShotsTheme.value) {
       sessionStorage.setItem('workshop_prefill_video_shots_theme', videoShotsTheme.value)
     }
+    clearDraftOnJump()
     ElMessage.success('已准备预填分镜，跳转分镜视频页')
     router.push('/video-shots')
     return
   }
   // video 单段
   sessionStorage.setItem('workshop_prefill_video', form.prompt)
+  clearDraftOnJump()
   ElMessage.success('已准备预填，跳转视频生成页')
   router.push('/video')
 }
