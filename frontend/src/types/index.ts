@@ -310,6 +310,19 @@ export interface ShotPlan {
   prompt_hint: string
 }
 
+// 结构化 prompt 8 要素（续15 工坊要素卡片模式）
+// 字段顺序对齐 backend ENHANCE_STRUCTURED_FIELD_ORDER
+export interface PromptElements {
+  subject: string
+  clothing: string
+  scene: string
+  lighting: string
+  lens: string
+  rhythm: string
+  style_keywords: string
+  composition: string
+}
+
 // 策划响应
 export interface PlanShotsResponse {
   success: boolean

@@ -295,7 +295,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, watch, onUnmounted } from 'vue'
+import { ref, computed, reactive, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -369,6 +369,30 @@ function syncPreviews() {
 }
 
 watch([productFiles, modelFiles], syncPreviews, { deep: true, immediate: true })
+
+onMounted(() => {
+  // 续15：从 Prompt 工坊接收预填分镜（跳过 plan 直接展示可编辑表）
+  const prefillShots = sessionStorage.getItem('workshop_prefill_video_shots')
+  if (prefillShots) {
+    try {
+      const parsed = JSON.parse(prefillShots) as VideoShot[]
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        shots.value = parsed.map((s, i) => ({ ...s, index: i + 1 }))
+        const theme = sessionStorage.getItem('workshop_prefill_video_shots_theme')
+        if (theme) form.theme = theme
+        // 取最后一个非空 visual_style 作为整体
+        const vs = parsed.find((s) => s.visual_style?.trim())
+        if (vs) visualStyle.value = vs.visual_style || ''
+        ElMessage.success(`已从工坊预填 ${parsed.length} 个分镜，可直接提交或编辑`)
+      }
+    } catch {
+      /* 忽略解析错误 */
+    } finally {
+      sessionStorage.removeItem('workshop_prefill_video_shots')
+      sessionStorage.removeItem('workshop_prefill_video_shots_theme')
+    }
+  }
+})
 
 onUnmounted(() => {
   productPreviews.value.forEach((p) => URL.revokeObjectURL(p.preview_url))

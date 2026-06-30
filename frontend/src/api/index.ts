@@ -1,6 +1,6 @@
 // 后端 API 封装
 import axios from 'axios'
-import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem, PromptLibraryItem, CreatePromptPayload, UpdatePromptPayload, PromptTaskType } from '../types'
+import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem, PromptLibraryItem, CreatePromptPayload, UpdatePromptPayload, PromptTaskType, PromptElements } from '../types'
 
 const api = axios.create({
   baseURL: '',
@@ -283,6 +283,31 @@ export async function enhanceImagePrompt(
   const formData = new FormData()
   formData.append('user_text', userText)
   formData.append('task_type', taskType)
+  if (aspectRatio) formData.append('aspect_ratio', aspectRatio)
+  if (image) formData.append('image', image)
+
+  const { data } = await api.post('/api/enhance-prompt', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
+  })
+  return data
+}
+
+// 图片 Prompt 智能创意（结构化模式）— 返回 8 要素 + 拼装 prompt（续15 工坊要素卡片）
+// taskType 仅支持图片类 6 种（quick/outfit/model_gen/seed_grass/product_main/aplus）
+export async function enhanceImagePromptStructured(
+  userText: string,
+  taskType: PromptTaskType,
+  aspectRatio?: string,
+  image?: File,
+): Promise<{
+  success: boolean
+  structured: { elements: PromptElements; prompt: string }
+}> {
+  const formData = new FormData()
+  formData.append('user_text', userText)
+  formData.append('task_type', taskType)
+  formData.append('structured', 'true')
   if (aspectRatio) formData.append('aspect_ratio', aspectRatio)
   if (image) formData.append('image', image)
 

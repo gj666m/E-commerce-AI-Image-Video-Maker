@@ -519,6 +519,13 @@ async function enhanceDescription() {
 }
 
 onMounted(async () => {
+  // 续15：从 Prompt 工坊接收预填 prompt（优先级最高，覆盖原 description）
+  const workshopPrefill = sessionStorage.getItem('workshop_prefill_video')
+  if (workshopPrefill) {
+    form.value.description = workshopPrefill
+    sessionStorage.removeItem('workshop_prefill_video')
+    ElMessage.success('已从工坊预填描述')
+  }
   // 从图片生成页接收参考图（放入商品图区）
   const refImagesStr = sessionStorage.getItem('video_ref_images')
   if (refImagesStr) {
