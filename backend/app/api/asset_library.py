@@ -1,0 +1,129 @@
+# 素材资产库 API（续19）
+# 已生成图/视频的沉淀池。运营加入素材库 + 自定义标签 + 后续应用追踪。
+# 文件永久保留（清理任务跳过已沉淀素材）。
+import logging
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+
+from app.deps import get_current_user
+from app.services import asset_library_store as store
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/asset-library", tags=["asset-library"])
+
+_ALLOWED_SOURCE_TYPES = {"image", "video"}
+
+
+class CreateAssetRequest(BaseModel):
+    source_type: str                       # 'image' / 'video'
+    source_id: str                         # generation_history.id 或 video_tasks.id
+    title: str
+    description: Optional[str] = None
+    tags: Optional[list[str]] = None
+
+
+class UpdateAssetRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[list[str]] = None
+
+
+@router.get("")
+async def list_assets(
+    source_type: Optional[str] = None,
+    tag: Optional[str] = None,
+    q: Optional[str] = None,
+    user_id: Optional[int] = None,
+    current_user=Depends(get_current_user),
+):
+    """列表：自己的（admin 可看所有人，?user_id= 筛选）"""
+    is_admin = current_user["role"] == "admin"
+    items = await store.list_assets(
+        user_id=current_user["id"],
+        source_type=source_type,
+        tag=tag,
+        q=q,
+        include_all_for_admin=is_admin,
+        target_user_id=user_id if is_admin else None,
+    )
+    return {"success": True, "items": items, "count": len(items)}
+
+
+@router.get("/tags")
+async def list_tags(current_user=Depends(get_current_user)):
+    """标签云（聚合当前用户的所有标签 + 计数）"""
+    tags = await store.list_tags(current_user["id"])
+    return {"success": True, "tags": tags}
+
+
+@router.post("")
+async def create_asset(req: CreateAssetRequest, current_user=Depends(get_current_user)):
+    """加入素材库"""
+    if req.source_type not in _ALLOWED_SOURCE_TYPES:
+        raise HTTPException(400, f"source_type 仅允许: {sorted(_ALLOWED_SOURCE_TYPES)}")
+    if not req.title.strip():
+        raise HTTPException(400, "标题不能为空")
+    if not req.source_id.strip():
+        raise HTTPException(400, "source_id 不能为空")
+
+    try:
+        data = await store.create_asset({
+            "user_id": current_user["id"],
+            "source_type": req.source_type,
+            "source_id": req.source_id,
+            "title": req.title.strip(),
+            "description": req.description,
+            "tags": req.tags or [],
+        })
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+
+    logger.info(f"用户 {current_user['username']} 加入素材库: {data['id']} ({req.source_type})")
+    return {"success": True, "item": data}
+
+
+@router.put("/{asset_id}")
+async def update_asset(
+    asset_id: str,
+    req: UpdateAssetRequest,
+    current_user=Depends(get_current_user),
+):
+    """更新（仅作者；admin 通过 store 旁路 user_id=-1）"""
+    updates = req.model_dump(exclude_none=True)
+    # admin 旁路
+    uid = -1 if current_user["role"] == "admin" else current_user["id"]
+    item = await store.update_asset(asset_id, uid, updates)
+    if item is None:
+        raise HTTPException(404, "记录不存在或无权修改")
+    return {"success": True, "item": item}
+
+
+@router.delete("/{asset_id}")
+async def delete_asset(
+    asset_id: str,
+    current_user=Depends(get_current_user),
+):
+    """删除（作者或 admin；级联删 applications + tracking）"""
+    if current_user["role"] == "admin":
+        ok = await store.delete_asset_admin(asset_id)
+    else:
+        ok = await store.delete_asset(asset_id, current_user["id"])
+    if not ok:
+        raise HTTPException(404, "记录不存在或无权删除")
+    logger.info(f"删除素材: {asset_id} by {current_user['username']}")
+    return {"success": True}
+
+
+@router.get("/is-preserved")
+async def check_preserved(
+    source_type: str = Query(...),
+    source_id: str = Query(...),
+    current_user=Depends(get_current_user),
+):
+    """检查某条历史是否已沉淀（给前端按钮状态用）"""
+    if source_type not in _ALLOWED_SOURCE_TYPES:
+        raise HTTPException(400, f"source_type 仅允许: {sorted(_ALLOWED_SOURCE_TYPES)}")
+    preserved = await store.is_preserved(current_user["id"], source_type, source_id)
+    return {"success": True, "preserved": preserved}

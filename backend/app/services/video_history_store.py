@@ -185,10 +185,14 @@ async def cleanup_expired_video_history() -> int:
     db = await get_db()
     try:
         # 阶段 1：文件过期 → 删盘 + 标记 file_expired=1（只处理尚未标记的）
+        # 跳过已沉淀到 asset_library 的素材（续19 永久保留文件）
         cursor = await db.execute(
             """SELECT id, video_url FROM video_tasks
             WHERE status = 'completed' AND file_expired = 0
-              AND created_at < datetime('now', 'localtime', ?)""",
+              AND created_at < datetime('now', 'localtime', ?)
+              AND id NOT IN (
+                  SELECT source_id FROM asset_library WHERE source_type = 'video'
+              )""",
             (f"-{FILE_EXPIRE_DAYS} days",),
         )
         file_rows = await cursor.fetchall()
@@ -205,9 +209,13 @@ async def cleanup_expired_video_history() -> int:
             )
 
         # 阶段 2：记录过期 → DELETE 整行（文件阶段 1 已删，无需再删）
+        # 同样跳过已沉淀素材
         cursor = await db.execute(
             """SELECT id FROM video_tasks
-            WHERE status = 'completed' AND created_at < datetime('now', 'localtime', ?)""",
+            WHERE status = 'completed' AND created_at < datetime('now', 'localtime', ?)
+              AND id NOT IN (
+                  SELECT source_id FROM asset_library WHERE source_type = 'video'
+              )""",
             (f"-{RECORD_EXPIRE_DAYS} days",),
         )
         record_rows = await cursor.fetchall()

@@ -89,12 +89,60 @@ CREATE TABLE IF NOT EXISTS prompt_library (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS asset_library (
+    id TEXT PRIMARY KEY,                     -- al_xxxxxxxx
+    user_id INTEGER NOT NULL,
+    source_type TEXT NOT NULL,               -- 'image' / 'video'（关联 generation_history / video_tasks）
+    source_id TEXT NOT NULL,                 -- 关联源表 id
+    title TEXT NOT NULL,
+    description TEXT,
+    tags TEXT NOT NULL DEFAULT '[]',         -- JSON 数组，自定义标签
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS asset_applications (
+    id TEXT PRIMARY KEY,                     -- aa_xxxxxxxx
+    asset_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,                -- 冗余便于权限过滤
+    shop_name TEXT NOT NULL,                 -- 自由填（亚马逊 / TikTok 店铺名）
+    applied_url TEXT,                        -- listing / 视频链接
+    applied_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (asset_id) REFERENCES asset_library(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS asset_tracking_records (
+    id TEXT PRIMARY KEY,                     -- tr_xxxxxxxx
+    application_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    views INTEGER,                           -- 预设通用：播放量
+    clicks INTEGER,                          -- 点击
+    conversions INTEGER,                     -- 转化数
+    gmv REAL,                                -- 销售额
+    extra_metrics TEXT NOT NULL DEFAULT '[]', -- JSON 数组，自定义指标 [{name,value}]
+    notes TEXT,
+    recorded_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),  -- 数据归属时间
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),   -- 录入时间
+    FOREIGN KEY (application_id) REFERENCES asset_applications(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_model_library_user ON model_library(user_id);
 CREATE INDEX IF NOT EXISTS idx_video_tasks_user ON video_tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_history_user ON generation_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_history_created ON generation_history(created_at);
 CREATE INDEX IF NOT EXISTS idx_prompt_library_user ON prompt_library(user_id);
 CREATE INDEX IF NOT EXISTS idx_prompt_library_task_type ON prompt_library(task_type);
+CREATE INDEX IF NOT EXISTS idx_asset_library_user ON asset_library(user_id);
+CREATE INDEX IF NOT EXISTS idx_asset_library_source ON asset_library(source_type, source_id);
+CREATE INDEX IF NOT EXISTS idx_asset_app_asset ON asset_applications(asset_id);
+CREATE INDEX IF NOT EXISTS idx_asset_app_user ON asset_applications(user_id);
+CREATE INDEX IF NOT EXISTS idx_asset_app_shop ON asset_applications(shop_name);
+CREATE INDEX IF NOT EXISTS idx_tracking_app ON asset_tracking_records(application_id);
+CREATE INDEX IF NOT EXISTS idx_tracking_recorded ON asset_tracking_records(recorded_at);
 """
 
 

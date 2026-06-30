@@ -305,10 +305,14 @@ async def cleanup_expired_history() -> int:
     db = await get_db()
     try:
         # 阶段 1：文件过期 → 删盘 + 标记 file_expired=1（只处理尚未标记的）
+        # 跳过已沉淀到 asset_library 的素材（续19 永久保留文件）
         cursor = await db.execute(
             """SELECT id, user_id, file, thumbnail FROM generation_history
             WHERE file_expired = 0
-              AND created_at < datetime('now', 'localtime', ?)""",
+              AND created_at < datetime('now', 'localtime', ?)
+              AND id NOT IN (
+                  SELECT source_id FROM asset_library WHERE source_type = 'image'
+              )""",
             (f"-{file_days} days",),
         )
         file_rows = await cursor.fetchall()
@@ -335,9 +339,13 @@ async def cleanup_expired_history() -> int:
             )
 
         # 阶段 2：记录过期 → DELETE 整行（不再删文件，阶段 1 已删）
+        # 同样跳过已沉淀素材（避免元数据被删导致 asset_library 失联）
         cursor = await db.execute(
             """SELECT id FROM generation_history
-            WHERE created_at < datetime('now', 'localtime', ?)""",
+            WHERE created_at < datetime('now', 'localtime', ?)
+              AND id NOT IN (
+                  SELECT source_id FROM asset_library WHERE source_type = 'image'
+              )""",
             (f"-{record_days} days",),
         )
         record_rows = await cursor.fetchall()
