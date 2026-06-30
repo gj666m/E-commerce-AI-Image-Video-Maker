@@ -100,6 +100,11 @@ const router = createRouter({
       component: () => import('../views/PromptWorkshopView.vue'),
     },
     {
+      path: '/asset-library',
+      name: 'asset-library',
+      component: () => import('../views/AssetLibraryView.vue'),
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/AdminUsersView.vue'),

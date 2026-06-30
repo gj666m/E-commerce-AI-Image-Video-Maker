@@ -1,6 +1,6 @@
 // 后端 API 封装
 import axios from 'axios'
-import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem, PromptLibraryItem, CreatePromptPayload, UpdatePromptPayload, PromptTaskType, PromptElements } from '../types'
+import type { GenerateParams, GenerateResult, ModelsResponse, HealthResponse, VideoGenerateParams, VideoGenerateResponse, VideoTaskStatus, VideoModelInfo, ModelGenerateParams, ModelGenerateResult, ModelSaveParams, ModelListResponse, AnalyzeResponse, AnalyzePersonaResponse, PlanShotsResponse, RecommendStylesResponse, PlanAplusResponse, LoginResponse, UserItem, HistoryItem, VideoHistoryItem, PromptLibraryItem, CreatePromptPayload, UpdatePromptPayload, PromptTaskType, PromptElements, AssetLibraryItem, AssetTag, CreateAssetPayload, UpdateAssetPayload, AssetSourceType, AssetApplication, CreateApplicationPayload, UpdateApplicationPayload } from '../types'
 
 const api = axios.create({
   baseURL: '',
@@ -801,5 +801,71 @@ export async function deletePrompt(promptId: string): Promise<{ success: boolean
 
 export async function markPromptUsed(promptId: string): Promise<{ success: boolean }> {
   const { data } = await api.post(`/api/prompt-library/${promptId}/use`)
+  return data
+}
+
+// ====== 素材资产库（续19）======
+
+export async function listAssets(params?: {
+  source_type?: AssetSourceType
+  tag?: string
+  q?: string
+  user_id?: number
+}): Promise<{ success: boolean; items: AssetLibraryItem[]; count: number }> {
+  const { data } = await api.get('/api/asset-library', { params: params || {} })
+  return data
+}
+
+export async function listAssetTags(): Promise<{ success: boolean; tags: AssetTag[] }> {
+  const { data } = await api.get('/api/asset-library/tags')
+  return data
+}
+
+export async function createAsset(payload: CreateAssetPayload): Promise<{ success: boolean; item: AssetLibraryItem }> {
+  const { data } = await api.post('/api/asset-library', payload)
+  return data
+}
+
+export async function updateAsset(assetId: string, payload: UpdateAssetPayload): Promise<{ success: boolean; item: AssetLibraryItem }> {
+  const { data } = await api.put(`/api/asset-library/${assetId}`, payload)
+  return data
+}
+
+export async function deleteAsset(assetId: string): Promise<{ success: boolean }> {
+  const { data } = await api.delete(`/api/asset-library/${assetId}`)
+  return data
+}
+
+export async function checkAssetPreserved(sourceType: AssetSourceType, sourceId: string): Promise<{ success: boolean; preserved: boolean }> {
+  const { data } = await api.get('/api/asset-library/is-preserved', {
+    params: { source_type: sourceType, source_id: sourceId },
+  })
+  return data
+}
+
+// === 应用记录 ===
+
+export async function listApplications(assetId: string): Promise<{ success: boolean; items: AssetApplication[]; count: number }> {
+  const { data } = await api.get(`/api/asset-library/${assetId}/applications`)
+  return data
+}
+
+export async function createApplication(assetId: string, payload: CreateApplicationPayload): Promise<{ success: boolean; item: AssetApplication }> {
+  const { data } = await api.post(`/api/asset-library/${assetId}/applications`, payload)
+  return data
+}
+
+export async function updateApplication(appId: string, payload: UpdateApplicationPayload): Promise<{ success: boolean; item: AssetApplication }> {
+  const { data } = await api.put(`/api/applications/${appId}`, payload)
+  return data
+}
+
+export async function deleteApplication(appId: string): Promise<{ success: boolean }> {
+  const { data } = await api.delete(`/api/applications/${appId}`)
+  return data
+}
+
+export async function listApplicationShops(): Promise<{ success: boolean; shops: string[] }> {
+  const { data } = await api.get('/api/applications/shops')
   return data
 }

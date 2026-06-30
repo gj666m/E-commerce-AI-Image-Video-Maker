@@ -240,11 +240,18 @@ const sections: Section[] = [
   {
     key: 'asset',
     title: '素材资产库',
-    desc: '标签维护 + 素材沉淀池，方便检索复用',
+    desc: '把已生成的好图好视频沉淀下来，打标签、加店铺应用、追踪价值',
     icon: markRaw(Files),
     color: '#faad14',
-    soon: true,
-    items: [],
+    items: [
+      {
+        path: '/asset-library',
+        title: '素材资产库',
+        desc: '沉淀已生成的好图好视频，打标签管理，标记店铺应用',
+        icon: markRaw(Files),
+        color: 'linear-gradient(135deg, #faad14, #ffc53d)',
+      },
+    ],
   },
   {
     key: 'tracking',

@@ -417,3 +417,70 @@ export interface VideoHistoryItem {
   user_id?: number
   username?: string
 }
+
+// === 素材资产库（续19）===
+// 「素材」= 已生成的图/视频被挑出来沉淀的，不是输入参考图
+
+export type AssetSourceType = 'image' | 'video'
+
+export interface AssetLibraryItem {
+  id: string
+  user_id: number
+  source_type: AssetSourceType
+  source_id: string
+  title: string
+  description?: string | null
+  tags: string[]
+  created_at: string
+  // JOIN 出来的字段（后端组装）
+  thumbnail_url?: string | null    // /gen-files/... 或 /video-files/...
+  file_expired?: boolean           // 源文件是否已过期
+  applied_count?: number           // 已被多少个店铺应用
+  owner_name?: string
+  is_owner?: boolean
+}
+
+export interface CreateAssetPayload {
+  source_type: AssetSourceType
+  source_id: string
+  title: string
+  description?: string
+  tags?: string[]
+}
+
+export interface UpdateAssetPayload {
+  title?: string
+  description?: string
+  tags?: string[]
+}
+
+export interface AssetTag {
+  name: string
+  count: number
+}
+
+// === 素材应用记录 ===
+
+export interface AssetApplication {
+  id: string
+  asset_id: string
+  user_id: number
+  shop_name: string
+  applied_url?: string | null
+  applied_at: string
+  notes?: string | null
+  created_at: string
+}
+
+export interface CreateApplicationPayload {
+  shop_name: string
+  applied_url?: string
+  notes?: string
+}
+
+export interface UpdateApplicationPayload {
+  shop_name?: string
+  applied_url?: string
+  notes?: string
+}
+

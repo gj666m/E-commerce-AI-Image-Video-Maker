@@ -126,13 +126,16 @@
             </el-menu-item>
           </el-sub-menu>
 
-          <!-- 分组：素材资产库（即将上线） -->
-          <el-sub-menu index="grp-asset" disabled>
+          <!-- 分组：素材资产库 -->
+          <el-sub-menu index="grp-asset">
             <template #title>
               <el-icon><Files /></el-icon>
               <span>素材资产库</span>
-              <el-tag size="small" type="info" class="soon-tag">即将上线</el-tag>
             </template>
+            <el-menu-item v-for="it in groups.asset" :key="it.path" :index="it.path">
+              <el-icon><component :is="it.icon" /></el-icon>
+              <template #title>{{ it.title }}</template>
+            </el-menu-item>
           </el-sub-menu>
 
           <!-- 分组：素材应用及数据跟踪（即将上线） -->
@@ -239,6 +242,9 @@ const groups = {
     { path: '/history', title: '生成历史', icon: markRaw(Clock) },
     { path: '/video-history', title: '视频历史', icon: markRaw(VideoCamera) },
     { path: '/prompt-library', title: 'Prompt 复用库', icon: markRaw(Files) },
+  ],
+  asset: [
+    { path: '/asset-library', title: '素材资产库', icon: markRaw(Files) },
   ],
 }
 

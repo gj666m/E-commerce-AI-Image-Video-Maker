@@ -118,6 +118,7 @@
                 @click="download(item)"
               >下载</el-button>
               <el-button size="small" :icon="StarFilled" @click="openSaveToLibrary(item)">收藏</el-button>
+              <el-button size="small" plain :icon="Files" @click="openSaveToAsset(item)">沉淀</el-button>
               <el-button v-if="isAdmin" size="small" type="danger" plain :icon="Delete" @click="handleDelete(item)">删除</el-button>
             </div>
           </div>
@@ -152,17 +153,21 @@
 
     <!-- 收藏到 Prompt 库 -->
     <SaveToPromptLibraryDialog v-model="showSaveDialog" :initial="saveInitial || undefined" />
+
+    <!-- 沉淀到素材库 -->
+    <SaveToAssetLibraryDialog v-model="showAssetDialog" :initial="assetInitial || undefined" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { VideoCamera, Refresh, Delete, Download, VideoPlay, VideoPause, StarFilled } from '@element-plus/icons-vue'
+import { VideoCamera, Refresh, Delete, Download, VideoPlay, VideoPause, StarFilled, Files } from '@element-plus/icons-vue'
 import { listVideoHistory, deleteVideoHistory, clearVideoHistory } from '../api'
 import { useAuth } from '../composables/useAuth'
-import type { VideoHistoryItem } from '../types'
+import type { VideoHistoryItem, AssetSourceType } from '../types'
 import SaveToPromptLibraryDialog from '../components/SaveToPromptLibraryDialog.vue'
+import SaveToAssetLibraryDialog from '../components/SaveToAssetLibraryDialog.vue'
 
 const { isAdmin } = useAuth()
 
@@ -182,6 +187,16 @@ const saveInitial = ref<{
   aspect_ratio?: string | null
   sample_image?: string | null
   sample_kind?: 'image' | 'video'
+} | null>(null)
+
+// 沉淀到素材库
+const showAssetDialog = ref(false)
+const assetInitial = ref<{
+  source_type: AssetSourceType
+  source_id: string
+  title?: string
+  description?: string
+  tags?: string[]
 } | null>(null)
 
 const fileExpireDays = 3
@@ -274,6 +289,17 @@ function openSaveToLibrary(item: VideoHistoryItem) {
     sample_kind: 'video',
   }
   showSaveDialog.value = true
+}
+
+function openSaveToAsset(item: VideoHistoryItem) {
+  assetInitial.value = {
+    source_type: 'video',
+    source_id: item.id,
+    title: item.prompt?.slice(0, 40) || '未命名视频素材',
+    description: '',
+    tags: [],
+  }
+  showAssetDialog.value = true
 }
 
 async function handleDelete(item: VideoHistoryItem) {

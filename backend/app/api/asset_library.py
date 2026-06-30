@@ -30,6 +30,18 @@ class UpdateAssetRequest(BaseModel):
     tags: Optional[list[str]] = None
 
 
+class CreateApplicationRequest(BaseModel):
+    shop_name: str
+    applied_url: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class UpdateApplicationRequest(BaseModel):
+    shop_name: Optional[str] = None
+    applied_url: Optional[str] = None
+    notes: Optional[str] = None
+
+
 @router.get("")
 async def list_assets(
     source_type: Optional[str] = None,
@@ -127,3 +139,89 @@ async def check_preserved(
         raise HTTPException(400, f"source_type 仅允许: {sorted(_ALLOWED_SOURCE_TYPES)}")
     preserved = await store.is_preserved(current_user["id"], source_type, source_id)
     return {"success": True, "preserved": preserved}
+
+
+# === 应用记录（asset_applications）===
+
+@router.get("/{asset_id}/applications")
+async def list_applications(
+    asset_id: str,
+    current_user=Depends(get_current_user),
+):
+    """列某素材的所有应用记录（作者/admin 可见）"""
+    is_admin = current_user["role"] == "admin"
+    items = await store.list_applications(
+        asset_id=asset_id,
+        include_all_for_admin=is_admin,
+    )
+    return {"success": True, "items": items, "count": len(items)}
+
+
+@router.post("/{asset_id}/applications")
+async def create_application(
+    asset_id: str,
+    req: CreateApplicationRequest,
+    current_user=Depends(get_current_user),
+):
+    """新增应用记录（仅素材作者）"""
+    if not req.shop_name.strip():
+        raise HTTPException(400, "店铺名不能为空")
+    uid = -1 if current_user["role"] == "admin" else current_user["id"]
+    try:
+        data = await store.create_application({
+            "asset_id": asset_id,
+            "user_id": uid,
+            "shop_name": req.shop_name.strip(),
+            "applied_url": req.applied_url,
+            "notes": req.notes,
+        })
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    logger.info(f"用户 {current_user['username']} 新增应用记录: {data['id']} (asset={asset_id})")
+    return {"success": True, "item": data}
+
+
+# 应用记录的 PUT/DELETE 用独立前缀 /api/applications（plan 设计）
+# 但本 router 的 prefix 是 /api/asset-library，所以这两端点单独建子 router
+applications_router = APIRouter(prefix="/api/applications", tags=["asset-library"])
+
+
+@applications_router.put("/{app_id}")
+async def update_application(
+    app_id: str,
+    req: UpdateApplicationRequest,
+    current_user=Depends(get_current_user),
+):
+    """更新应用记录（仅作者；admin 旁路）"""
+    updates = req.model_dump(exclude_none=True)
+    uid = -1 if current_user["role"] == "admin" else current_user["id"]
+    item = await store.update_application(app_id, uid, updates)
+    if item is None:
+        raise HTTPException(404, "记录不存在或无权修改")
+    return {"success": True, "item": item}
+
+
+@applications_router.delete("/{app_id}")
+async def delete_application(
+    app_id: str,
+    current_user=Depends(get_current_user),
+):
+    """删除应用记录（作者或 admin；级联删 tracking）"""
+    if current_user["role"] == "admin":
+        ok = await store.delete_application(app_id, -1)
+    else:
+        ok = await store.delete_application(app_id, current_user["id"])
+    if not ok:
+        raise HTTPException(404, "记录不存在或无权删除")
+    logger.info(f"删除应用记录: {app_id} by {current_user['username']}")
+    return {"success": True}
+
+
+@applications_router.get("/shops")
+async def list_shops(current_user=Depends(get_current_user)):
+    """聚合所有店铺名（去重，用于下拉筛选）"""
+    is_admin = current_user["role"] == "admin"
+    shops = await store.list_shops(current_user["id"], include_all_for_admin=is_admin)
+    return {"success": True, "shops": shops}

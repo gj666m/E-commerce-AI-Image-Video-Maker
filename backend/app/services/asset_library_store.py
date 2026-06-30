@@ -313,3 +313,189 @@ async def is_preserved(user_id: int, source_type: str, source_id: str) -> bool:
         return await cursor.fetchone() is not None
     finally:
         await db.close()
+
+
+# === 应用记录（asset_applications）CRUD ===
+# 一个素材可被多个店铺应用 → 每次应用一条独立记录（用户拍板方式 B）
+
+def _app_row_to_dict(r) -> dict:
+    return {
+        "id": r["id"],
+        "asset_id": r["asset_id"],
+        "user_id": r["user_id"],
+        "shop_name": r["shop_name"],
+        "applied_url": r["applied_url"],
+        "applied_at": r["applied_at"],
+        "notes": r["notes"],
+        "created_at": r["created_at"],
+    }
+
+
+async def create_application(data: dict) -> dict:
+    """新增应用记录。
+    data 必填：asset_id, user_id, shop_name
+    可选：applied_url, notes
+    会校验 asset_id 归属（必须是本人的素材）
+    """
+    app_id = _generate_id("aa")
+    db = await get_db()
+    try:
+        # 归属校验
+        cursor = await db.execute(
+            "SELECT user_id FROM asset_library WHERE id = ?",
+            (data["asset_id"],),
+        )
+        asset_row = await cursor.fetchone()
+        if not asset_row:
+            raise ValueError("素材不存在")
+        asset_owner = asset_row["user_id"]
+        # 仅作者或 admin 可标记应用
+        if data["user_id"] != asset_owner and data["user_id"] != -1:
+            raise PermissionError("无权为他人素材添加应用记录")
+
+        await db.execute(
+            """INSERT INTO asset_applications
+            (id, asset_id, user_id, shop_name, applied_url, notes)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                app_id,
+                data["asset_id"],
+                asset_owner,  # 应用记录归素材作者所有
+                (data.get("shop_name") or "").strip()[:200],
+                (data.get("applied_url") or "").strip()[:1000] or None,
+                (data.get("notes") or "").strip()[:1000] or None,
+            ),
+        )
+        await db.commit()
+        cursor = await db.execute("SELECT * FROM asset_applications WHERE id = ?", (app_id,))
+        return _app_row_to_dict(await cursor.fetchone())
+    finally:
+        await db.close()
+
+
+async def list_applications(
+    asset_id: str | None = None,
+    user_id: int | None = None,
+    shop_name: str | None = None,
+    include_all_for_admin: bool = False,
+    target_user_id: int | None = None,
+) -> list[dict]:
+    """列出应用记录。
+    - asset_id：按素材筛
+    - shop_name：按店铺精确筛
+    - admin 模式：include_all_for_admin=True 看所有人
+    """
+    db = await get_db()
+    try:
+        where = []
+        params: list = []
+        if asset_id:
+            where.append("asset_id = ?")
+            params.append(asset_id)
+        if shop_name:
+            where.append("shop_name = ?")
+            params.append(shop_name)
+        if include_all_for_admin:
+            if target_user_id is not None:
+                where.append("user_id = ?")
+                params.append(target_user_id)
+        elif user_id is not None:
+            where.append("user_id = ?")
+            params.append(user_id)
+
+        where_clause = " AND ".join(where) if where else "1=1"
+        cursor = await db.execute(
+            f"""SELECT * FROM asset_applications
+            WHERE {where_clause}
+            ORDER BY applied_at DESC, created_at DESC""",
+            params,
+        )
+        rows = await cursor.fetchall()
+        return [_app_row_to_dict(r) for r in rows]
+    finally:
+        await db.close()
+
+
+async def update_application(app_id: str, user_id: int, updates: dict) -> dict | None:
+    """更新（仅作者 + admin 旁路 user_id=-1）"""
+    db = await get_db()
+    try:
+        if user_id != -1:
+            cursor = await db.execute(
+                "SELECT user_id FROM asset_applications WHERE id = ?",
+                (app_id,),
+            )
+            row = await cursor.fetchone()
+            if not row or row["user_id"] != user_id:
+                return None
+
+        set_parts = []
+        params = []
+        for key in ("shop_name", "applied_url", "notes"):
+            if key in updates and updates[key] is not None:
+                set_parts.append(f"{key} = ?")
+                v = updates[key]
+                if key == "shop_name":
+                    v = v.strip()[:200]
+                elif key == "applied_url":
+                    v = (v or "").strip()[:1000] or None
+                elif key == "notes":
+                    v = (v or "").strip()[:1000] or None
+                params.append(v)
+
+        if not set_parts:
+            cursor = await db.execute("SELECT * FROM asset_applications WHERE id = ?", (app_id,))
+            r = await cursor.fetchone()
+            return _app_row_to_dict(r) if r else None
+
+        params.append(app_id)
+        await db.execute(
+            f"UPDATE asset_applications SET {', '.join(set_parts)} WHERE id = ?",
+            params,
+        )
+        await db.commit()
+        cursor = await db.execute("SELECT * FROM asset_applications WHERE id = ?", (app_id,))
+        return _app_row_to_dict(await cursor.fetchone())
+    finally:
+        await db.close()
+
+
+async def delete_application(app_id: str, user_id: int) -> bool:
+    """删除应用记录（级联删 tracking_records）"""
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT user_id FROM asset_applications WHERE id = ?",
+            (app_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return False
+        if row["user_id"] != user_id and user_id != -1:
+            return False
+
+        await db.execute("DELETE FROM asset_tracking_records WHERE application_id = ?", (app_id,))
+        await db.execute("DELETE FROM asset_applications WHERE id = ?", (app_id,))
+        await db.commit()
+        return True
+    finally:
+        await db.close()
+
+
+async def list_shops(user_id: int, include_all_for_admin: bool = False) -> list[str]:
+    """聚合所有店铺名（去重，用于下拉筛选）"""
+    db = await get_db()
+    try:
+        if include_all_for_admin:
+            cursor = await db.execute(
+                "SELECT DISTINCT shop_name FROM asset_applications ORDER BY shop_name"
+            )
+        else:
+            cursor = await db.execute(
+                "SELECT DISTINCT shop_name FROM asset_applications WHERE user_id = ? ORDER BY shop_name",
+                (user_id,),
+            )
+        return [r[0] for r in await cursor.fetchall()]
+    finally:
+        await db.close()
+

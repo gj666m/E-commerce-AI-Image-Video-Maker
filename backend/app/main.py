@@ -147,6 +147,7 @@ app.include_router(balance.router)
 app.include_router(agent.router)
 app.include_router(prompt_library.router)
 app.include_router(asset_library.router)
+app.include_router(asset_library.applications_router)
 
 # 挂载临时视频文件静态目录
 temp_dir = Path(settings.video_temp_dir)
