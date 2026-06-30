@@ -38,6 +38,7 @@ export interface PromptLibraryItem {
   sample_image?: string | null
   sample_kind?: 'image' | 'video'
   tags: string[]
+  elements?: PromptElements | null    // 工坊结构化 8 要素（续18，图片类有值）
   is_shared: boolean
   use_count: number
   created_at: string
@@ -55,6 +56,7 @@ export interface CreatePromptPayload {
   sample_image?: string
   sample_kind?: 'image' | 'video'
   tags?: string[]
+  elements?: PromptElements | null    // 工坊结构化 8 要素（续18）
   is_shared?: boolean
 }
 
@@ -65,6 +67,7 @@ export interface UpdatePromptPayload {
   model_used?: string
   aspect_ratio?: string
   tags?: string[]
+  elements?: PromptElements | null
   is_shared?: boolean
 }
 

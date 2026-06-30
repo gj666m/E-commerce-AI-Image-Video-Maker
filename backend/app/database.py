@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS prompt_library (
     sample_image TEXT,                             -- 效果图缩略图相对路径（如 user_id/xxx_thumb.jpeg）
     sample_kind TEXT DEFAULT 'image',              -- 'image' 或 'video'
     tags TEXT NOT NULL DEFAULT '[]',               -- JSON 数组
+    elements TEXT,                                 -- 工坊结构化要素 JSON（图片类 8 要素，续18）
     is_shared BOOLEAN NOT NULL DEFAULT 0,          -- 是否共享给全员
     use_count INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
@@ -169,6 +170,14 @@ async def init_db():
             await db.execute("ALTER TABLE video_tasks ADD COLUMN user_deleted_at TEXT")
             await db.commit()
             logger.info("已为 video_tasks 添加 user_deleted_at 列")
+
+        # 兼容迁移：prompt_library 旧表无 elements 列时补上（续18 工坊双向恢复要素）
+        cursor = await db.execute("PRAGMA table_info(prompt_library)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "elements" not in columns:
+            await db.execute("ALTER TABLE prompt_library ADD COLUMN elements TEXT")
+            await db.commit()
+            logger.info("已为 prompt_library 添加 elements 列")
 
         # 兼容迁移：users 旧表无 display_name 列时补上
         cursor = await db.execute("PRAGMA table_info(users)")

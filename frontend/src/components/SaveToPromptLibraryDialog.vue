@@ -47,11 +47,11 @@
 import { ref, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { createPrompt, getErrorMessage } from '../api'
-import type { CreatePromptPayload, PromptTaskType } from '../types'
+import type { CreatePromptPayload, PromptElements, PromptTaskType } from '../types'
 
 const props = defineProps<{
   modelValue: boolean
-  /** 初始数据（从历史卡片传入） */
+  /** 初始数据（从历史卡片 / 工坊页传入） */
   initial?: {
     task_type: PromptTaskType
     title?: string
@@ -61,6 +61,7 @@ const props = defineProps<{
     aspect_ratio?: string | null
     sample_image?: string | null
     sample_kind?: 'image' | 'video'
+    elements?: PromptElements | null     // 工坊结构化 8 要素（续18）
   }
 }>()
 
@@ -84,6 +85,7 @@ const form = ref<CreatePromptPayload>({
   sample_image: '',
   sample_kind: 'image',
   tags: [],
+  elements: null,
   is_shared: false,
 })
 
@@ -119,6 +121,7 @@ watch(() => props.initial, (init) => {
       sample_image: init.sample_image || '',
       sample_kind: init.sample_kind || 'image',
       tags: [],
+      elements: init.elements || null,
       is_shared: false,
     }
   }
@@ -135,6 +138,7 @@ function resetForm() {
     sample_image: '',
     sample_kind: 'image',
     tags: [],
+    elements: null,
     is_shared: false,
   }
 }

@@ -13,8 +13,16 @@ def _generate_id() -> str:
 
 
 def _row_to_dict(r) -> dict:
-    """行转 dict + 解析 tags JSON + 附加 sample_image 完整相对路径"""
+    """行转 dict + 解析 tags/elements JSON + 附加 sample_image 完整相对路径"""
     sample_image = r["sample_image"]
+    # elements（续18 工坊 8 要素 JSON，可空）
+    raw_elements = r["elements"] if "elements" in r.keys() else None
+    elements = None
+    if raw_elements:
+        try:
+            elements = json.loads(raw_elements)
+        except (json.JSONDecodeError, TypeError):
+            elements = None
     return {
         "id": r["id"],
         "user_id": r["user_id"],
@@ -27,6 +35,7 @@ def _row_to_dict(r) -> dict:
         "sample_image": sample_image,
         "sample_kind": r["sample_kind"] or "image",
         "tags": json.loads(r["tags"]) if r["tags"] else [],
+        "elements": elements,
         "is_shared": bool(r["is_shared"]),
         "use_count": r["use_count"],
         "created_at": r["created_at"],
@@ -41,8 +50,8 @@ async def create_prompt(data: dict) -> dict:
         await db.execute(
             """INSERT INTO prompt_library
             (id, user_id, task_type, title, description, full_prompt, model_used,
-             aspect_ratio, sample_image, sample_kind, tags, is_shared)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+             aspect_ratio, sample_image, sample_kind, tags, elements, is_shared)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 prompt_id,
                 data["user_id"],
@@ -55,6 +64,8 @@ async def create_prompt(data: dict) -> dict:
                 data.get("sample_image"),
                 data.get("sample_kind", "image"),
                 json.dumps(data.get("tags") or [], ensure_ascii=False),
+                # elements 序列化为 JSON 字符串；None → NULL（续18）
+                json.dumps(data["elements"], ensure_ascii=False) if data.get("elements") else None,
                 1 if data.get("is_shared") else 0,
             ),
         )
@@ -141,6 +152,11 @@ async def update_prompt(prompt_id: str, user_id: int, updates: dict) -> dict | N
         if "tags" in updates:
             set_parts.append("tags = ?")
             params.append(json.dumps(updates["tags"] or [], ensure_ascii=False))
+        if "elements" in updates:
+            # elements: dict → JSON；None 或空 dict → NULL（续18）
+            el = updates["elements"]
+            set_parts.append("elements = ?")
+            params.append(json.dumps(el, ensure_ascii=False) if el else None)
 
         if not set_parts:
             cursor = await db.execute("SELECT * FROM prompt_library WHERE id = ?", (prompt_id,))

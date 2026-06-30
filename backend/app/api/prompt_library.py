@@ -22,6 +22,7 @@ class CreatePromptRequest(BaseModel):
     sample_image: Optional[str] = None
     sample_kind: Optional[str] = "image"
     tags: Optional[list[str]] = None
+    elements: Optional[dict] = None     # 工坊结构化 8 要素（图片类，续18）
     is_shared: Optional[bool] = False
 
 
@@ -32,6 +33,7 @@ class UpdatePromptRequest(BaseModel):
     model_used: Optional[str] = None
     aspect_ratio: Optional[str] = None
     tags: Optional[list[str]] = None
+    elements: Optional[dict] = None     # 工坊结构化 8 要素（续18）
     is_shared: Optional[bool] = None
 
 
@@ -77,6 +79,7 @@ async def create_prompt(req: CreatePromptRequest, current_user=Depends(get_curre
         "sample_image": req.sample_image,
         "sample_kind": req.sample_kind or "image",
         "tags": req.tags or [],
+        "elements": req.elements,
         "is_shared": req.is_shared,
     })
     logger.info(f"用户 {current_user['username']} 收藏 Prompt: {data['id']}")

@@ -397,8 +397,14 @@ function loadFromLibrary(item: PromptLibraryItem) {
   form.taskType = item.task_type
   form.prompt = item.full_prompt
   if (item.aspect_ratio) form.aspectRatio = item.aspect_ratio
-  // 图片类：把 full_prompt 作为 userText 起点，用户可再点「智能创意」重新拆
+  // 图片类：优先恢复要素卡片（续18 双向恢复）；旧记录无 elements → 降级为 full_prompt 作 userText
   if (isImageTask(form.taskType)) {
+    if (item.elements) {
+      elements.value = item.elements
+      imageUserText.value = ''
+      ElMessage.success(`已恢复要素卡片：${item.title}`)
+      return
+    }
     imageUserText.value = item.full_prompt
     elements.value = null
   }
@@ -574,6 +580,8 @@ function openSaveDialog() {
     aspect_ratio: form.aspectRatio,
     sample_image: '',
     sample_kind: 'image',
+    // 图片类连带存 8 要素，打开时直接恢复卡片（续18）
+    elements: isImageTask(form.taskType) ? elements.value : null,
     tags: [],
     is_shared: false,
   }
