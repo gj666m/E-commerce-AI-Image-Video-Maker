@@ -150,11 +150,24 @@ class SeedanceVideoProvider(VideoProvider):
             resp.raise_for_status()
             data = resp.json()
         except httpx.HTTPStatusError as e:
-            logger.error(f"Seedance 轮询 API 错误: {e.response.status_code}")
+            code = e.response.status_code
+            # 5xx/429 是网关临时性错误：不标记 failed，保持 processing 让前端继续轮询
+            # （任务可能在 Seedance 那侧还在跑或已成功，下次轮询大概率恢复，避免白白扣费损失视频）
+            if code == 429 or code >= 500:
+                logger.warning(f"Seedance 轮询临时错误 {code}，保持 processing 让前端继续轮询")
+                return VideoTask(
+                    task_id=external_task_id,
+                    status="processing",
+                    progress=50,
+                    model_used=self.MODEL,
+                    error=f"网关临时错误 {code}，重试中",
+                )
+            # 4xx（404 任务不存在等）才是真失败
+            logger.error(f"Seedance 轮询错误 {code}: {e.response.text[:200]}")
             return VideoTask(
                 task_id=external_task_id,
                 status="failed",
-                error=f"轮询失败: {e.response.status_code}",
+                error=f"轮询失败: {code}",
             )
 
         status = data.get("status", "").lower()
