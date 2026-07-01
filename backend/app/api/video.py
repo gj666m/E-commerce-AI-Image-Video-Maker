@@ -358,6 +358,10 @@ async def video_status(task_id: str, current_user=Depends(get_current_user)):
 
     if video_task.error:
         result["error"] = video_task.error
+        # 同步 failed 状态到 DB：否则 get_user_active_tasks 仍会查到这条 processing，
+        # 导致前端每次刷新页面都恢复轮询、重弹一次同样的旧错误
+        if video_task.status == "failed":
+            await update_task_status(task_id, "failed", error=video_task.error)
 
     return result
 
