@@ -27,10 +27,16 @@ class SeedanceVideoProvider(VideoProvider):
     - 文生视频：仅 prompt
     - 图生视频：prompt + 参考图（base64 data URL）
     - 音频生成：generate_audio=true 时根据 prompt 中的音频描述生成
+
+    子类化钩子（被 SeedanceMiniVideoProvider / SeedanceApiyiVideoProvider 覆盖）：
+    - MODEL：模型 ID
+    - COST_PER_MILLION_TOKENS：每百万 token 单价（¥），0 表示不计费
+    - _get_auth_token()：Authorization Bearer 用的 token
     """
 
     API_BASE = "https://ark.cn-beijing.volces.com/api/v3"
     MODEL = "doubao-seedance-2-0-260128"
+    COST_PER_MILLION_TOKENS = COST_PER_MILLION_TOKENS  # ¥/百万 token
 
     @property
     def name(self) -> str:
@@ -39,6 +45,10 @@ class SeedanceVideoProvider(VideoProvider):
     @property
     def is_available(self) -> bool:
         return bool(settings.volcengine_seedance_endpoint)
+
+    def _get_auth_token(self) -> str:
+        """返回 Authorization Bearer 用的 token（子类可覆盖）"""
+        return settings.volcengine_seedance_endpoint
 
     async def submit(
         self,
@@ -55,7 +65,7 @@ class SeedanceVideoProvider(VideoProvider):
         resolution = params.get("resolution")  # 480p / 720p / 1080p
 
         headers = {
-            "Authorization": f"Bearer {settings.volcengine_seedance_endpoint}",
+            "Authorization": f"Bearer {self._get_auth_token()}",
             "Content-Type": "application/json",
         }
 
@@ -130,7 +140,7 @@ class SeedanceVideoProvider(VideoProvider):
     async def poll(self, external_task_id: str) -> VideoTask:
         """查询任务状态"""
         headers = {
-            "Authorization": f"Bearer {settings.volcengine_seedance_endpoint}",
+            "Authorization": f"Bearer {self._get_auth_token()}",
         }
         url = f"{self.API_BASE}/contents/generations/tasks/{external_task_id}"
 
@@ -176,13 +186,13 @@ class SeedanceVideoProvider(VideoProvider):
             else:
                 error = str(error_msg) or "视频生成失败"
 
-        # 按实际 token 用量计费（¥28/百万 token）
+        # 按实际 token 用量计费（¥/百万 token，子类可覆盖单价或置 0 跳过）
         cost = 0.0
-        if mapped_status == "completed":
+        if mapped_status == "completed" and self.COST_PER_MILLION_TOKENS > 0:
             usage = data.get("usage", {})
             completion_tokens = usage.get("completion_tokens", 0)
             if completion_tokens > 0:
-                cost = round(completion_tokens * COST_PER_MILLION_TOKENS / 1_000_000, 4)
+                cost = round(completion_tokens * self.COST_PER_MILLION_TOKENS / 1_000_000, 4)
             else:
                 # 兜底：无 usage 信息时不计费
                 logger.warning(f"Seedance 任务 {external_task_id} 完成但无 usage 信息")

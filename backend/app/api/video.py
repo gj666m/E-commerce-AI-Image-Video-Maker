@@ -19,6 +19,7 @@ from app.services.video_history_store import cleanup_expired_video_history
 from app.providers.mock_video_provider import MockVideoProvider
 from app.providers.seedance_provider import SeedanceVideoProvider
 from app.providers.seedance_apiyi_provider import SeedanceApiyiVideoProvider
+from app.providers.seedance_mini_provider import SeedanceMiniVideoProvider
 from app.providers.video_base import VideoProvider
 from app.api.balance import fetch_quota_snapshot
 
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/api/video", tags=["video"])
 _mock_video = MockVideoProvider()
 _seedance_video = SeedanceVideoProvider()
 _seedance_apiyi_video = SeedanceApiyiVideoProvider()
+_seedance_mini_video = SeedanceMiniVideoProvider()
 
 
 def _get_available_video_providers() -> dict[str, VideoProvider]:
@@ -41,6 +43,8 @@ def _get_available_video_providers() -> dict[str, VideoProvider]:
         providers["seedance"] = _seedance_video
     if settings.has_seedance_apiyi:
         providers["seedance_apiyi"] = _seedance_apiyi_video
+    if settings.has_seedance_mini:
+        providers["seedance_mini"] = _seedance_mini_video
     return providers
 
 
@@ -78,6 +82,12 @@ _VIDEO_MODEL_META = {
         "description": "Seedance 2.0 通过 API易中转站接入，不限并发不排队，按 token 计费",
         "capabilities": ["image_to_video", "text_to_video"],
         "api_key_hint": "SEEDANCE_APIYI_API_KEY",
+    },
+    "seedance_mini": {
+        "display_name": "Seedance 2.0 Mini（官网直连）",
+        "description": "Seedance 2.0 Mini 通过火山官网直连，半价；不走中转，不参与 API易 余额计费",
+        "capabilities": ["image_to_video", "text_to_video"],
+        "api_key_hint": "SEEDANCE_MINI_API_KEY",
     },
 }
 

@@ -208,6 +208,7 @@ const videoLoadFailed = ref(false)
 const providerLabelMap: Record<string, string> = {
   seedance_apiyi: 'Seedance 2.0',
   seedance: 'Seedance 2.0',
+  seedance_mini: 'Seedance 2.0 Mini',
   mock_video: 'Mock',
 }
 

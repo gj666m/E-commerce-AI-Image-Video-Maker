@@ -168,11 +168,11 @@ class SeedanceApiyiVideoProvider(SeedanceVideoProvider):
         from app.providers.video_base import VideoTask
 
         cost = 0.0
-        if mapped_status == "completed":
+        if mapped_status == "completed" and self.COST_PER_MILLION_TOKENS > 0:
             usage = data.get("usage", {})
             completion_tokens = usage.get("completion_tokens", 0)
             if completion_tokens > 0:
-                cost = round(completion_tokens * 28.0 / 1_000_000, 4)
+                cost = round(completion_tokens * self.COST_PER_MILLION_TOKENS / 1_000_000, 4)
             else:
                 logger.warning(f"Seedance(API易) 任务 {external_task_id} 完成但无 usage 信息")
 
