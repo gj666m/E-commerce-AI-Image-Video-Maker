@@ -180,7 +180,8 @@ async def generate_video(
 
     # ========== 2. 图片处理 ==========
     VIDEO_REF_MAX_EDGE = 1280
-    product_bytes = [compress_image(raw, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for raw in product_raw]
+    VIDEO_REF_MIN_EDGE = 320  # Seedance 要求最短边 ≥300px，留 20px 余量
+    product_bytes = [compress_image(raw, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG", min_short_edge=VIDEO_REF_MIN_EDGE) for raw in product_raw]
 
     has_stylized_model = False
     model_bytes: list[bytes] = []
@@ -191,11 +192,11 @@ async def generate_video(
             stylized_list = await asyncio.gather(
                 *[stylize_for_video(raw) for raw in model_raw]
             )
-            model_bytes = [compress_image(s, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for s in stylized_list]
+            model_bytes = [compress_image(s, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG", min_short_edge=VIDEO_REF_MIN_EDGE) for s in stylized_list]
             has_stylized_model = True
             logger.info("模特素材图风格转换完成")
         else:
-            model_bytes = [compress_image(raw, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG") for raw in model_raw]
+            model_bytes = [compress_image(raw, max_long_edge=VIDEO_REF_MAX_EDGE, format="JPEG", min_short_edge=VIDEO_REF_MIN_EDGE) for raw in model_raw]
 
     all_images = product_bytes + model_bytes
 

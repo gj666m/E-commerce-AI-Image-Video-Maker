@@ -45,13 +45,15 @@ def compress_image(
     image_bytes: bytes,
     max_long_edge: int | None = None,
     format: str = "PNG",
+    min_short_edge: int | None = None,
 ) -> bytes:
-    """压缩图片，长边不超过 max_long_edge，保持比例
+    """压缩图片，长边不超过 max_long_edge，短边不小于 min_short_edge（保持比例）
 
     Args:
         image_bytes: 原始图片二进制
         max_long_edge: 长边最大像素，默认读配置
         format: 输出格式 PNG/JPEG
+        min_short_edge: 短边最小像素，不足时等比放大（视频场景 Seedance 要求 ≥300px）
 
     Returns:
         压缩后的图片二进制
@@ -63,11 +65,20 @@ def compress_image(
     if format == "JPEG" and img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
 
-    # 等比缩放
+    # 等比缩放/放大：大图优先缩小长边，小图优先放大短边（两者互斥，避免循环）
     w, h = img.size
     long_edge = max(w, h)
+    short_edge = min(w, h)
+
     if long_edge > max_long_edge:
+        # 大图：等比缩小长边
         ratio = max_long_edge / long_edge
+        new_w = int(w * ratio)
+        new_h = int(h * ratio)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
+    elif min_short_edge and short_edge < min_short_edge:
+        # 小图但短边不足：等比放大短边（不放大长边，避免无谓放大小图）
+        ratio = min_short_edge / short_edge
         new_w = int(w * ratio)
         new_h = int(h * ratio)
         img = img.resize((new_w, new_h), Image.LANCZOS)
