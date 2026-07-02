@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS asset_library (
     title TEXT NOT NULL,
     description TEXT,
     tags TEXT NOT NULL DEFAULT '[]',         -- JSON 数组，自定义标签
+    thumbnail_path TEXT,                     -- 视频类沉淀时抽的首帧 jpg 相对路径（{user_id}/{asset_id}.jpg）
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -234,6 +235,14 @@ async def init_db():
             await db.execute("ALTER TABLE users ADD COLUMN display_name TEXT")
             await db.commit()
             logger.info("已为 users 添加 display_name 列")
+
+        # 兼容迁移：asset_library 旧表无 thumbnail_path 列时补上（视频素材静态首帧）
+        cursor = await db.execute("PRAGMA table_info(asset_library)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "thumbnail_path" not in columns:
+            await db.execute("ALTER TABLE asset_library ADD COLUMN thumbnail_path TEXT")
+            await db.commit()
+            logger.info("已为 asset_library 添加 thumbnail_path 列")
 
         # 检查是否已有管理员
         cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")

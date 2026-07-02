@@ -433,7 +433,8 @@ export interface AssetLibraryItem {
   tags: string[]
   created_at: string
   // JOIN 出来的字段（后端组装）
-  thumbnail_url?: string | null    // /gen-files/... 或 /video-files/...
+  thumbnail_url?: string | null    // /gen-files/... 或 /video-files/... 或 /api/file/asset-thumbs/...
+  thumbnail_is_image?: boolean     // true=jpg 可用 <img>；false=video URL 走 <video preload>
   file_expired?: boolean           // 源文件是否已过期
   applied_count?: number           // 已被多少个店铺应用
   owner_name?: string
@@ -571,6 +572,7 @@ export interface AssetTrackingRow {
     source_type: AssetSourceType
     tags: string[]
     thumbnail_url?: string | null
+    thumbnail_is_image?: boolean
     file_expired?: boolean
   }
   owner_name: string

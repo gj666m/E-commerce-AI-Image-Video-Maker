@@ -86,7 +86,7 @@
         <!-- 缩略图 -->
         <div class="thumb-wrap">
           <img
-            v-if="row.asset.source_type === 'image' && row.asset.thumbnail_url && !row.asset.file_expired"
+            v-if="row.asset.thumbnail_is_image && row.asset.thumbnail_url && !row.asset.file_expired"
             :src="fileUrl(row.asset.thumbnail_url)"
             class="thumb"
             alt=""

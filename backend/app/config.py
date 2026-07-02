@@ -96,6 +96,9 @@ class Settings(BaseSettings):
     generation_history_expire_days: int = 3  # 文件过期天数（到期删盘 + 标记 file_expired）
     generation_history_record_expire_days: int = 90  # 记录元数据保留天数（到期删整行）
 
+    # 素材资产库视频缩略图（沉淀时 ffmpeg 抽首帧存 jpg）
+    asset_thumb_dir: str = "assets/asset_thumbs"
+
     # 模型默认配置
     default_image_model: str = "gpt-image-2"
 

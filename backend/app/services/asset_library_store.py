@@ -3,18 +3,90 @@
 # 加自定义标签，后续用于店铺应用追踪 + 价值数据回填。
 #
 # 不存文件：直接 JOIN generation_history / video_tasks 取 file/thumbnail。
+# 视频素材额外抽首帧 jpg 落盘（thumbnail_path），避免依赖浏览器解码 mp4。
 # 文件保留：history/video 清理任务用 NOT IN 跳过已沉淀素材（永久保留）。
+import asyncio
 import json
 import logging
 import time
+from pathlib import Path
 
+from app.config import settings
 from app.database import get_db
+from app.services.video_thumbnail import extract_first_frame
+from app.services.video_utils import get_video_abs_path
 
 logger = logging.getLogger(__name__)
+
+# 老素材懒加载回填防重集
+_thumb_backfill_in_progress: set[str] = set()
 
 
 def _now_iso() -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+
+# === 视频首帧缩略图 ===
+
+def _thumb_rel_path(user_id: int, asset_id: str) -> str:
+    return f"{user_id}/{asset_id}.jpg"
+
+
+def _thumb_abs_path(rel_path: str) -> Path:
+    return Path(settings.asset_thumb_dir).resolve() / rel_path
+
+
+async def _generate_video_thumbnail(asset_id: str, user_id: int, video_url: str) -> str | None:
+    """抽视频首帧存 jpg。成功返相对路径，失败返 None（不抛异常）。"""
+    abs_video = get_video_abs_path(video_url)
+    if abs_video is None or not abs_video.exists():
+        return None
+    rel = _thumb_rel_path(user_id, asset_id)
+    out = _thumb_abs_path(rel)
+    ok = await extract_first_frame(abs_video, out)
+    return rel if ok else None
+
+
+async def _persist_thumbnail(asset_id: str, rel_path: str) -> None:
+    db = await get_db()
+    try:
+        await db.execute(
+            "UPDATE asset_library SET thumbnail_path = ? WHERE id = ?",
+            (rel_path, asset_id),
+        )
+        await db.commit()
+    finally:
+        await db.close()
+
+
+async def _backfill_thumbnail_async(asset_id: str, user_id: int, video_url: str) -> None:
+    """后台抽帧 + 写 DB。fire-and-forget，失败静默。"""
+    if asset_id in _thumb_backfill_in_progress:
+        return
+    _thumb_backfill_in_progress.add(asset_id)
+    try:
+        rel = await _generate_video_thumbnail(asset_id, user_id, video_url)
+        if rel:
+            await _persist_thumbnail(asset_id, rel)
+            logger.info(f"已回填视频缩略图 {asset_id}")
+    except Exception as e:
+        logger.warning(f"回填视频缩略图失败 {asset_id}: {e}")
+    finally:
+        _thumb_backfill_in_progress.discard(asset_id)
+
+
+def _maybe_kick_backfill(asset_id: str, user_id: int, video_url: str | None, has_thumb: bool) -> None:
+    """懒加载回填：缺缩略图 + 源文件在 → fire-and-forget 异步抽帧。"""
+    if has_thumb or not video_url:
+        return
+    abs_video = get_video_abs_path(video_url)
+    if abs_video is None or not abs_video.exists():
+        return
+    try:
+        asyncio.create_task(_backfill_thumbnail_async(asset_id, user_id, video_url))
+    except RuntimeError:
+        # 无事件循环（不应发生在 FastAPI 请求中），静默
+        pass
 
 
 def _generate_id(prefix: str) -> str:
@@ -23,7 +95,8 @@ def _generate_id(prefix: str) -> str:
 
 def _row_to_dict(r) -> dict:
     """行转 dict + 解析 tags JSON"""
-    return {
+    keys = r.keys() if hasattr(r, "keys") else []
+    d = {
         "id": r["id"],
         "user_id": r["user_id"],
         "source_type": r["source_type"],
@@ -33,6 +106,39 @@ def _row_to_dict(r) -> dict:
         "tags": json.loads(r["tags"]) if r["tags"] else [],
         "created_at": r["created_at"],
     }
+    if "thumbnail_path" in keys:
+        d["thumbnail_path"] = r["thumbnail_path"]
+    return d
+
+
+def _apply_thumb_url(d: dict, r, asset_id: str, user_id: int) -> None:
+    """根据 source_type + thumbnail_path 拼 thumbnail_url + thumbnail_is_image。
+
+    - image 类：用 generation_history.thumbnail（jpg），is_image=True
+    - video 类：有 thumbnail_path（沉淀时抽的首帧 jpg）→ is_image=True；
+                否则降级用原视频 URL，is_image=False（前端走 video preload）
+    """
+    keys = r.keys() if hasattr(r, "keys") else []
+    if r["source_type"] == "image":
+        d["thumbnail_url"] = f"/gen-files/{user_id}/{r['img_thumb']}" if r["img_thumb"] else None
+        d["file_expired"] = bool(r["img_expired"]) if r["img_expired"] is not None else True
+        d["thumbnail_is_image"] = bool(d["thumbnail_url"])
+    elif r["source_type"] == "video":
+        thumb_path = r["thumbnail_path"] if "thumbnail_path" in keys else None
+        if thumb_path:
+            d["thumbnail_url"] = f"/api/file/asset-thumbs/{thumb_path}"
+            d["file_expired"] = False
+            d["thumbnail_is_image"] = True
+        else:
+            d["thumbnail_url"] = f"/video-files/{r['vid_url']}" if r["vid_url"] else None
+            d["file_expired"] = bool(r["vid_expired"]) if r["vid_expired"] is not None else True
+            d["thumbnail_is_image"] = False
+            # 懒加载回填：源文件还在就异步抽首帧
+            _maybe_kick_backfill(asset_id, user_id, d["thumbnail_url"], has_thumb=False)
+    else:
+        d["thumbnail_url"] = None
+        d["file_expired"] = True
+        d["thumbnail_is_image"] = False
 
 
 # === 沉淀池 CRUD ===
@@ -56,8 +162,8 @@ async def create_asset(data: dict) -> dict:
 
         await db.execute(
             """INSERT INTO asset_library
-            (id, user_id, source_type, source_id, title, description, tags)
-            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (id, user_id, source_type, source_id, title, description, tags, thumbnail_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 asset_id,
                 data["user_id"],
@@ -66,9 +172,31 @@ async def create_asset(data: dict) -> dict:
                 data["title"][:100],
                 (data.get("description") or "").strip()[:500] or None,
                 json.dumps(data.get("tags") or [], ensure_ascii=False),
+                None,
             ),
         )
         await db.commit()
+
+        # 视频类：抽首帧 jpg（同步，沉淀是一次性动作，等待可接受）
+        if data["source_type"] == "video":
+            # 先查 video_url（沉淀入口已传 source_id，但我们这里再去 video_tasks 取）
+            vcur = await db.execute(
+                "SELECT video_url FROM video_tasks WHERE id = ?",
+                (data["source_id"],),
+            )
+            vrow = await vcur.fetchone()
+            if vrow and vrow["video_url"]:
+                try:
+                    rel = await _generate_video_thumbnail(asset_id, data["user_id"], vrow["video_url"])
+                    if rel:
+                        await db.execute(
+                            "UPDATE asset_library SET thumbnail_path = ? WHERE id = ?",
+                            (rel, asset_id),
+                        )
+                        await db.commit()
+                except Exception as e:
+                    logger.warning(f"沉淀视频抽首帧失败 {asset_id}: {e}")
+
         cursor = await db.execute("SELECT * FROM asset_library WHERE id = ?", (asset_id,))
         return _row_to_dict(await cursor.fetchone())
     finally:
@@ -143,16 +271,7 @@ async def list_assets(
             d["owner_name"] = r["owner_name"]
             d["is_owner"] = r["user_id"] == user_id
             d["applied_count"] = r["applied_count"] or 0
-            # 拼 thumbnail_url + file_expired
-            if r["source_type"] == "image":
-                d["thumbnail_url"] = f"/gen-files/{r['user_id']}/{r['img_thumb']}" if r["img_thumb"] else None
-                d["file_expired"] = bool(r["img_expired"]) if r["img_expired"] is not None else True
-            elif r["source_type"] == "video":
-                d["thumbnail_url"] = f"/video-files/{r['vid_url']}" if r["vid_url"] else None
-                d["file_expired"] = bool(r["vid_expired"]) if r["vid_expired"] is not None else True
-            else:
-                d["thumbnail_url"] = None
-                d["file_expired"] = True
+            _apply_thumb_url(d, r, r["id"], r["user_id"])
             result.append(d)
         return result
     finally:
@@ -181,15 +300,7 @@ async def get_asset(asset_id: str) -> dict | None:
             return None
         d = _row_to_dict(r)
         d["owner_name"] = r["owner_name"]
-        if r["source_type"] == "image":
-            d["thumbnail_url"] = f"/gen-files/{r['user_id']}/{r['img_thumb']}" if r["img_thumb"] else None
-            d["file_expired"] = bool(r["img_expired"]) if r["img_expired"] is not None else True
-        elif r["source_type"] == "video":
-            d["thumbnail_url"] = f"/video-files/{r['vid_url']}" if r["vid_url"] else None
-            d["file_expired"] = bool(r["vid_expired"]) if r["vid_expired"] is not None else True
-        else:
-            d["thumbnail_url"] = None
-            d["file_expired"] = True
+        _apply_thumb_url(d, r, r["id"], r["user_id"])
         return d
     finally:
         await db.close()

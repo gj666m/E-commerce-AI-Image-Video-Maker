@@ -32,7 +32,7 @@
         <!-- 缩略图 -->
         <div class="thumb-wrap">
           <img
-            v-if="item.source_type === 'image' && item.thumbnail_url && !item.file_expired"
+            v-if="item.thumbnail_is_image && item.thumbnail_url && !item.file_expired"
             :src="fileUrl(item.thumbnail_url)"
             class="thumb"
             @error="onThumbError($event, item)"

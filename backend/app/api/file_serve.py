@@ -18,6 +18,7 @@ _KIND_DIR = {
     "video-files": settings.video_temp_dir,
     "model-files": settings.model_store_dir,
     "gen-files": settings.generation_history_dir,
+    "asset-thumbs": settings.asset_thumb_dir,
 }
 
 
