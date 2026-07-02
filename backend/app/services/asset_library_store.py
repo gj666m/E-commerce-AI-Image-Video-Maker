@@ -130,7 +130,8 @@ def _apply_thumb_url(d: dict, r, asset_id: str, user_id: int) -> None:
             d["file_expired"] = False
             d["thumbnail_is_image"] = True
         else:
-            d["thumbnail_url"] = f"/video-files/{r['vid_url']}" if r["vid_url"] else None
+            # vid_url 已是 /video-files/... 完整 URL，不再拼前缀（否则双 // 导致路径校验失败）
+            d["thumbnail_url"] = r["vid_url"] or None
             d["file_expired"] = bool(r["vid_expired"]) if r["vid_expired"] is not None else True
             d["thumbnail_is_image"] = False
             # 懒加载回填：源文件还在就异步抽首帧
@@ -1031,7 +1032,8 @@ async def list_applications_with_tracking(
                 thumb = f"/gen-files/{r['app_user_id']}/{r['img_thumb']}" if r["img_thumb"] else None
                 file_expired = bool(r["img_expired"]) if r["img_expired"] is not None else True
             elif r["source_type"] == "video":
-                thumb = f"/video-files/{r['vid_url']}" if r["vid_url"] else None
+                # vid_url 已是 /video-files/... 完整 URL，不再拼前缀
+                thumb = r["vid_url"] or None
                 file_expired = bool(r["vid_expired"]) if r["vid_expired"] is not None else True
             else:
                 thumb = None
