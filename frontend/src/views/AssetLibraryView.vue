@@ -33,14 +33,14 @@
         <div class="thumb-wrap">
           <img
             v-if="item.source_type === 'image' && item.thumbnail_url && !item.file_expired"
-            :src="item.thumbnail_url"
+            :src="fileUrl(item.thumbnail_url)"
             class="thumb"
             @error="onThumbError($event, item)"
             alt=""
           />
           <video
             v-else-if="item.source_type === 'video' && item.thumbnail_url && !item.file_expired"
-            :src="item.thumbnail_url"
+            :src="fileUrl(item.thumbnail_url)"
             class="thumb"
             preload="metadata"
             muted
@@ -205,6 +205,7 @@ import {
 } from '../api'
 import type { AssetLibraryItem, AssetTag, AssetApplication, AssetSourceType } from '../types'
 import { useAuth } from '../composables/useAuth'
+import { fileUrl } from '@/utils/fileUrl'
 
 const { isAdmin } = useAuth()
 

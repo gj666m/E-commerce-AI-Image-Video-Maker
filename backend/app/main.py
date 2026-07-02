@@ -6,10 +6,9 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
-from app.api import generate, models, model, video, analysis, auth, history, balance, video_history, video_prompt, replicate, tiktok_script, outfit_scraper, video_shots, agent, prompt_library, asset_library, asset_tracking
+from app.api import generate, models, model, video, analysis, auth, history, balance, video_history, video_prompt, replicate, tiktok_script, outfit_scraper, video_shots, agent, prompt_library, asset_library, asset_tracking, file_serve
 from app.config import settings
 
 # 配置日志
@@ -150,21 +149,11 @@ app.include_router(asset_library.router)
 app.include_router(asset_library.applications_router)
 app.include_router(asset_library.tracking_router)
 app.include_router(asset_tracking.router)
+app.include_router(file_serve.router)  # 续10 R2：鉴权文件访问（替代裸 StaticFiles 挂载）
 
-# 挂载临时视频文件静态目录
-temp_dir = Path(settings.video_temp_dir)
-temp_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/video-files", StaticFiles(directory=str(temp_dir)), name="video-files")
-
-# 挂载模特库静态目录（供前端展示模特缩略图）
-models_dir = Path(settings.model_store_dir)
-models_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/model-files", StaticFiles(directory=str(models_dir)), name="model-files")
-
-# 挂载生成历史静态目录（供前端展示历史图）
-history_dir = Path(settings.generation_history_dir)
-history_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/gen-files", StaticFiles(directory=str(history_dir)), name="gen-files")
+# 续10 安全 Review P0-R2：取消三个 StaticFiles 裸挂载，
+# 改由 /api/file/{kind}/{path} 统一鉴权访问（见 api/file_serve.py）。
+# 磁盘目录由 file_serve 启动时 mkdir，不再在 main 里挂载。
 
 
 # ====== 生产环境：托管前端静态文件 ======
@@ -203,7 +192,7 @@ async def health_check():
 async def serve_spa(path: str):
     """SPA 路由回退"""
     # /api 开头的走后端路由，不处理
-    if path.startswith("api/") or path.startswith("video-files/") or path.startswith("model-files/") or path.startswith("gen-files/"):
+    if path.startswith("api/"):
         return None
     file_path = FRONTEND_DIST / path
     if file_path.exists() and file_path.is_file():

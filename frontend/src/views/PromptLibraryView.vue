@@ -24,14 +24,14 @@
         <div class="thumb-wrap">
           <img
             v-if="item.sample_image && item.sample_kind === 'image'"
-            :src="item.sample_image"
+            :src="fileUrl(item.sample_image)"
             class="thumb"
             @error="onThumbError($event)"
             alt=""
           />
           <video
             v-else-if="item.sample_image && item.sample_kind === 'video'"
-            :src="item.sample_image"
+            :src="fileUrl(item.sample_image)"
             class="thumb"
             preload="metadata"
             muted
@@ -146,6 +146,7 @@ import {
 import { listPrompts, updatePrompt, deletePrompt, getErrorMessage } from '../api'
 import type { PromptLibraryItem, PromptTaskType, UpdatePromptPayload } from '../types'
 import { useAuth } from '../composables/useAuth'
+import { fileUrl } from '@/utils/fileUrl'
 
 const { isAdmin } = useAuth()
 const router = useRouter()

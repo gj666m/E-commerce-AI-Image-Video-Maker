@@ -100,7 +100,7 @@
           </div>
           <!-- 正常：缩略图 + 预览 -->
           <div v-else class="thumb-wrap" @click="preview(item)">
-            <img :src="`/gen-files/${item.thumbnail}`" :alt="item.task_type" loading="lazy" />
+            <img :src="fileUrl(`/gen-files/${item.thumbnail}`)" :alt="item.task_type" loading="lazy" />
             <div class="thumb-overlay">
               <el-icon><ZoomIn /></el-icon>
               <span>查看</span>
@@ -141,7 +141,7 @@
       <div v-if="previewItem" class="preview-img-wrap">
         <img
           v-if="!imgLoadFailed"
-          :src="`/gen-files/${previewItem.file}`"
+          :src="fileUrl(`/gen-files/${previewItem.file}`)"
           class="preview-img"
           @error="imgLoadFailed = true"
         />
@@ -172,6 +172,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { Clock, Refresh, Delete, Download, Picture, ZoomIn, PictureFilled, StarFilled, Files } from '@element-plus/icons-vue'
 import { listHistory, deleteHistory, clearHistory } from '../api'
 import { useAuth } from '../composables/useAuth'
+import { fileUrl } from '@/utils/fileUrl'
 import type { HistoryItem, PromptTaskType, AssetSourceType } from '../types'
 import SaveToPromptLibraryDialog from '../components/SaveToPromptLibraryDialog.vue'
 import SaveToAssetLibraryDialog from '../components/SaveToAssetLibraryDialog.vue'
@@ -287,7 +288,7 @@ function preview(item: HistoryItem) {
 
 async function download(item: HistoryItem) {
   try {
-    const resp = await fetch(`/gen-files/${item.file}`)
+    const resp = await fetch(fileUrl(`/gen-files/${item.file}`))
     const blob = await resp.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

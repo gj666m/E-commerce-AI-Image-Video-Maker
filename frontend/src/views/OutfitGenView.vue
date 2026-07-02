@@ -56,7 +56,7 @@
                 {{ selectedModel ? `已选: ${selectedModel.name}` : '从模特库选择' }}
               </el-button>
               <div v-if="selectedModelThumb" class="selected-model-thumb">
-                <img :src="`/model-files/${selectedModelThumb}`" alt="已选模特" />
+                <img :src="fileUrl(`/model-files/${selectedModelThumb}`)" alt="已选模特" />
               </div>
             </el-form-item>
 
@@ -223,6 +223,7 @@ import ResultCardManager from '../components/ResultCardManager.vue'
 import ModelLibrary from '../components/ModelLibrary.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
 import { generateImage, getModels, analyzeFree, getErrorMessage } from '../api'
+import { fileUrl } from '@/utils/fileUrl'
 import type { ModelInfo, ModelItem, ResultCard } from '../types'
 import { useImageList } from '../composables/useImageList'
 
@@ -326,7 +327,7 @@ onMounted(async () => {
 // 模特选择
 async function handleModelSelect(model: ModelItem) {
   try {
-    const resp = await fetch(`/model-files/${model.file}`)
+    const resp = await fetch(fileUrl(`/model-files/${model.file}`))
     const blob = await resp.blob()
     const file = new File([blob], `${model.name}.jpeg`, { type: 'image/jpeg' })
     selectedModel.value = model

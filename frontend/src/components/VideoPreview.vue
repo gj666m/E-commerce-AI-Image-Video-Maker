@@ -3,7 +3,7 @@
     <h4>生成结果</h4>
     <div class="video-container">
       <video
-        :src="videoUrl"
+        :src="fileUrl(videoUrl)"
         controls
         loop
         class="video-player"
@@ -22,6 +22,8 @@
 </template>
 
 <script setup lang="ts">
+import { fileUrl } from '@/utils/fileUrl'
+
 const props = defineProps<{
   videoUrl: string
   modelUsed: string
@@ -31,7 +33,7 @@ const props = defineProps<{
 
 function download() {
   const link = document.createElement('a')
-  link.href = props.videoUrl
+  link.href = fileUrl(props.videoUrl)
   // 从 URL 提取文件名
   const filename = props.videoUrl.split('/').pop() || 'video.mp4'
   link.download = filename

@@ -27,7 +27,7 @@
         @click="handleSelect(model)"
       >
         <el-image
-          :src="`/model-files/${model.thumbnail}`"
+          :src="fileUrl(`/model-files/${model.thumbnail}`)"
           fit="cover"
           class="model-thumb"
         />
@@ -50,6 +50,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getModelList, deleteModel } from '../api'
+import { fileUrl } from '@/utils/fileUrl'
 import type { ModelItem } from '../types'
 
 const props = defineProps<{

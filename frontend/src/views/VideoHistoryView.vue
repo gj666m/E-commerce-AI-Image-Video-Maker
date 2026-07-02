@@ -87,7 +87,7 @@
           <!-- 正常：视频首帧 + 点击播放 -->
           <div v-else class="thumb-wrap" @click="preview(item)">
             <video
-              :src="item.video_url || ''"
+              :src="fileUrl(item.video_url || '')"
               preload="metadata"
               muted
               class="thumb-video"
@@ -131,7 +131,7 @@
       <div v-if="previewItem" class="preview-video-wrap">
         <video
           v-if="!videoLoadFailed && previewItem.video_url"
-          :src="previewItem.video_url"
+          :src="fileUrl(previewItem.video_url)"
           controls
           autoplay
           class="preview-video"
@@ -165,6 +165,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { VideoCamera, Refresh, Delete, Download, VideoPlay, VideoPause, StarFilled, Files } from '@element-plus/icons-vue'
 import { listVideoHistory, deleteVideoHistory, clearVideoHistory } from '../api'
 import { useAuth } from '../composables/useAuth'
+import { fileUrl } from '@/utils/fileUrl'
 import type { VideoHistoryItem, AssetSourceType } from '../types'
 import SaveToPromptLibraryDialog from '../components/SaveToPromptLibraryDialog.vue'
 import SaveToAssetLibraryDialog from '../components/SaveToAssetLibraryDialog.vue'
@@ -261,7 +262,7 @@ async function download(item: VideoHistoryItem) {
     return
   }
   try {
-    const resp = await fetch(item.video_url)
+    const resp = await fetch(fileUrl(item.video_url))
     const blob = await resp.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

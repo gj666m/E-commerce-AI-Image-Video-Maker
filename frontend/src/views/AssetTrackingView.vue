@@ -87,13 +87,13 @@
         <div class="thumb-wrap">
           <img
             v-if="row.asset.source_type === 'image' && row.asset.thumbnail_url && !row.asset.file_expired"
-            :src="row.asset.thumbnail_url"
+            :src="fileUrl(row.asset.thumbnail_url)"
             class="thumb"
             alt=""
           />
           <video
             v-else-if="row.asset.source_type === 'video' && row.asset.thumbnail_url && !row.asset.file_expired"
-            :src="row.asset.thumbnail_url"
+            :src="fileUrl(row.asset.thumbnail_url)"
             class="thumb"
             preload="metadata"
             muted
@@ -245,6 +245,7 @@ import {
 } from '../api'
 import type { AssetTrackingSummary, AssetTrackingRow, AssetTag, TrackingRecord, TrackingExtraMetric } from '../types'
 import { useAuth } from '../composables/useAuth'
+import { fileUrl } from '@/utils/fileUrl'
 
 const { isAdmin } = useAuth()
 

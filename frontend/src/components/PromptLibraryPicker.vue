@@ -22,13 +22,13 @@
         <div class="thumb">
           <img
             v-if="item.sample_image && item.sample_kind === 'image'"
-            :src="item.sample_image"
+            :src="fileUrl(item.sample_image)"
             @error="onThumbError"
             alt=""
           />
           <video
             v-else-if="item.sample_image && item.sample_kind === 'video'"
-            :src="item.sample_image"
+            :src="fileUrl(item.sample_image)"
             preload="metadata"
             muted
           />
@@ -58,6 +58,7 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Picture } from '@element-plus/icons-vue'
 import { listPrompts, markPromptUsed, getErrorMessage } from '../api'
+import { fileUrl } from '@/utils/fileUrl'
 import type { PromptLibraryItem, PromptTaskType } from '../types'
 
 const props = defineProps<{
