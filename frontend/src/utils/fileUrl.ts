@@ -1,7 +1,7 @@
 // 续10 安全 Review P0-R2：替代裸 /video-files /model-files /gen-files 静态路径
 // 后端改为 /api/file/{kind}/{path}?token=xxx 鉴权访问，<img>/<video>/fetch 统一走此工具。
 
-const TOKEN_KEY = 'access_token'
+const TOKEN_KEY = 'ai-zw-token'
 
 function getToken(): string {
   return localStorage.getItem(TOKEN_KEY) || ''
