@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { fileUrl } from '@/utils/fileUrl'
+import { fileUrl } from '../utils/fileUrl'
 
 const props = defineProps<{
   videoUrl: string

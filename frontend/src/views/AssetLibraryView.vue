@@ -205,7 +205,7 @@ import {
 } from '../api'
 import type { AssetLibraryItem, AssetTag, AssetApplication, AssetSourceType } from '../types'
 import { useAuth } from '../composables/useAuth'
-import { fileUrl } from '@/utils/fileUrl'
+import { fileUrl } from '../utils/fileUrl'
 
 const { isAdmin } = useAuth()
 

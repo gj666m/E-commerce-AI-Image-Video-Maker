@@ -146,7 +146,7 @@ import {
 import { listPrompts, updatePrompt, deletePrompt, getErrorMessage } from '../api'
 import type { PromptLibraryItem, PromptTaskType, UpdatePromptPayload } from '../types'
 import { useAuth } from '../composables/useAuth'
-import { fileUrl } from '@/utils/fileUrl'
+import { fileUrl } from '../utils/fileUrl'
 
 const { isAdmin } = useAuth()
 const router = useRouter()

@@ -58,7 +58,7 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Picture } from '@element-plus/icons-vue'
 import { listPrompts, markPromptUsed, getErrorMessage } from '../api'
-import { fileUrl } from '@/utils/fileUrl'
+import { fileUrl } from '../utils/fileUrl'
 import type { PromptLibraryItem, PromptTaskType } from '../types'
 
 const props = defineProps<{

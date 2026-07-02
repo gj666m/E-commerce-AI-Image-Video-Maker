@@ -50,7 +50,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getModelList, deleteModel } from '../api'
-import { fileUrl } from '@/utils/fileUrl'
+import { fileUrl } from '../utils/fileUrl'
 import type { ModelItem } from '../types'
 
 const props = defineProps<{

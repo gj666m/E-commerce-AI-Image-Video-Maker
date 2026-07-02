@@ -245,7 +245,7 @@ import {
 } from '../api'
 import type { AssetTrackingSummary, AssetTrackingRow, AssetTag, TrackingRecord, TrackingExtraMetric } from '../types'
 import { useAuth } from '../composables/useAuth'
-import { fileUrl } from '@/utils/fileUrl'
+import { fileUrl } from '../utils/fileUrl'
 
 const { isAdmin } = useAuth()
 

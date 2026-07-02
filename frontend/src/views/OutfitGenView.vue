@@ -223,7 +223,7 @@ import ResultCardManager from '../components/ResultCardManager.vue'
 import ModelLibrary from '../components/ModelLibrary.vue'
 import ProductInfoForm from '../components/ProductInfoForm.vue'
 import { generateImage, getModels, analyzeFree, getErrorMessage } from '../api'
-import { fileUrl } from '@/utils/fileUrl'
+import { fileUrl } from '../utils/fileUrl'
 import type { ModelInfo, ModelItem, ResultCard } from '../types'
 import { useImageList } from '../composables/useImageList'
 
