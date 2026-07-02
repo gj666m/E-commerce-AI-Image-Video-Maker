@@ -13,6 +13,10 @@ from app.database import get_db
 logger = logging.getLogger(__name__)
 
 
+def _now_iso() -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+
 def _generate_id(prefix: str) -> str:
     return f"{prefix}_{int(time.time() * 1000)}"
 
@@ -576,7 +580,7 @@ async def create_tracking(data: dict) -> dict:
                 gmv,
                 json.dumps(extra, ensure_ascii=False),
                 (data.get("notes") or "").strip()[:1000] or None,
-                data.get("recorded_at"),  # None 时 DB 用默认 datetime
+                data.get("recorded_at") or _now_iso(),
             ),
         )
         await db.commit()

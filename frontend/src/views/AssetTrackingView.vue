@@ -129,8 +129,14 @@
           <div class="metrics-row">
             <template v-if="row.latest_tracking">
               <span class="metric"><b>最新播放</b> {{ formatNum(row.latest_tracking.views) }}</span>
+              <span class="metric"><b>点击</b> {{ formatNum(row.latest_tracking.clicks) }}</span>
               <span class="metric"><b>转化</b> {{ formatNum(row.latest_tracking.conversions) }}</span>
               <span class="metric"><b>GMV</b> {{ formatMoney(row.latest_tracking.gmv) }}</span>
+              <span
+                v-for="m in (row.latest_tracking.extra_metrics || [])"
+                :key="m.name"
+                class="metric"
+              ><b>{{ m.name }}</b> {{ m.value }}</span>
               <span class="metric muted">数据时间 {{ formatTime(row.latest_tracking.recorded_at) }}</span>
             </template>
             <span v-else class="metric muted">尚未录入价值数据</span>
@@ -209,11 +215,27 @@
             <el-table-column label="播放" width="100" align="right">
               <template #default="{ row }">{{ formatNum(row.views) }}</template>
             </el-table-column>
+            <el-table-column label="点击" width="90" align="right">
+              <template #default="{ row }">{{ formatNum(row.clicks) }}</template>
+            </el-table-column>
             <el-table-column label="转化" width="90" align="right">
               <template #default="{ row }">{{ formatNum(row.conversions) }}</template>
             </el-table-column>
             <el-table-column label="GMV" width="120" align="right">
               <template #default="{ row }">{{ formatMoney(row.gmv) }}</template>
+            </el-table-column>
+            <el-table-column label="自定义" min-width="180">
+              <template #default="{ row }">
+                <div v-if="row.extra_metrics?.length" class="extra-chips">
+                  <el-tag
+                    v-for="(m, i) in row.extra_metrics"
+                    :key="i"
+                    size="small"
+                    effect="plain"
+                  >{{ m.name }}: {{ m.value }}</el-tag>
+                </div>
+                <span v-else class="metric muted">-</span>
+              </template>
             </el-table-column>
             <el-table-column label="操作" width="130" align="center">
               <template #default="{ row }">
