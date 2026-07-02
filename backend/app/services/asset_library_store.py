@@ -1031,13 +1031,16 @@ async def list_applications_with_tracking(
             if r["source_type"] == "image":
                 thumb = f"/gen-files/{r['app_user_id']}/{r['img_thumb']}" if r["img_thumb"] else None
                 file_expired = bool(r["img_expired"]) if r["img_expired"] is not None else True
+                thumb_is_image = bool(thumb)
             elif r["source_type"] == "video":
                 # vid_url 已是 /video-files/... 完整 URL，不再拼前缀
                 thumb = r["vid_url"] or None
                 file_expired = bool(r["vid_expired"]) if r["vid_expired"] is not None else True
+                thumb_is_image = False
             else:
                 thumb = None
                 file_expired = True
+                thumb_is_image = False
 
             result.append({
                 "app_id": r["app_id"],
@@ -1053,6 +1056,7 @@ async def list_applications_with_tracking(
                     "source_type": r["source_type"],
                     "tags": json.loads(r["tags"]) if r["tags"] else [],
                     "thumbnail_url": thumb,
+                    "thumbnail_is_image": thumb_is_image,
                     "file_expired": file_expired,
                 },
                 "owner_name": r["owner_name"],
