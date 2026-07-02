@@ -10,10 +10,12 @@ function getToken(): string {
 /**
  * 把旧的 /video-files/... /model-files/... /gen-files/... 路径
  * 转换为新的鉴权路径 /api/file/{kind}/{path}?token=xxx
- * 其他 URL（data:, http://, /api/...）原样返回。
+ * 已是 /api/file/... 但缺 token 的也补上（如 asset-thumbs）。
+ * 其他 URL（data:, http://）原样返回。
  */
 export function fileUrl(rawUrl: string | null | undefined): string {
   if (!rawUrl) return ''
+  // 旧前缀 → 转 /api/file/{kind}/...
   const prefixes = ['/video-files/', '/model-files/', '/gen-files/'] as const
   for (const p of prefixes) {
     if (rawUrl.startsWith(p)) {
@@ -22,6 +24,12 @@ export function fileUrl(rawUrl: string | null | undefined): string {
       const token = getToken()
       return `/api/file/${kind}/${inner}?token=${encodeURIComponent(token)}`
     }
+  }
+  // 已是 /api/file/... 但没带 token，补上（asset-thumbs 等新 kind 后端直返此格式）
+  if (rawUrl.startsWith('/api/file/') && !rawUrl.includes('token=')) {
+    const token = getToken()
+    const sep = rawUrl.includes('?') ? '&' : '?'
+    return `${rawUrl}${sep}token=${encodeURIComponent(token)}`
   }
   return rawUrl
 }
