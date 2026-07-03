@@ -4,7 +4,7 @@
     <header class="header">
       <div class="header-left">
         <div class="logo" @click="$router.push('/')">
-          <span class="logo-text">AI-ZW</span>
+          <span class="logo-text">E-commerce AI Image/Video Maker</span>
         </div>
       </div>
       <div class="header-center">

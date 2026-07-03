@@ -2,7 +2,7 @@
   <div class="login-page">
     <div class="login-card">
       <div class="login-header">
-        <span class="logo-text">AI-ZW</span>
+        <span class="logo-text">E-commerce AI Image/Video Maker</span>
         <p class="login-subtitle">AI 电商图像视频生成工具</p>
       </div>
       <el-form @submit.prevent="handleLogin" class="login-form">

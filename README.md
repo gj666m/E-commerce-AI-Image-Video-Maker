@@ -195,26 +195,12 @@ npm run dev                            # 默认 http://localhost:5173
 │       ├── api/               # API 封装
 │       ├── router/            # 路由
 │       └── utils/             # 工具（fileUrl/markdown/genId/promptAssembly）
-├── docs/                      # 需求分析 + 提示词示例
-├── keyfield/                  # 学习资料 & 方法论（见下）
 ├── deploy/                    # systemd 服务配置示例
 └── LICENSE
 ```
 
 ---
 
-## 学习资料
-
-`keyfield/` 目录下收录本项目的开发方法论与学习资料，欢迎参考：
-
-- [**Karpathy LLM 编码准则**](keyfield/Karpathy_LLM编码准则.md) — LLM 辅助编码的最佳实践
-- [**Claude Code 开发方法论**](keyfield/Claude_Code开发方法论.md) — 使用 Claude Code 的工程方法论
-- [**后端代码学习路线**](keyfield/后端代码学习路线.md) — 从入口到 Provider 的代码导读
-- [**项目学习总结**](keyfield/项目学习总结.md) — 项目踩坑与决策回顾
-- [**项目启动提示词模版**](keyfield/项目启动提示词模版.md) — 文档体系标准
-- [**技术规范**](keyfield/spec.md) — 架构设计与模块设计
-
----
 
 ## 部署
 
@@ -253,9 +239,8 @@ npm install && npm run build
 
 ## 贡献
 
-欢迎 Issue / PR。提交前请：
+欢迎 Issue / PR。提交前请注意：
 
-1. 遵循 [`keyfield/Karpathy_LLM编码准则.md`](keyfield/Karpathy_LLM编码准则.md) 的编码规范
 2. 中文注释，变量名英文，Python 3.10+ 兼容
 3. 不自动重试 POST 写操作（避免重复扣费）
 4. 涉及外部 API 调用时区分 5xx（网关错误，重试）vs 4xx（业务失败，不重试）
