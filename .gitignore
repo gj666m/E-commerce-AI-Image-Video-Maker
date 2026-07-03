@@ -10,6 +10,13 @@ api_keys.txt
 .claude/
 .claude-dev/
 
+# 仅本地保留的内部文档（开源前已从历史清除，不要再 commit）
+keyfield/AI_review.md
+keyfield/项目进度总结.md
+keyfield/脚本开发进度.md
+keyfield/待解决问题清单.md
+keyfield/git与服务器管理知识.md
+
 # 依赖包
 node_modules/
 venv/
